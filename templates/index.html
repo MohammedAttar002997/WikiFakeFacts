@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card p-5">
+            <h1 class="display-4 fw-bold mb-4 text-primary">{{ t.welcome }}</h1>
+            <p class="lead mb-5">{{ t.tagline }}</p>
+            
+            <form action="/setup" method="POST" class="mt-4">
+                <div class="mb-4">
+                    <label for="username" class="form-label h5">What is your name?</label>
+                    <input type="text" class="form-control form-control-lg text-center" id="username" name="username" placeholder="Enter your name" required minlength="3">
+                </div>
+                <button type="submit" class="btn btn-primary btn-lg px-5">{{ t.start_playing }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

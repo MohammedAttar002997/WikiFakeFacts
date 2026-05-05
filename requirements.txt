@@ -1,0 +1,4 @@
+openai
+wikipedia
+python-dotenv
+Wikipedia-API

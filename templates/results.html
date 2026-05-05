@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8 text-center">
+        <div class="card p-5">
+            <h1 class="display-4 fw-bold mb-4 text-primary">{{ t.results_title }}</h1>
+            <p class="lead mb-5">Thank you for playing, <strong>{{ session['username'] }}</strong>!</p>
+            
+            <div class="mb-5">
+                <h2 class="h3 mb-3">{{ t.final_score }}</h2>
+                <div class="display-1 fw-bold text-primary mb-2">{{ score }} / {{ total }}</div>
+                <div class="h4 text-muted">({{ percentage }}%)</div>
+            </div>
+            
+            <div class="mb-5">
+                <p class="h5">{{ t.topic }} <span class="badge bg-secondary px-3 py-2">{{ topic }}</span></p>
+            </div>
+            
+            <div class="d-flex justify-content-center gap-3">
+                <a href="/setup" class="btn btn-primary btn-lg px-5">{{ t.play_again }}</a>
+                <a href="/leaderboard" class="btn btn-outline-primary btn-lg px-5">{{ t.view_leaderboard }}</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

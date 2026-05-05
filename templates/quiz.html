@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card p-5">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2 class="fw-bold mb-0">{{ t.question }} {{ question_num }} {{ t.of }} {{ total_questions }}</h2>
+                <span class="badge bg-primary fs-5 px-3 py-2">{{ topic }}</span>
+            </div>
+            
+            <h3 class="mb-5 text-center">{{ t.quiz_title }}</h3>
+            
+            <form action="/quiz" method="POST">
+                <div class="row g-3 mb-5">
+                    {% for option in options %}
+                    <div class="col-md-6">
+                        <div class="quiz-option card h-100 p-4 border-secondary shadow-sm" onclick="selectOption(this)">
+                            <input class="form-check-input d-none" type="radio" name="option" id="opt{{ loop.index }}" value="{{ option }}" required>
+                            <label class="form-check-label h5 mb-0" for="opt{{ loop.index }}">
+                                {{ option }}
+                            </label>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary btn-lg px-5">{{ t.submit_answer }}</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    function selectOption(element) {
+        // Remove 'selected' class from all options
+        document.querySelectorAll('.quiz-option').forEach(opt => {
+            opt.classList.remove('selected');
+            opt.classList.remove('border-primary');
+            opt.classList.add('border-secondary');
+        });
+        
+        // Add 'selected' class to the clicked option
+        element.classList.add('selected');
+        element.classList.remove('border-secondary');
+        element.classList.add('border-primary');
+        
+        // Check the hidden radio button
+        element.querySelector('input').checked = true;
+    }
+</script>
+
+<style>
+    .quiz-option {
+        cursor: pointer;
+        transition: all 0.3s ease;
+    }
+    .quiz-option:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+    }
+    .quiz-option.selected {
+        background-color: #f3f0ff;
+        border-width: 3px !important;
+    }
+</style>
+{% endblock %}

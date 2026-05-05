@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card p-5">
+            <h1 class="display-4 fw-bold mb-5 text-center text-primary">Leaderboard</h1>
+            
+            <div class="table-responsive">
+                <table class="table table-hover table-striped table-bordered align-middle">
+                    <thead class="table-dark">
+                        <tr>
+                            <th scope="col" class="text-center">Rank</th>
+                            <th scope="col">Player</th>
+                            <th scope="col">Topic</th>
+                            <th scope="col" class="text-center">Score</th>
+                            <th scope="col" class="text-center">Percentage</th>
+                            <th scope="col" class="text-center">Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for score in scores %}
+                        <tr>
+                            <th scope="row" class="text-center h5">{{ loop.index }}</th>
+                            <td class="h5 fw-bold">
+                                <a href="{{ url_for('analysis', user_id=score.user.id) }}" class="text-decoration-none text-primary">
+                                    {{ score.user.username }}
+                                </a>
+                            </td>
+                            <td><span class="badge bg-info text-dark px-3 py-2">{{ score.topic }}</span></td>
+                            <td class="text-center h5">{{ score.score }} / {{ score.total_questions }}</td>
+                            <td class="text-center h5 fw-bold text-primary">{{ score.percentage }}%</td>
+                            <td class="text-center text-muted">{{ score.timestamp.strftime('%Y-%m-%d %H:%M') }}</td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5 h5 text-muted">No scores recorded yet. Be the first to play!</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            
+            <div class="text-center mt-5">
+                <a href="/" class="btn btn-primary btn-lg px-5">Back to Home</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
