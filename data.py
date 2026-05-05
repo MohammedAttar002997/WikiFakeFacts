@@ -3,15 +3,9 @@ from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import json
 import os
-import random
-from color_format import COLOR_FORMAT_MAP
-from default_text import CONST_PROMPT_TEXT, show_error_message
-from google import genai
 from langchain_community.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
-from google.genai import types
 import numpy as np
 
 load_dotenv()
@@ -165,50 +159,6 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
         formatted_quiz_data.append(question_dict)
         
     return formatted_quiz_data
-
-def game_logic(questions_count, topic, username):
-    error_message = show_error_message(4, ":")
-    final_score = 0
-    try:
-        facts = get_ai_response(questions_count, topic)
-    except Exception as e:
-        print(f"Error starting game: {e}")
-        return
-
-    print(f"\nWhich of these is not a fact about {topic}? ")
-
-    for fact in facts:
-        list_of_facts = list(fact.items())
-        random.shuffle(list_of_facts)
-        shuffled_facts = dict(list_of_facts)
-        index = 0
-        correct_fact = ""
-        temp_list_of_facts = []
-        print()
-        
-        for question, answer in shuffled_facts.items():
-            index += 1
-            print(f"{index}-{question}")
-            temp_list_of_facts.append(f"{index}-{question}")
-            if shuffled_facts[question] is False:
-                correct_fact = question
-
-        user_input = input("\nPlease choose an option between 1 and 4: ")
-        while user_input not in ["1", "2", "3", "4"]:
-            user_input = input(f"\n{error_message}")
-
-        for value in temp_list_of_facts:
-            if user_input in value:
-                if shuffled_facts[value[2:]] is False:
-                    final_score += 1
-                    print(COLOR_FORMAT_MAP["bright_green"][0] + f"Well done {username} that is correct!" + COLOR_FORMAT_MAP["bright_green"][1])
-                    break
-                else:
-                    print(COLOR_FORMAT_MAP["orange_text"][0] + f"Sorry {username} that is not correct!" + COLOR_FORMAT_MAP["orange_text"][1])
-                    print(COLOR_FORMAT_MAP["info"][0] + f"\nThe correct answer was: {correct_fact}" + COLOR_FORMAT_MAP["info"][1])
-                    break
-
-    print(f"\nThank you for playing our game {username}, your final score is {round((final_score * 100) / questions_count)}%.")
 
 def get_ai_analysis(user_history_json, language="English"):
     if not OPEN_AI_KEY:

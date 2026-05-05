@@ -1,3 +1,11 @@
+flask-sqlalchemy
+flask
+numpy
+langchain-openai
+pydantic
+langchain-community
+langchain_text_splitters
+langchain-core
 openai
 wikipedia
 python-dotenv

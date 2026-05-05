@@ -1,3 +1,15 @@
 # created by virtualenv automatically
+# Python environment
+.venv/
+__pycache__/
+*.pyc
 
+# Local Database
+*.sqlite
+chroma_db/
+
+# IDE settings
+.idea/
+
+# Sensitive Info
 .env

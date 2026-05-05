@@ -1,5 +1,4 @@
-# WELCOME_TEXT = "Welcome to WikiFakeFact game\n"
-from color_format import COLOR_FORMAT_MAP
+
 
 GAME_RULES_TEXT = """In this game, 
 you will be given a question on a specific topic and four different facts. 
@@ -101,10 +100,6 @@ LANGUAGE_OPTIONS = {
     "it": "Italiano (Italian)",
     "pt": "Português (Portuguese)",
 }
-
-
-def show_error_message(num_len, options=""):
-   return COLOR_FORMAT_MAP["error"][0]+ERROR_MESSAGE_TEXT + f"{num_len}{options} " + COLOR_FORMAT_MAP["error"][1]
 
 
 def show_available_options(option_number, option_value):
