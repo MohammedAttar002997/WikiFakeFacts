@@ -34,7 +34,7 @@ def index_knowledge_base():
 
     # Split documents into chunks
     # Increased chunk size and overlap for better context retention with full articles
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=100, chunk_overlap=15)
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
     splits = text_splitter.split_documents(documents)
 
     # Initialize OpenAI Embeddings
