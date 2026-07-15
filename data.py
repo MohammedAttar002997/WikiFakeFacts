@@ -7,22 +7,25 @@ import os
 from langchain_community.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
 import numpy as np
+import time
 
 load_dotenv()
 
-class SimpleMockEmbeddings(Embeddings):
-    def embed_documents(self, texts):
-        return [self.embed_query(text) for text in texts]
-
-    def embed_query(self, text):
-        np.random.seed(hash(text) % 2**32)
-        return np.random.rand(1536).tolist()
+    # class SimpleMockEmbeddings(Embeddings):
+    #     def embed_documents(self, texts):
+    #         return [self.embed_query(text) for text in texts]
+    #
+    #     def embed_query(self, text):
+    #         np.random.seed(hash(text) % 2**32)
+    #         return np.random.rand(1536).tolist()
 
 
 OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
 
-# Define Pydantic models for Structured Outputs
+
+# time.perf_counter()
+
 class QuizQuestion(BaseModel):
     statement: str
     is_real: bool
@@ -79,28 +82,63 @@ def fetch_wikipedia_article(query):
         print(f"Error fetching Wikipedia article: {e}")
         return "", ""
 
-def get_ai_response(questions_count, article_title, difficulty="Medium", language="English"):
+
+def get_ai_response(questions_count, article_title, difficulty="Medium", language="English", custom_content=None):
     if not OPEN_AI_KEY:
         raise RuntimeError("OpenAI API key is required.")
 
     client = OpenAI(api_key=OPEN_AI_KEY)
 
-    # Try Wikipedia first
-    article_content, source = fetch_wikipedia_article(article_title)
+    # If custom content is provided, use it directly
+    if custom_content:
+        article_content = custom_content
+        source = "Custom Content"
+        print(f"Generating quiz using source: {source}")
+    else:
+        # Try Wikipedia first
+        article_content, source = fetch_wikipedia_article(article_title)
 
-    # Fallback to LangChain RAG if Wikipedia fails
-    if not article_content:
-        print(f"Wikipedia fetch failed for '{article_title}'. Falling back to LangChain RAG...")
-        article_content, source = fetch_local_knowledge(article_title)
+        # Fallback to LangChain RAG if Wikipedia fails
+        if not article_content:
+            print(f"Wikipedia fetch failed for '{article_title}'. Falling back to LangChain RAG...")
+            article_content, source = fetch_local_knowledge(article_title)
 
-    # Final fallback: If both fail, use AI's internal knowledge (Zero-shot RAG)
-    if not article_content:
-        print(f"Local RAG also failed for '{article_title}'. Using AI internal knowledge...")
-        source = "AI Internal Knowledge"
-        article_content = f"The topic is {article_title}. Use your internal knowledge to generate the quiz."
+        # Final fallback: If both fail, use AI's internal knowledge (Zero-shot RAG)
+        if not article_content:
+            print(f"Local RAG also failed for '{article_title}'. Using AI internal knowledge...")
+            source = "AI Internal Knowledge"
+            article_content = f"The topic is {article_title}. Use your internal knowledge to generate the quiz."
 
-    print(f"Generating quiz using source: {source}")
-    # google_response = google_client.models.generate_content(
+        print(f"Generating quiz using source: {source}")
+
+    # Using Structured Outputs with beta.chat.completions.parse
+    response = client.beta.chat.completions.parse(
+        model="gpt-4o-mini",
+        messages=[
+            {"role": "system",
+             "content": f"You are a quiz generator for a {difficulty} audience. Adjust the complexity, vocabulary, and trickiness of the facts accordingly. The entire quiz MUST be in {language}."},
+            {"role": "user", "content": (
+                f"Analyze the following content: {article_content}\n\n"
+                f"Task: Generate exactly {questions_count} quiz sets for a {difficulty} level in {language}. Each set must have 3 real facts and 1 fake fact.\n"
+            )}
+        ],
+        response_format=QuizData,
+    )
+
+    # Extract the parsed data
+    quiz_data_obj = response.choices[0].message.parsed
+
+    # Convert the Pydantic object back to the format expected by the rest of the app
+    formatted_quiz_data = []
+    for quiz_set in quiz_data_obj.quiz_sets:
+        question_dict = {}
+        for q in quiz_set.questions:
+            question_dict[q.statement] = q.is_real
+        formatted_quiz_data.append(question_dict)
+
+    return formatted_quiz_data, source
+
+ # google_response = google_client.models.generate_content(
     #     model="gemini-2.5-flash",  # Use a generative model, not embedding
     #     contents=[
     #         {
@@ -122,44 +160,6 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
     #     ),
     # )
     # print(google_response)
-    if not article_content:
-        raise RuntimeError(f"Could not find content for topic: {article_title}")
-
-    # Using Structured Outputs with beta.chat.completions.parse
-    print(f"article_content{article_content}")
-    response = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": f"You are a quiz generator for a {difficulty} audience. Adjust the complexity, vocabulary, and trickiness of the facts accordingly. The entire quiz MUST be in {language}."},
-            {"role": "user", "content": (
-                f"Analyze the following Wikipedia article: {article_content}\n\n"
-                f"Task: Generate exactly {questions_count} quiz sets for a {difficulty} level in {language}. Each set must have 3 real facts and 1 fake fact.\n"
-            )}
-        ],
-        # temperature=1.5,
-        response_format=QuizData,
-    )
-
-    # Extract the parsed data
-    # print("Gemini response")
-    # print(google_response)
-    print("GPT response")
-    print(response)
-    quiz_data_obj = response.choices[0].message.parsed
-    # quiz_data_obj = google_response.parsed
-    print(quiz_data_obj)
-    
-    # Convert the Pydantic object back to the format expected by the rest of the app
-    # The app expects a list of dictionaries where {statement: boolean}
-    formatted_quiz_data = []
-    for quiz_set in quiz_data_obj.quiz_sets:
-        question_dict = {}
-        for q in quiz_set.questions:
-            question_dict[q.statement] = q.is_real
-        formatted_quiz_data.append(question_dict)
-        
-    return formatted_quiz_data
-
 def get_ai_analysis(user_history_json, language="English"):
     if not OPEN_AI_KEY:
         raise RuntimeError("OpenAI API key is required.")

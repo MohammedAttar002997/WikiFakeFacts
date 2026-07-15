@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card p-5">
+            <h1 class="display-4 fw-bold mb-5 text-center text-primary">Create Custom Quiz</h1>
+            
+            <form action="/custom_quiz" method="POST" enctype="multipart/form-data">
+                <!-- Title -->
+                <div class="mb-4">
+                    <label for="title" class="form-label h5">Quiz Title (Optional)</label>
+                    <input type="text" class="form-control form-control-lg border-secondary" id="title" name="title" placeholder="Enter a title for your quiz">
+                </div>
+
+                <!-- Content Input Section -->
+                <div class="mb-5">
+                    <label class="form-label h5 mb-4">Upload Content</label>
+                    
+                    <!-- Tabs for File Upload and URL -->
+                    <ul class="nav nav-tabs mb-4" id="contentTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-content" type="button" role="tab" aria-controls="file-content" aria-selected="true">
+                                📄 Upload File
+                            </button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-content" type="button" role="tab" aria-controls="url-content" aria-selected="false">
+                                🔗 Paste URL
+                            </button>
+                        </li>
+                    </ul>
+
+                    <!-- Tab Content -->
+                    <div class="tab-content" id="contentTabsContent">
+                        <!-- File Upload Tab -->
+                        <div class="tab-pane fade show active" id="file-content" role="tabpanel" aria-labelledby="file-tab">
+                            <div class="mb-4">
+                                <label for="file" class="form-label">Select a file (PDF, TXT, or DOCX)</label>
+                                <input type="file" class="form-control form-control-lg border-secondary" id="file" name="file" accept=".pdf,.txt,.docx">
+                                <small class="text-muted d-block mt-2">
+                                    Maximum file size: 10MB. Supported formats: PDF, TXT, DOCX
+                                </small>
+                            </div>
+                        </div>
+
+                        <!-- URL Tab -->
+                        <div class="tab-pane fade" id="url-content" role="tabpanel" aria-labelledby="url-tab">
+                            <div class="mb-4">
+                                <label for="url" class="form-label">Enter a webpage URL</label>
+                                <input type="url" class="form-control form-control-lg border-secondary" id="url" name="url" placeholder="https://example.com/article">
+                                <small class="text-muted d-block mt-2">
+                                    Enter the full URL of the webpage you want to create a quiz from.
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Game Length -->
+                <div class="mb-4">
+                    <label class="form-label h5">Game Length</label>
+                    <div class="row g-3">
+                        {% for id, text in lengths.items() %}
+                        <div class="col-md-4">
+                            <div class="form-check card p-3 h-100 border-secondary">
+                                <input class="form-check-input" type="radio" name="length" id="len{{ id }}" value="{{ id }}" required>
+                                <label class="form-check-label h6 mb-0 ms-2" for="len{{ id }}">
+                                    {{ text }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Difficulty -->
+                <div class="mb-4">
+                    <label class="form-label h5">Difficulty</label>
+                    <div class="row g-3">
+                        {% for id, text in difficulties.items() %}
+                        <div class="col-md-4">
+                            <div class="form-check card p-3 h-100 border-secondary">
+                                <input class="form-check-input" type="radio" name="difficulty" id="diff{{ id }}" value="{{ id }}" required>
+                                <label class="form-check-label h6 mb-0 ms-2" for="diff{{ id }}">
+                                    {{ text }}
+                                </label>
+                            </div>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <!-- Language -->
+                <div class="mb-5">
+                    <label class="form-label h5">Language</label>
+                    <select class="form-select form-select-lg border-secondary" name="language" required>
+                        {% for code, name in languages.items() %}
+                        <option value="{{ code }}" {% if code == 'en' %}selected{% endif %}>{{ name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <!-- Buttons -->
+                <div class="text-center">
+                    <button type="submit" class="btn btn-primary btn-lg px-5 me-3">Create Quiz</button>
+                    <a href="/setup" class="btn btn-secondary btn-lg px-5">Back to Setup</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Ensure only one input is filled
+    document.getElementById('file').addEventListener('change', function() {
+        if (this.files.length > 0) {
+            document.getElementById('url').value = '';
+        }
+    });
+
+    document.getElementById('url').addEventListener('input', function() {
+        if (this.value.trim()) {
+            document.getElementById('file').value = '';
+        }
+    });
+
+    // Form validation
+    document.querySelector('form').addEventListener('submit', function(e) {
+        const file = document.getElementById('file').files.length;
+        const url = document.getElementById('url').value.trim();
+
+        if (!file && !url) {
+            e.preventDefault();
+            alert('Please either upload a file or enter a URL');
+        }
+    });
+</script>
+{% endblock %}

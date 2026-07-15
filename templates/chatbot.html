@@ -1,0 +1,216 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card p-5">
+            <h1 class="display-4 fw-bold mb-5 text-center text-primary">🤖 WikiFakeFact Assistant</h1>
+            
+            <div class="row">
+                <!-- Chat Interface -->
+                <div class="col-md-8">
+                    <div class="card border-light" style="height: 500px; display: flex; flex-direction: column;">
+                        <!-- Chat Messages -->
+                        <div id="chatMessages" class="card-body overflow-auto" style="flex: 1; background-color: #f8f9fa;">
+                            <div class="mb-3">
+                                <div class="d-flex justify-content-start mb-3">
+                                    <div class="bg-primary text-white rounded-3 p-3" style="max-width: 70%;">
+                                        <p class="mb-0">👋 Hi! I'm your WikiFakeFact assistant. How can I help you navigate the app today?</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chat Input -->
+                        <div class="card-footer border-top">
+                            <form id="chatForm" class="d-flex gap-2">
+                                <input 
+                                    type="text" 
+                                    id="messageInput" 
+                                    class="form-control" 
+                                    placeholder="Ask me anything..." 
+                                    autocomplete="off"
+                                >
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="bi bi-send"></i> Send
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Suggestions -->
+                <div class="col-md-4">
+                    <h5 class="mb-3">Quick Help</h5>
+                    <div class="d-flex flex-column gap-2">
+                        {% for suggestion in suggestions %}
+                        <button 
+                            type="button" 
+                            class="btn btn-outline-primary text-start quick-suggestion"
+                            data-question="{{ suggestion.question }}"
+                            data-url="{{ suggestion.url }}"
+                        >
+                            <small>{{ suggestion.question }}</small>
+                        </button>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    #chatMessages {
+        scroll-behavior: smooth;
+    }
+
+    .chat-message {
+        margin-bottom: 1rem;
+        display: flex;
+        animation: slideIn 0.3s ease-in-out;
+    }
+
+    .chat-message.user {
+        justify-content: flex-end;
+    }
+
+    .chat-message.assistant {
+        justify-content: flex-start;
+    }
+
+    .message-content {
+        max-width: 70%;
+        padding: 0.75rem 1rem;
+        border-radius: 1rem;
+        word-wrap: break-word;
+    }
+
+    .message-content.user {
+        background-color: #6f42c1;
+        color: white;
+    }
+
+    .message-content.assistant {
+        background-color: #e9ecef;
+        color: #333;
+    }
+
+    .suggested-action {
+        margin-top: 0.5rem;
+        font-size: 0.85rem;
+    }
+
+    .suggested-action a {
+        color: #6f42c1;
+        text-decoration: none;
+        font-weight: 600;
+    }
+
+    .suggested-action a:hover {
+        text-decoration: underline;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .quick-suggestion {
+        padding: 0.75rem;
+        border-radius: 0.5rem;
+        transition: all 0.2s;
+    }
+
+    .quick-suggestion:hover {
+        background-color: #6f42c1;
+        color: white;
+    }
+</style>
+
+<script>
+    const chatForm = document.getElementById('chatForm');
+    const messageInput = document.getElementById('messageInput');
+    const chatMessages = document.getElementById('chatMessages');
+    const quickSuggestions = document.querySelectorAll('.quick-suggestion');
+
+    // Handle form submission
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const message = messageInput.value.trim();
+        
+        if (!message) return;
+
+        // Add user message to chat
+        addMessage(message, 'user');
+        messageInput.value = '';
+        messageInput.focus();
+
+        // Send to backend
+        try {
+            const response = await fetch('/api/chatbot', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ message: message })
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to get response');
+            }
+
+            const data = await response.json();
+            
+            // Add assistant message
+            addMessage(data.message, 'assistant', data.suggested_action, data.action_url);
+        } catch (error) {
+            console.error('Error:', error);
+            addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+        }
+    });
+
+    // Handle quick suggestions
+    quickSuggestions.forEach(btn => {
+        btn.addEventListener('click', () => {
+            const question = btn.dataset.question;
+            messageInput.value = question;
+            chatForm.dispatchEvent(new Event('submit'));
+        });
+    });
+
+    function addMessage(text, sender, action = null, actionUrl = null) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `chat-message ${sender}`;
+
+        let content = `<div class="message-content ${sender}">${escapeHtml(text)}`;
+        
+        if (action && actionUrl) {
+            content += `<div class="suggested-action">
+                <a href="${actionUrl}">→ ${escapeHtml(action)}</a>
+            </div>`;
+        }
+        
+        content += '</div>';
+        messageDiv.innerHTML = content;
+        
+        chatMessages.appendChild(messageDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    function escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    // Auto-scroll to bottom on load
+    chatMessages.scrollTop = chatMessages.scrollHeight;
+</script>
+{% endblock %}
