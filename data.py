@@ -9,7 +9,11 @@ from langchain_core.embeddings import Embeddings
 import numpy as np
 import time
 
-load_dotenv()
+# override=True so a debug-server reload picks up a changed .env
+load_dotenv(override=True)
+
+# Wikimedia throttles generic clients; identify the app per their API etiquette
+wikipedia.set_user_agent("WikiFakeFact/1.0 (educational quiz game)")
 
     # class SimpleMockEmbeddings(Embeddings):
     #     def embed_documents(self, texts):
@@ -77,7 +81,8 @@ def fetch_local_knowledge(query):
 
 def fetch_wikipedia_article(query):
     try:
-        return wikipedia.page(title=query, auto_suggest=False, preload=True).content, "Wikipedia"
+        # Only the article text is used, so skip preloading images/links/sections
+        return wikipedia.page(title=query, auto_suggest=False).content, "Wikipedia"
     except Exception as e:
         print(f"Error fetching Wikipedia article: {e}")
         return "", ""
