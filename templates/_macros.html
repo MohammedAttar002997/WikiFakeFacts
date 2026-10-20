@@ -1,0 +1,59 @@
+{# Reusable quiz-option pickers shared by setup.html and custom_quiz.html #}
+
+{% set CATEGORY_EMOJI = {
+    'Sports': '⚽', 'Animals': '🐘', 'Countries': '🌍', 'Fruits': '🍓',
+    'Planets and Space': '🪐', 'Technologies': '💻', 'Musical Instruments': '🎸'
+} %}
+{% set LENGTH_ICONS = {'1': 'bi-lightning-charge-fill', '2': 'bi-hourglass-split', '3': 'bi-fire'} %}
+{% set DIFFICULTY_EMOJI = {'1': '🧒', '2': '🧑‍🎓', '3': '🧠'} %}
+
+{% macro length_tiles(lengths) %}
+<div class="row g-3">
+    {% for id, text in lengths.items() %}
+    {# "Short (3 rounds)" -> title "Short", sub "3 rounds" #}
+    {% set parts = text.split(' (', 1) %}
+    {% set title = parts[0] %}
+    {% set sub = parts[1].rstrip(')') if parts|length > 1 else '' %}
+    <div class="col-4">
+        <input class="tile-input" type="radio" name="length" id="len{{ id }}" value="{{ id }}" required {% if id == '2' %}checked{% endif %}>
+        <label class="tile" for="len{{ id }}">
+            <i class="bi bi-check-circle-fill tile-check"></i>
+            <i class="bi {{ LENGTH_ICONS.get(id, 'bi-list-ol') }} tile-icon"></i>
+            <span class="tile-title">{{ title }}</span>
+            <span class="tile-sub">{{ sub }}</span>
+        </label>
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro difficulty_tiles(difficulties) %}
+<div class="row g-3">
+    {% for id, text in difficulties.items() %}
+    {# "Short (3 rounds)" -> title "Short", sub "3 rounds" #}
+    {% set parts = text.split(' (', 1) %}
+    {% set title = parts[0] %}
+    {% set sub = parts[1].rstrip(')') if parts|length > 1 else '' %}
+    <div class="col-4">
+        <input class="tile-input" type="radio" name="difficulty" id="diff{{ id }}" value="{{ id }}" required {% if id == '2' %}checked{% endif %}>
+        <label class="tile" for="diff{{ id }}">
+            <i class="bi bi-check-circle-fill tile-check"></i>
+            <span class="tile-emoji">{{ DIFFICULTY_EMOJI.get(id, '🎯') }}</span>
+            <span class="tile-title">{{ title }}</span>
+            <span class="tile-sub">{{ sub }}</span>
+        </label>
+    </div>
+    {% endfor %}
+</div>
+{% endmacro %}
+
+{% macro language_select(languages) %}
+<div class="input-group input-group-lg">
+    <span class="input-group-text bg-transparent border-2"><i class="bi bi-translate"></i></span>
+    <select class="form-select fw-bold" name="language" required aria-label="Quiz language">
+        {% for code, name in languages.items() %}
+        <option value="{{ code }}" {% if code == 'en' %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+    </select>
+</div>
+{% endmacro %}

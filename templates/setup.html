@@ -1,82 +1,62 @@
 {% extends "base.html" %}
+{% from "_macros.html" import CATEGORY_EMOJI, length_tiles, difficulty_tiles, language_select %}
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-10">
-        <div class="card p-5">
-            <h1 class="display-4 fw-bold mb-5 text-center text-primary">{{ t.setup_title }}</h1>
-            
-            <form action="/start_quiz" method="POST">
-                <div class="mb-4">
-                    <label class="form-label h5">{{ t.select_category }}</label>
-                    <div class="row g-3">
-                        {% for id, name in categories.items() %}
-                        <div class="col-md-4">
-                            <div class="form-check card p-3 h-100 border-secondary">
-                                <input class="form-check-input" type="radio" name="category" id="cat{{ id }}" value="{{ id }}" required>
-                                <label class="form-check-label h6 mb-0 ms-2" for="cat{{ id }}">
-                                    {{ name }}
-                                </label>
-                            </div>
-                        </div>
-                        {% endfor %}
-                        <div class="col-md-4">
-                            <div class="card p-3 h-100 border-secondary" style="cursor: pointer;" onclick="window.location.href='/custom_quiz'">
-                                <div class="text-center">
-                                    <h6 class="mb-0 text-primary">📄 Custom Content</h6>
-                                    <small class="text-muted">Upload file or URL</small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="mb-4">
-                    <label class="form-label h5">{{ t.game_length }}</label>
-                    <div class="row g-3">
-                        {% for id, text in lengths.items() %}
-                        <div class="col-md-4">
-                            <div class="form-check card p-3 h-100 border-secondary">
-                                <input class="form-check-input" type="radio" name="length" id="len{{ id }}" value="{{ id }}" required>
-                                <label class="form-check-label h6 mb-0 ms-2" for="len{{ id }}">
-                                    {{ text }}
-                                </label>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <label class="form-label h5">{{ t.difficulty }}</label>
-                    <div class="row g-3">
-                        {% for id, text in difficulties.items() %}
-                        <div class="col-md-4">
-                            <div class="form-check card p-3 h-100 border-secondary">
-                                <input class="form-check-input" type="radio" name="difficulty" id="diff{{ id }}" value="{{ id }}" required>
-                                <label class="form-check-label h6 mb-0 ms-2" for="diff{{ id }}">
-                                    {{ text }}
-                                </label>
-                            </div>
-                        </div>
-                        {% endfor %}
-                    </div>
-                </div>
-
-                <div class="mb-5">
-                    <label class="form-label h5">{{ t.language }}</label>
-                    <select class="form-select form-select-lg border-secondary" name="language" required>
-                        {% for code, name in languages.items() %}
-                        <option value="{{ code }}" {% if code == 'en' %}selected{% endif %}>{{ name }}</option>
-                        {% endfor %}
-                    </select>
-                </div>
-                
-                <div class="text-center">
-                    <button type="submit" class="btn btn-primary btn-lg px-5">{{ t.start_game }}</button>
-                </div>
-            </form>
+    <div class="col-lg-10">
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-controller"></i> New game</span>
+            <h1>{{ t.setup_title }}</h1>
+            {% if session.get('username') %}
+            <p>Ready, <strong>{{ session['username'] }}</strong>? Set up your round below.</p>
+            {% endif %}
         </div>
+
+        <form action="/start_quiz" method="POST" class="wf-card wf-card-pad" data-loading="Generating your quiz…">
+            <section class="mb-5">
+                <div class="section-label"><span class="step">1</span>{{ t.select_category }}</div>
+                <div class="row g-3">
+                    {% for id, name in categories.items() %}
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <input class="tile-input" type="radio" name="category" id="cat{{ id }}" value="{{ id }}" required>
+                        <label class="tile" for="cat{{ id }}">
+                            <i class="bi bi-check-circle-fill tile-check"></i>
+                            <span class="tile-emoji">{{ CATEGORY_EMOJI.get(name, '❓') }}</span>
+                            <span class="tile-title">{{ name }}</span>
+                        </label>
+                    </div>
+                    {% endfor %}
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <a class="tile tile-link" href="/custom_quiz">
+                            <span class="tile-emoji">📄</span>
+                            <span class="tile-title text-brand">Custom Content</span>
+                            <span class="tile-sub">Upload file or URL</span>
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="mb-5">
+                <div class="section-label"><span class="step">2</span>{{ t.game_length }}</div>
+                {{ length_tiles(lengths) }}
+            </section>
+
+            <section class="mb-5">
+                <div class="section-label"><span class="step">3</span>{{ t.difficulty }}</div>
+                {{ difficulty_tiles(difficulties) }}
+            </section>
+
+            <section class="mb-5">
+                <div class="section-label"><span class="step">4</span>{{ t.language }}</div>
+                {{ language_select(languages) }}
+            </section>
+
+            <div class="text-center">
+                <button type="submit" class="btn btn-primary btn-lg px-5">
+                    <i class="bi bi-play-fill me-1"></i>{{ t.start_game }}
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 {% endblock %}

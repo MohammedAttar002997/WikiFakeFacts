@@ -2,18 +2,52 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-8 text-center">
-        <div class="card p-5">
-            <h1 class="display-4 fw-bold mb-4 text-primary">{{ t.welcome }}</h1>
-            <p class="lead mb-5">{{ t.tagline }}</p>
-            
-            <form action="/setup" method="POST" class="mt-4">
-                <div class="mb-4">
-                    <label for="username" class="form-label h5">What is your name?</label>
-                    <input type="text" class="form-control form-control-lg text-center" id="username" name="username" placeholder="Enter your name" required minlength="3">
-                </div>
-                <button type="submit" class="btn btn-primary btn-lg px-5">{{ t.start_playing }}</button>
+    <div class="col-lg-10">
+        <section class="wf-hero text-center mb-5">
+            <span class="floating-chip d-none d-md-block" style="top: 12%; left: 7%;">🧐</span>
+            <span class="floating-chip d-none d-md-block" style="top: 18%; right: 9%; animation-delay: -2s;">💡</span>
+            <span class="floating-chip d-none d-md-block" style="bottom: 14%; right: 15%; animation-delay: -4s;">❓</span>
+
+            <span class="badge rounded-pill bg-white text-dark px-3 py-2 mb-3 fw-bold">
+                <i class="bi bi-stars text-warning"></i> AI-powered trivia
+            </span>
+            <h1 class="mb-3">{{ t.welcome }}</h1>
+            <p class="lead mb-0">{{ t.tagline }}</p>
+
+            <form action="/setup" method="POST" class="hero-form">
+                <label for="username" class="visually-hidden">What is your name?</label>
+                <input type="text" class="form-control form-control-lg" id="username" name="username"
+                       placeholder="Enter your name" required minlength="3" autocomplete="nickname"
+                       value="{{ session.get('username', '') }}">
+                <button type="submit" class="btn btn-lg">
+                    {{ t.start_playing }} <i class="bi bi-arrow-right-circle-fill ms-1"></i>
+                </button>
             </form>
+        </section>
+
+        <h2 class="h4 text-center fw-black mb-4">How to play</h2>
+        <div class="row g-4">
+            <div class="col-md-4">
+                <div class="feature-tile">
+                    <div class="feature-icon" style="background: rgba(59,130,246,.15); color: #3b82f6;"><i class="bi bi-grid-3x3-gap-fill"></i></div>
+                    <h3 class="h5 fw-black">1. Pick a topic</h3>
+                    <p class="text-muted mb-0">Choose from 7 categories, or upload your own document or URL.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-tile">
+                    <div class="feature-icon" style="background: rgba(229,72,77,.15); color: #e5484d;"><i class="bi bi-search"></i></div>
+                    <h3 class="h5 fw-black">2. Spot the fake</h3>
+                    <p class="text-muted mb-0">Each round shows four facts. Three are real, one is a convincing lie.</p>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="feature-tile">
+                    <div class="feature-icon" style="background: rgba(16,185,129,.15); color: #10b981;"><i class="bi bi-bar-chart-fill"></i></div>
+                    <h3 class="h5 fw-black">3. Level up</h3>
+                    <p class="text-muted mb-0">Climb the leaderboard and get AI coaching on your weak spots.</p>
+                </div>
+            </div>
         </div>
     </div>
 </div>
