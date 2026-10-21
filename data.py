@@ -7,7 +7,10 @@ import os
 from langchain_community.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
 import numpy as np
+import re
 import time
+
+from default_text import MENU
 
 # override=True so a debug-server reload picks up a changed .env
 load_dotenv(override=True)
@@ -61,10 +64,27 @@ class AIAnalysis(BaseModel):
     topic_insights: list[TopicInsight]
 
 
+# Each knowledge-base article covers a whole category; rag_indexer.py tags every chunk with it as metadata "topic"
+TOPIC_CATEGORY = {topic: category for category, topics in MENU.items() for topic in topics}
+MAX_KNOWLEDGE_CHUNKS = 3
+
+
+def select_relevant_chunks(topic, chunks):
+    """Chunks that actually mention the quiz topic, best match first. "Mercury (planet)" matches "Mercury"."""
+    name = re.sub(r'\s*\(.*\)$', '', topic).strip().lower()
+    return [chunk for chunk in chunks if name and name in chunk.page_content.lower()][:MAX_KNOWLEDGE_CHUNKS]
+
+
 def fetch_local_knowledge(query):
     """
-    LangChain RAG Retrieval: Fetches content from the Chroma vector store.
+    LangChain RAG Retrieval: Fetches content about a built-in topic from the Chroma vector store.
+
+    Only chunks from the topic's own category article that mention the topic are used; otherwise nothing is
+    returned, so the quiz falls back to the AI's own knowledge instead of an unrelated passage.
     """
+    category = TOPIC_CATEGORY.get(query)
+    if not category:
+        return "", ""
     try:
         persist_directory = os.path.join(os.path.dirname(__file__), 'chroma_db')
         if os.path.exists(persist_directory):
@@ -74,9 +94,9 @@ def fetch_local_knowledge(query):
             )
             vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 
-            # Perform similarity search
-            # Increased k to 3 to retrieve more context from full articles
-            docs = vectorstore.similarity_search(query, k=3)
+            # Search more widely within the category, then keep the chunks that mention the topic
+            candidates = vectorstore.similarity_search(query, k=10, filter={"topic": category})
+            docs = select_relevant_chunks(query, candidates)
             if docs:
                 combined_content = "\n\n".join([doc.page_content for doc in docs])
                 return combined_content, "LangChain RAG"
