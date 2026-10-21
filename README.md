@@ -100,6 +100,15 @@ Databases created before migrations were added are detected on startup, brought 
 
 Set `DATABASE_URL` to use a different database (for example `sqlite:///other.sqlite`); it defaults to `quiz.sqlite` next to `app.py`.
 
+## Running the tests
+
+```bash
+python -m pytest            # everything (about 10 seconds)
+python -m pytest -m "not slow"   # skip the migration tests, which start the app in a subprocess
+```
+
+The tests use a throwaway database and stub every OpenAI, Wikipedia and web request, so they're free and run offline.
+
 ## Translations
 
 The interface is available in English, Spanish, French, German, Italian and Portuguese; players switch with the language menu in the navbar (it also sets the default quiz language).
