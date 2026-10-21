@@ -11,13 +11,15 @@ from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate, stamp, upgrade
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from models import db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge
+from models import (db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
+                    UserBadge)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS
 from wikipedia import DisambiguationError
 from translations import TRANSLATIONS
 from content_extractor import extract_text_from_file, extract_text_from_url, validate_content_length
 from chatbot import get_chatbot_response, get_quick_help_suggestions
+from badges import BADGES, award_badges, compute_streaks, player_streaks
 
 
 app = Flask(__name__)
@@ -176,6 +178,11 @@ def daily_attempt(user, date):
     """The player's quiz for the given day's challenge (any language), or None."""
     return (QuizSession.query.join(DailyChallenge, QuizSession.daily_challenge_id == DailyChallenge.id)
             .filter(QuizSession.user_id == user.id, DailyChallenge.date == date).first())
+
+
+def flash_new_badges(user):
+    for badge in award_badges(user):
+        flash(f"{badge['icon']} Badge unlocked: {badge['name']}! {badge['description']}", "success")
 
 
 def current_user():
@@ -544,7 +551,8 @@ def quiz():
                 )
                 db.session.add(final_score)
                 db.session.commit()
-                
+
+                flash_new_badges(db.session.get(User, quiz_session.user_id))
                 return redirect(url_for('results'))
             
             db.session.commit()
@@ -724,7 +732,9 @@ def players():
                 'id': user.id,
                 'username': user.username,
                 'games_played': len(scores),
-                'avg_score': round(avg_score, 2)
+                'avg_score': round(avg_score, 2),
+                'streak': compute_streaks([s.timestamp.date() for s in scores if s.timestamp])[0],
+                'badges': UserBadge.query.filter_by(user_id=user.id).count(),
             })
     
     # Sort by games played or avg score
@@ -785,10 +795,18 @@ def analysis(user_id=None):
             # Fall back to the last saved analysis, even if it's missing the newest quizzes
             ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json) if saved else None
 
+    # Players who finished quizzes before badges existed get theirs on their next visit
+    flash_new_badges(user)
+    earned = {b.badge: b.earned_at for b in UserBadge.query.filter_by(user_id=user.id)}
+    current_streak, best_streak = player_streaks(user)
+
     return render_template('analysis.html',
                            analysis_data=analysis_data,
                            ai_analysis=ai_analysis,
                            practice_topic=practice_topic,
+                           badges=BADGES, earned_badges=earned,
+                           current_streak=current_streak, best_streak=best_streak,
+                           played_today=user_scores[-1].timestamp.date() == datetime.utcnow().date(),
                            profile_user=user)
 
 

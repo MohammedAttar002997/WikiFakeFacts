@@ -1071,3 +1071,20 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .filter-label { display: block; font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--wf-muted); margin-bottom: .3rem; }
 .filter-actions { display: flex; align-items: center; gap: .5rem; min-height: calc(1.5em + .75rem + 4px); }
 .filter-actions:empty { display: none; }
+
+/* ---------- Badges & streaks -------------------------------------------------- */
+.streak-chip.is-active { background: rgba(245, 158, 11, .15); border-color: transparent; color: #b45309; }
+[data-bs-theme="dark"] .streak-chip.is-active { color: #fbbf24; }
+.badge-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(9.5rem, 1fr)); gap: .75rem; }
+.badge-tile {
+    text-align: center;
+    padding: 1rem .75rem;
+    border-radius: 1rem;
+    background: var(--wf-surface-2);
+    border: 1px solid var(--wf-border);
+}
+.badge-icon { font-size: 2rem; line-height: 1; margin-bottom: .4rem; }
+.badge-desc { font-size: .78rem; color: var(--wf-muted); margin-top: .2rem; }
+.badge-date { font-size: .72rem; font-weight: 800; color: var(--wf-brand); margin-top: .4rem; }
+.badge-tile.is-locked { background: transparent; border-style: dashed; }
+.badge-tile.is-locked .badge-icon { filter: grayscale(1); opacity: .5; }
