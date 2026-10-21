@@ -168,14 +168,18 @@ def custom_quiz():
             try:
                 # Generate quiz from custom content
                 language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-                quiz_data, source = get_ai_response(questions_count, "Custom Content", difficulty_text, language_name,
-                                                    custom_content=content)
+                quiz_data, source, ai_topic = get_ai_response(questions_count, "Custom Content", difficulty_text,
+                                                              language_name, custom_content=content)
                 session['quiz_source'] = source
+
+                # Label the quiz by its subject so progress/leaderboard show a real topic:
+                # the user's own title wins, then the AI-detected topic
+                custom_topic = (request.form.get('title') or '').strip() or ai_topic or "Custom Content"
 
                 # Create quiz session
                 quiz_session = QuizSession(
                     user_id=user.id,
-                    topic="Custom Content",
+                    topic=custom_topic[:100],
                     difficulty=difficulty_text,
                     questions_json=json.dumps(quiz_data),
                     total_questions=questions_count,
@@ -229,7 +233,7 @@ def start_quiz():
     try:
         # Fetch questions from AI
         language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-        quiz_data, source = get_ai_response(questions_count, topic, difficulty_text, language_name)
+        quiz_data, source, _ = get_ai_response(questions_count, topic, difficulty_text, language_name)
         session['quiz_source'] = source
 
         # Create a new quiz session

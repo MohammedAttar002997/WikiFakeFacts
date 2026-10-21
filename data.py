@@ -38,6 +38,7 @@ class QuizSet(BaseModel):
     questions: list[QuizQuestion]
 
 class QuizData(BaseModel):
+    topic: str  # Short name for the content's subject, used to label custom quizzes
     quiz_sets: list[QuizSet]
 
 class TopicInsight(BaseModel):
@@ -125,6 +126,7 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
             {"role": "user", "content": (
                 f"Analyze the following content: {article_content}\n\n"
                 f"Task: Generate exactly {questions_count} quiz sets for a {difficulty} level in {language}. Each set must have 3 real facts and 1 fake fact.\n"
+                f"Also set 'topic' to a short English name (1-4 words, Title Case) for the main subject of the content, e.g. 'Photosynthesis' or 'French Revolution'.\n"
             )}
         ],
         response_format=QuizData,
@@ -141,7 +143,7 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
             question_dict[q.statement] = q.is_real
         formatted_quiz_data.append(question_dict)
 
-    return formatted_quiz_data, source
+    return formatted_quiz_data, source, quiz_data_obj.topic.strip()
 
  # google_response = google_client.models.generate_content(
     #     model="gemini-2.5-flash",  # Use a generative model, not embedding
