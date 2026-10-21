@@ -2,7 +2,6 @@ import os
 import json
 import random
 import secrets
-import time
 from datetime import datetime, timedelta
 
 import click
@@ -17,7 +16,7 @@ from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
-                    UserBadge)
+                    UserBadge, PinAttempt)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from wikipedia import DisambiguationError
@@ -56,10 +55,9 @@ csrf = CSRFProtect(app)
 # render_as_batch lets Alembic alter SQLite tables (it recreates them instead of using unsupported ALTERs)
 migrate = Migrate(app, db, directory=os.path.join(basedir, 'migrations'), render_as_batch=True)
 
-# Wrong-PIN throttling, keyed by lowercase username: {name: (failed_count, first_failure_time)}
+# Wrong-PIN throttling per lowercase name (stored in pin_attempt): 5 wrong PINs lock the name for 5 minutes
 MAX_PIN_ATTEMPTS = 5
-PIN_LOCKOUT_SECONDS = 5 * 60
-FAILED_PINS = {}
+PIN_LOCKOUT = timedelta(minutes=5)
 
 
 def allowed_file(filename):
@@ -279,19 +277,27 @@ def find_practice_topic(user, analysis_data):
 
 
 def is_locked_out(key):
-    attempts = FAILED_PINS.get(key)
-    if not attempts:
+    attempt = db.session.get(PinAttempt, key)
+    if not attempt:
         return False
-    count, first_failure = attempts
-    if time.time() - first_failure > PIN_LOCKOUT_SECONDS:
-        FAILED_PINS.pop(key, None)
+    if utcnow() - attempt.first_failure > PIN_LOCKOUT:
+        clear_failed_pins(key)
         return False
-    return count >= MAX_PIN_ATTEMPTS
+    return attempt.failures >= MAX_PIN_ATTEMPTS
 
 
 def record_failed_pin(key):
-    count, first_failure = FAILED_PINS.get(key, (0, time.time()))
-    FAILED_PINS[key] = (count + 1, first_failure)
+    attempt = db.session.get(PinAttempt, key)
+    if attempt:
+        attempt.failures += 1
+    else:
+        db.session.add(PinAttempt(name=key, failures=1, first_failure=utcnow()))
+    db.session.commit()
+
+
+def clear_failed_pins(key):
+    PinAttempt.query.filter_by(name=key).delete()
+    db.session.commit()
 
 
 @app.route('/')
@@ -328,7 +334,7 @@ def check_account_pin(user, pin):
         record_failed_pin(key)
         flash(_("That PIN isn't right."), "danger")
         return False
-    FAILED_PINS.pop(key, None)
+    clear_failed_pins(key)
     return True
 
 
@@ -443,7 +449,7 @@ def setup():
                 name=user.username), "danger")
             return redirect(url_for('index'))
 
-        FAILED_PINS.pop(key, None)
+        clear_failed_pins(key)
         session['username'] = user.username
 
         return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,

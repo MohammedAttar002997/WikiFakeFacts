@@ -73,7 +73,6 @@ def clean_db():
         with db.engine.begin() as conn:
             for table in reversed(db.metadata.sorted_tables):
                 conn.execute(table.delete())
-    app_module.FAILED_PINS.clear()
 
 
 @pytest.fixture

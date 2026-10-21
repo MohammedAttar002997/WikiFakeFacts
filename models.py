@@ -80,6 +80,12 @@ class UserBadge(db.Model):
     badge = db.Column(db.String(50), nullable=False)
     earned_at = db.Column(db.DateTime, default=utcnow)
 
+class PinAttempt(db.Model):
+    """Wrong-PIN guesses per (lowercase) name, so the sign-in lockout survives app restarts."""
+    name = db.Column(db.String(80), primary_key=True)
+    failures = db.Column(db.Integer, nullable=False, default=0)
+    first_failure = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ChatbotSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(100), unique=True, nullable=False)

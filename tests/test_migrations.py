@@ -56,7 +56,7 @@ def test_fresh_database_matches_models(tmp_path):
     db_path = str(tmp_path / 'fresh.sqlite')
     code, output = run_init(db_path)
     assert code == 0, output
-    assert read(db_path, 'SELECT version_num FROM alembic_version') == [('0003_drop_shared_chat',)]
+    assert read(db_path, 'SELECT version_num FROM alembic_version') == [('0004_pin_attempts',)]
 
 
 @pytest.mark.slow
@@ -68,4 +68,4 @@ def test_pre_migration_database_is_upgraded_keeping_data(tmp_path):
     assert code == 0, output  # no differences left between the upgraded database and the models
     assert read(db_path, 'SELECT username FROM user') == [('OldPlayer',)]
     assert read(db_path, 'SELECT topic, score FROM score') == [('Cat', 2)]
-    assert read(db_path, 'SELECT version_num FROM alembic_version') == [('0003_drop_shared_chat',)]
+    assert read(db_path, 'SELECT version_num FROM alembic_version') == [('0004_pin_attempts',)]
