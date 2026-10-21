@@ -6,16 +6,17 @@
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-people-fill"></i> Community</span>
             <h1>WikiFakeFact Players</h1>
-            <p>Tap a player to see their AI-powered analysis.</p>
+            <p>See how everyone is doing. Your AI-powered analysis is private to you.</p>
         </div>
 
         <div class="row g-4">
             {% for player in players %}
             {% set meter = 'meter-good' if player.avg_score >= 80 else ('meter-mid' if player.avg_score >= 50 else 'meter-low') %}
+            {% set is_me = player.username == session.get('username') %}
             <div class="col-sm-6 col-lg-4">
-                <a class="player-card" href="{{ url_for('analysis', user_id=player.id) }}">
+                {% if is_me %}<a class="player-card" href="{{ url_for('analysis') }}" data-loading="Analyzing your progress…" data-loading-tips="analysis">{% else %}<div class="player-card player-card-static">{% endif %}
                     <div class="avatar avatar-lg avatar-c{{ (player.username|length % 5) + 1 }} mx-auto mb-3">{{ player.username[:1] }}</div>
-                    <h2 class="h5 fw-black mb-1 text-truncate">{{ player.username }}</h2>
+                    <h2 class="h5 fw-black mb-1 text-truncate">{{ player.username }}{% if is_me %} <span class="text-brand small">(you)</span>{% endif %}</h2>
                     <p class="text-muted small mb-3">
                         <i class="bi bi-controller"></i> {{ player.games_played }} game{{ 's' if player.games_played != 1 }} played
                     </p>
@@ -23,9 +24,13 @@
                         <span class="text-muted">Avg score</span>
                         <span class="text-brand">{{ player.avg_score|round|int }}%</span>
                     </div>
-                    <div class="meter mb-3"><span class="{{ meter }}" style="width: {{ player.avg_score }}%;"></span></div>
-                    <span class="btn btn-outline-primary w-100"><i class="bi bi-cpu me-1"></i>View AI Analysis</span>
+                    <div class="meter{{ ' mb-3' if is_me }}"><span class="{{ meter }}" style="width: {{ player.avg_score }}%;"></span></div>
+                {% if is_me %}
+                    <span class="btn btn-outline-primary w-100"><i class="bi bi-cpu me-1"></i>View My AI Analysis</span>
                 </a>
+                {% else %}
+                </div>
+                {% endif %}
             </div>
             {% else %}
             <div class="col-12">

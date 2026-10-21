@@ -1,7 +1,10 @@
 import os
 import json
 import random
+import time
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from sqlalchemy import func, inspect, text
+from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from models import db, User, Score, QuizSession, CustomContent, ChatbotSession
 from data import get_ai_response, get_ai_analysis
@@ -33,6 +36,11 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
 
+# Wrong-PIN throttling, keyed by lowercase username: {name: (failed_count, first_failure_time)}
+MAX_PIN_ATTEMPTS = 5
+PIN_LOCKOUT_SECONDS = 5 * 60
+FAILED_PINS = {}
+
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
@@ -44,28 +52,77 @@ def inject_translations():
     return {'t': TRANSLATIONS.get(lang, TRANSLATIONS['en'])}
 
 
+def ensure_schema():
+    db.create_all()
+    # create_all() doesn't add columns to existing tables, so add pin_hash to older databases
+    if 'pin_hash' not in [c['name'] for c in inspect(db.engine).get_columns('user')]:
+        with db.engine.begin() as conn:
+            conn.execute(text('ALTER TABLE user ADD COLUMN pin_hash VARCHAR(255)'))
+
+
+def is_locked_out(key):
+    attempts = FAILED_PINS.get(key)
+    if not attempts:
+        return False
+    count, first_failure = attempts
+    if time.time() - first_failure > PIN_LOCKOUT_SECONDS:
+        FAILED_PINS.pop(key, None)
+        return False
+    return count >= MAX_PIN_ATTEMPTS
+
+
+def record_failed_pin(key):
+    count, first_failure = FAILED_PINS.get(key, (0, time.time()))
+    FAILED_PINS[key] = (count + 1, first_failure)
+
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
 
+@app.route('/logout')
+def logout():
+    session.pop('username', None)
+    session.pop('quiz_session_id', None)
+    return redirect(url_for('index'))
+
+
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
     if request.method == 'POST':
-        username = request.form.get('username')
-        if not username or len(username.strip()) <= 2:
+        username = (request.form.get('username') or '').strip()
+        pin = (request.form.get('pin') or '').strip()
+        if len(username) <= 2:
             flash("Please enter a valid name (at least 3 characters).", "danger")
             return redirect(url_for('index'))
-        
-        session['username'] = username.strip()
-        
-        # Create user if not exists
-        user = User.query.filter_by(username=session['username']).first()
+        if not (len(pin) == 4 and pin.isdigit()):
+            flash("Please enter a 4-digit PIN.", "danger")
+            return redirect(url_for('index'))
+
+        key = username.lower()
+        if is_locked_out(key):
+            flash("Too many wrong PINs for this name. Please wait a few minutes and try again.", "danger")
+            return redirect(url_for('index'))
+
+        # Names are matched case-insensitively so "phoenix" can't impersonate "Phoenix"
+        user = User.query.filter(func.lower(User.username) == key).first()
         if not user:
-            user = User(username=session['username'])
+            user = User(username=username, pin_hash=generate_password_hash(pin))
             db.session.add(user)
             db.session.commit()
-        
+        elif not user.pin_hash:
+            # Player from before PINs existed: the first PIN entered claims the name
+            user.pin_hash = generate_password_hash(pin)
+            db.session.commit()
+        elif not check_password_hash(user.pin_hash, pin):
+            record_failed_pin(key)
+            flash(f"The name \"{user.username}\" is already taken. Enter its PIN, or choose a different name.", "danger")
+            return redirect(url_for('index'))
+
+        FAILED_PINS.pop(key, None)
+        session['username'] = user.username
+
         return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS)
     
     if 'username' not in session:
@@ -344,8 +401,23 @@ def results():
 
 @app.route('/leaderboard')
 def leaderboard():
-    top_scores = Score.query.order_by(Score.percentage.desc()).limit(10).all()
-    return render_template('leaderboard.html', scores=top_scores)
+    # One row per player: total correct answers across all their quizzes, ties broken by accuracy
+    total_points = func.sum(Score.score)
+    total_questions = func.sum(Score.total_questions)
+    rows = (db.session.query(User, total_points, total_questions, func.count(Score.id))
+            .join(Score, Score.user_id == User.id)
+            .group_by(User.id)
+            .order_by(total_points.desc(), (total_points * 1.0 / total_questions).desc())
+            .limit(10)
+            .all())
+    standings = [{
+        'user': user,
+        'points': points,
+        'total_questions': questions,
+        'quizzes': quizzes,
+        'percentage': points / questions * 100 if questions else 0,
+    } for user, points, questions, quizzes in rows]
+    return render_template('leaderboard.html', standings=standings)
 
 
 @app.route('/players')
@@ -371,15 +443,17 @@ def players():
 @app.route('/analysis')
 @app.route('/analysis/<int:user_id>')
 def analysis(user_id=None):
-    if user_id:
-        user = User.query.get_or_404(user_id)
-    else:
-        if 'username' not in session:
-            return redirect(url_for('index'))
-        user = User.query.filter_by(username=session['username']).first()
-        if not user:
-            return redirect(url_for('index'))
-    
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return redirect(url_for('index'))
+
+    # Performance analysis is private: players can only open their own
+    if user_id is not None and user_id != user.id:
+        flash("Performance analysis is private. You can only view your own.", "warning")
+        return redirect(url_for('analysis'))
+
     user_scores = Score.query.filter_by(user_id=user.id).all()
     
     if not user_scores:
@@ -488,5 +562,5 @@ def chatbot_api():
 
 if __name__ == '__main__':
     with app.app_context():
-        db.create_all()
+        ensure_schema()
     app.run(debug=True, port=5003)

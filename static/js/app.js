@@ -32,20 +32,30 @@
         if (!storedTheme()) applyTheme(e.matches ? 'dark' : 'light');
     });
 
-    // Loading overlay for forms that trigger slow AI generation
+    // Loading overlay for forms and links that trigger slow AI generation
     const overlay = document.getElementById('loadingOverlay');
     const tipEl = document.getElementById('loadingTip');
-    const tips = [
-        'Reading up on your topic…',
-        'Mixing three true facts with one sneaky fake…',
-        'Making the fake fact extra convincing…',
-        'Shuffling the answers…',
-        'Almost there — sharpen your detective skills!'
-    ];
+    const tipSets = {
+        quiz: [
+            'Reading up on your topic…',
+            'Mixing three true facts with one sneaky fake…',
+            'Making the fake fact extra convincing…',
+            'Shuffling the answers…',
+            'Almost there — sharpen your detective skills!'
+        ],
+        analysis: [
+            'Gathering your quiz history…',
+            'Crunching your scores by topic…',
+            'Spotting your strongest areas…',
+            'Finding topics worth another try…',
+            'Writing your personal learning path…'
+        ]
+    };
     let tipTimer = null;
 
-    function showLoading(message) {
+    function showLoading(message, tipSet) {
         if (!overlay) return;
+        const tips = tipSets[tipSet] || tipSets.quiz;
         overlay.querySelector('[data-loading-title]').textContent = message;
         let i = 0;
         tipEl.textContent = tips[0];
@@ -70,8 +80,16 @@
                 if (e.defaultPrevented) return;
                 const btn = form.querySelector('[type="submit"]');
                 if (btn) btn.disabled = true;
-                showLoading(form.dataset.loading);
+                showLoading(form.dataset.loading, form.dataset.loadingTips);
             }, 0);
+        });
+    });
+
+    document.querySelectorAll('a[data-loading]').forEach(link => {
+        link.addEventListener('click', e => {
+            // Leave new-tab/window clicks alone; only the current page navigates away
+            if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+            showLoading(link.dataset.loading, link.dataset.loadingTips);
         });
     });
 
