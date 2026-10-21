@@ -22,6 +22,7 @@
         {% if practice_topic %}
         <form action="{{ url_for('practice') }}" method="POST" class="wf-card wf-card-pad mb-4 practice-card"
               data-loading="{{ _('Building your practice quiz…') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="practice-icon"><i class="bi bi-bullseye"></i></div>
             <div class="flex-grow-1 min-w-0">
                 <div class="small fw-bold text-muted text-uppercase">{{ _('Practice your weak spot') }}</div>

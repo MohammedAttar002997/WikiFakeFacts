@@ -10,6 +10,8 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
 from flask_migrate import Migrate, stamp, upgrade
+from flask_wtf.csrf import CSRFError, CSRFProtect
+from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from models import (db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
@@ -44,6 +46,11 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:/
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+
+# Every POST must carry the session's CSRF token (forms: hidden csrf_token field; fetch: X-CSRFToken header).
+# Tokens last as long as the session, so a quiz left open for a while can still be submitted.
+app.config['WTF_CSRF_TIME_LIMIT'] = None
+csrf = CSRFProtect(app)
 # render_as_batch lets Alembic alter SQLite tables (it recreates them instead of using unsupported ALTERs)
 migrate = Migrate(app, db, directory=os.path.join(basedir, 'migrations'), render_as_batch=True)
 
@@ -65,6 +72,19 @@ def inject_translations():
 app.jinja_env.globals.update(template_globals())
 app.add_template_filter(format_date, 'date')
 app.add_template_filter(lambda value: format_date(value, with_time=True), 'datetime')
+
+
+@app.errorhandler(CSRFError)
+def handle_csrf_error(error):
+    """A form or request without a valid CSRF token: usually an expired session or a page from another site."""
+    message = _("Your session expired or the request couldn't be verified. Please try again.")
+    if request.path.startswith('/api/'):
+        return jsonify({'error': message}), 400
+    flash(message, "warning")
+    # Send the player back to the page they came from, but only if it's on this site
+    referrer = urlparse(request.referrer or '')
+    same_site = referrer.netloc == request.host and referrer.path.startswith('/')
+    return redirect(referrer.path if same_site else url_for('index'))
 
 
 @app.route('/language/<code>')

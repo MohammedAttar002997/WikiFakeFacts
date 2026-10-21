@@ -25,6 +25,7 @@
             </div>
 
             <form action="/quiz" method="POST" id="quizForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 <div class="row g-3 mb-4">
                     {% for option in options %}
                     <div class="col-md-6">

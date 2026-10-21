@@ -17,3 +17,4 @@ python-docx
 chromadb
 flask-migrate
 pytest
+flask-wtf
