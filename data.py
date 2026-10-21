@@ -36,6 +36,7 @@ class QuizQuestion(BaseModel):
 
 class QuizSet(BaseModel):
     questions: list[QuizQuestion]
+    explanation: str  # Why the fake fact is false, shown in the answer review
 
 class QuizData(BaseModel):
     topic: str  # Short name for the content's subject, used to label custom quizzes
@@ -126,6 +127,7 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
             {"role": "user", "content": (
                 f"Analyze the following content: {article_content}\n\n"
                 f"Task: Generate exactly {questions_count} quiz sets for a {difficulty} level in {language}. Each set must have 3 real facts and 1 fake fact.\n"
+                f"For each set, set 'explanation' to one short sentence in {language} saying why the fake fact is false and what is actually true.\n"
                 f"Also set 'topic' to a short English name (1-4 words, Title Case) for the main subject of the content, e.g. 'Photosynthesis' or 'French Revolution'.\n"
             )}
         ],
@@ -137,13 +139,15 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
 
     # Convert the Pydantic object back to the format expected by the rest of the app
     formatted_quiz_data = []
+    explanations = []
     for quiz_set in quiz_data_obj.quiz_sets:
         question_dict = {}
         for q in quiz_set.questions:
             question_dict[q.statement] = q.is_real
         formatted_quiz_data.append(question_dict)
+        explanations.append(quiz_set.explanation)
 
-    return formatted_quiz_data, source, quiz_data_obj.topic.strip()
+    return formatted_quiz_data, source, quiz_data_obj.topic.strip(), explanations
 
  # google_response = google_client.models.generate_content(
     #     model="gemini-2.5-flash",  # Use a generative model, not embedding

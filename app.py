@@ -54,10 +54,46 @@ def inject_translations():
 
 def ensure_schema():
     db.create_all()
-    # create_all() doesn't add columns to existing tables, so add pin_hash to older databases
-    if 'pin_hash' not in [c['name'] for c in inspect(db.engine).get_columns('user')]:
-        with db.engine.begin() as conn:
-            conn.execute(text('ALTER TABLE user ADD COLUMN pin_hash VARCHAR(255)'))
+    # create_all() doesn't add columns to existing tables, so add newer columns to older databases
+    new_columns = [
+        ('user', 'pin_hash', 'VARCHAR(255)'),
+        ('quiz_session', 'explanations_json', 'TEXT'),
+        ('quiz_session', 'answers_json', 'TEXT'),
+    ]
+    inspector = inspect(db.engine)
+    with db.engine.begin() as conn:
+        for table, column, column_type in new_columns:
+            if column not in [c['name'] for c in inspector.get_columns(table)]:
+                conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {column_type}'))
+
+
+def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
+                        custom_title=None):
+    """Generate a quiz, save it, and make it the player's current quiz."""
+    quiz_data, source, ai_topic, explanations = get_ai_response(questions_count, topic, difficulty, language_name,
+                                                                custom_content=custom_content)
+    if custom_content:
+        # Label custom quizzes by their subject so progress/leaderboard show a real topic:
+        # the user's own title wins, then the AI-detected topic
+        topic = (custom_title or '').strip() or ai_topic or "Custom Content"
+
+    quiz_session = QuizSession(
+        user_id=user.id,
+        topic=topic[:100],
+        difficulty=difficulty,
+        questions_json=json.dumps(quiz_data),
+        explanations_json=json.dumps(explanations),
+        answers_json='[]',
+        total_questions=questions_count,
+        current_question_index=0,
+        score=0
+    )
+    db.session.add(quiz_session)
+    db.session.commit()
+
+    session['quiz_session_id'] = quiz_session.id
+    session['quiz_source'] = source
+    return quiz_session
 
 
 def is_locked_out(key):
@@ -225,28 +261,8 @@ def custom_quiz():
             try:
                 # Generate quiz from custom content
                 language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-                quiz_data, source, ai_topic = get_ai_response(questions_count, "Custom Content", difficulty_text,
-                                                              language_name, custom_content=content)
-                session['quiz_source'] = source
-
-                # Label the quiz by its subject so progress/leaderboard show a real topic:
-                # the user's own title wins, then the AI-detected topic
-                custom_topic = (request.form.get('title') or '').strip() or ai_topic or "Custom Content"
-
-                # Create quiz session
-                quiz_session = QuizSession(
-                    user_id=user.id,
-                    topic=custom_topic[:100],
-                    difficulty=difficulty_text,
-                    questions_json=json.dumps(quiz_data),
-                    total_questions=questions_count,
-                    current_question_index=0,
-                    score=0
-                )
-                db.session.add(quiz_session)
-                db.session.commit()
-
-                session['quiz_session_id'] = quiz_session.id
+                create_quiz_session(user, "Custom Content", difficulty_text, questions_count, language_name,
+                                    custom_content=content, custom_title=request.form.get('title'))
                 return redirect(url_for('quiz'))
 
             except Exception as e:
@@ -290,23 +306,7 @@ def start_quiz():
     try:
         # Fetch questions from AI
         language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-        quiz_data, source, _ = get_ai_response(questions_count, topic, difficulty_text, language_name)
-        session['quiz_source'] = source
-
-        # Create a new quiz session
-        quiz_session = QuizSession(
-            user_id=user.id,
-            topic=topic,
-            difficulty=difficulty_text,
-            questions_json=json.dumps(quiz_data),
-            total_questions=questions_count,
-            current_question_index=0,
-            score=0
-        )
-        db.session.add(quiz_session)
-        db.session.commit()
-        
-        session['quiz_session_id'] = quiz_session.id
+        create_quiz_session(user, topic, difficulty_text, questions_count, language_name)
         return redirect(url_for('quiz'))
         
     except DisambiguationError:
@@ -336,7 +336,12 @@ def quiz():
             current_q = questions[quiz_session.current_question_index]
             # The options were shuffled in the template, we need to check the value
             is_correct = current_q.get(selected_option) is False # False means it's the fake one
-            
+
+            # Remember the pick for the answer review on the results page
+            answers = json.loads(quiz_session.answers_json or '[]')
+            answers.append(selected_option)
+            quiz_session.answers_json = json.dumps(answers)
+
             if is_correct:
                 quiz_session.score += 1
                 flash("Correct! You found the fake fact.", "success")
@@ -391,12 +396,24 @@ def results():
         return redirect(url_for('setup'))
     
     percentage = (quiz_session.score / quiz_session.total_questions) * 100
-    
-    return render_template('results.html', 
-                           score=quiz_session.score, 
-                           total=quiz_session.total_questions, 
+
+    # Round-by-round answer review: which statement was fake, what the player picked, and why
+    questions = json.loads(quiz_session.questions_json)
+    answers = json.loads(quiz_session.answers_json or '[]')
+    explanations = json.loads(quiz_session.explanations_json or '[]')
+    review = [{
+        'facts': list(facts.items()),
+        'picked': answers[i] if i < len(answers) else None,
+        'correct': i < len(answers) and facts.get(answers[i]) is False,
+        'explanation': explanations[i] if i < len(explanations) else None,
+    } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
+
+    return render_template('results.html',
+                           score=quiz_session.score,
+                           total=quiz_session.total_questions,
                            percentage=round(percentage, 2),
-                           topic=quiz_session.topic)
+                           topic=quiz_session.topic,
+                           review=review)
 
 
 @app.route('/leaderboard')

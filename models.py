@@ -26,6 +26,8 @@ class QuizSession(db.Model):
     topic = db.Column(db.String(100), nullable=False)
     difficulty = db.Column(db.String(50), nullable=False, default='Medium')
     questions_json = db.Column(db.Text, nullable=False) # Store the generated questions as JSON
+    explanations_json = db.Column(db.Text, nullable=True)  # Why each round's fake fact is false
+    answers_json = db.Column(db.Text, nullable=True)  # Statement the player picked in each round
     current_question_index = db.Column(db.Integer, default=0)
     score = db.Column(db.Integer, default=0)
     total_questions = db.Column(db.Integer, nullable=False)
