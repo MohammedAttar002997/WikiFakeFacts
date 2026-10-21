@@ -8,13 +8,19 @@ from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
-from models import db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge
+from flask_migrate import Migrate, stamp, upgrade
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
+from models import (db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
+                    UserBadge)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
-from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS
+from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from wikipedia import DisambiguationError
-from translations import TRANSLATIONS
+from translations import (UI_LANGUAGES, format_date, template_context, template_globals, translate as _,
+                          translate_plural as _n)
 from content_extractor import extract_text_from_file, extract_text_from_url, validate_content_length
 from chatbot import get_chatbot_response, get_quick_help_suggestions
+from badges import BADGES, award_badges, compute_streaks, player_streaks
 
 
 app = Flask(__name__)
@@ -33,10 +39,12 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'quiz.sqlite')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'quiz.sqlite'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+# render_as_batch lets Alembic alter SQLite tables (it recreates them instead of using unsupported ALTERs)
+migrate = Migrate(app, db, directory=os.path.join(basedir, 'migrations'), render_as_batch=True)
 
 # Wrong-PIN throttling, keyed by lowercase username: {name: (failed_count, first_failure_time)}
 MAX_PIN_ATTEMPTS = 5
@@ -50,25 +58,66 @@ def allowed_file(filename):
 
 @app.context_processor
 def inject_translations():
-    lang = session.get('language', 'en')
-    return {'t': TRANSLATIONS.get(lang, TRANSLATIONS['en'])}
+    return template_context()
 
 
-def ensure_schema():
-    db.create_all()
-    # create_all() doesn't add columns to existing tables, so add newer columns to older databases
-    new_columns = [
-        ('user', 'pin_hash', 'VARCHAR(255)'),
-        ('quiz_session', 'explanations_json', 'TEXT'),
-        ('quiz_session', 'answers_json', 'TEXT'),
-        ('score', 'quiz_session_id', 'INTEGER'),
-        ('quiz_session', 'daily_challenge_id', 'INTEGER'),
-    ]
+app.jinja_env.globals.update(template_globals())
+app.add_template_filter(format_date, 'date')
+app.add_template_filter(lambda value: format_date(value, with_time=True), 'datetime')
+
+
+@app.route('/language/<code>')
+def set_language(code):
+    """Switch the interface (and default quiz) language, then go back to the page the player was on."""
+    if code in UI_LANGUAGES:
+        session['language'] = code
+    target = request.args.get('next', '/')
+    # Only follow local paths, never another site
+    if not target.startswith('/') or target.startswith('//'):
+        target = '/'
+    return redirect(target)
+
+
+# Schema of the first Alembic migration (migrations/versions/0001_baseline.py)
+BASELINE_REVISION = '0001_baseline'
+BASELINE_TABLES = ['user', 'score', 'quiz_session', 'custom_content', 'chatbot_session', 'player_analysis',
+                   'daily_challenge']
+# Columns added before migrations existed, by hand with ALTER TABLE
+PRE_MIGRATION_COLUMNS = [
+    ('user', 'pin_hash', 'VARCHAR(255)'),
+    ('quiz_session', 'explanations_json', 'TEXT'),
+    ('quiz_session', 'answers_json', 'TEXT'),
+    ('score', 'quiz_session_id', 'INTEGER'),
+    ('quiz_session', 'daily_challenge_id', 'INTEGER'),
+]
+PRE_MIGRATION_FOREIGN_KEYS = [
+    ('score', 'quiz_session_id', 'quiz_session'),
+    ('quiz_session', 'daily_challenge_id', 'daily_challenge'),
+]
+
+
+def init_database():
+    """Bring the database up to date with the Alembic migrations in migrations/."""
     inspector = inspect(db.engine)
-    with db.engine.begin() as conn:
-        for table, column, column_type in new_columns:
-            if column not in [c['name'] for c in inspector.get_columns(table)]:
-                conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {column_type}'))
+    tables = inspector.get_table_names()
+    if 'user' in tables and 'alembic_version' not in tables:
+        # Database from before migrations: bring it up to the baseline schema, then record that it's there
+        with db.engine.begin() as conn:
+            for table, column, column_type in PRE_MIGRATION_COLUMNS:
+                if table in tables and column not in [c['name'] for c in inspector.get_columns(table)]:
+                    conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {column_type}'))
+        for table in BASELINE_TABLES:
+            if table not in tables:
+                db.metadata.tables[table].create(db.engine)
+        # ALTER TABLE ADD COLUMN didn't add foreign keys; SQLite can only add them by rebuilding the table
+        with db.engine.begin() as conn:
+            ops = Operations(MigrationContext.configure(conn))
+            for table, column, target in PRE_MIGRATION_FOREIGN_KEYS:
+                if column not in [c for fk in inspect(conn).get_foreign_keys(table) for c in fk['constrained_columns']]:
+                    with ops.batch_alter_table(table, recreate='always') as batch:
+                        batch.create_foreign_key(f'fk_{table}_{column}', target, [column], ['id'])
+        stamp(revision=BASELINE_REVISION)
+    upgrade()
 
 
 def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
@@ -106,7 +155,6 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
     return quiz_session
 
 
-LEADERBOARD_PERIODS = {'all': 'All time', 'week': 'Last 7 days', 'today': 'Today (UTC)'}
 
 DAILY_DIFFICULTY = DIFFICULTY_OPTIONS["2"]  # Medium
 DAILY_ROUNDS = 5
@@ -129,7 +177,7 @@ def get_daily_challenge(date, language_name):
         return challenge
 
     topic = daily_topic(date)
-    quiz_data, source, _, explanations = get_ai_response(DAILY_ROUNDS, topic, DAILY_DIFFICULTY, language_name)
+    quiz_data, source, _ai_topic, explanations = get_ai_response(DAILY_ROUNDS, topic, DAILY_DIFFICULTY, language_name)
     challenge = DailyChallenge(date=date, language=language_name, topic=topic, source=source,
                                questions_json=json.dumps(quiz_data), explanations_json=json.dumps(explanations))
     db.session.add(challenge)
@@ -146,6 +194,12 @@ def daily_attempt(user, date):
     """The player's quiz for the given day's challenge (any language), or None."""
     return (QuizSession.query.join(DailyChallenge, QuizSession.daily_challenge_id == DailyChallenge.id)
             .filter(QuizSession.user_id == user.id, DailyChallenge.date == date).first())
+
+
+def flash_new_badges(user):
+    for badge in award_badges(user):
+        flash(badge['icon'] + ' ' + _("Badge unlocked: {name}!").format(name=_(badge['name'])) + ' '
+              + _(badge['description']), "success")
 
 
 def current_user():
@@ -235,15 +289,15 @@ def setup():
         username = (request.form.get('username') or '').strip()
         pin = (request.form.get('pin') or '').strip()
         if len(username) <= 2:
-            flash("Please enter a valid name (at least 3 characters).", "danger")
+            flash(_("Please enter a valid name (at least 3 characters)."), "danger")
             return redirect(url_for('index'))
         if not (len(pin) == 4 and pin.isdigit()):
-            flash("Please enter a 4-digit PIN.", "danger")
+            flash(_("Please enter a 4-digit PIN."), "danger")
             return redirect(url_for('index'))
 
         key = username.lower()
         if is_locked_out(key):
-            flash("Too many wrong PINs for this name. Please wait a few minutes and try again.", "danger")
+            flash(_("Too many wrong PINs for this name. Please wait a few minutes and try again."), "danger")
             return redirect(url_for('index'))
 
         # Names are matched case-insensitively so "phoenix" can't impersonate "Phoenix"
@@ -258,7 +312,8 @@ def setup():
             db.session.commit()
         elif not check_password_hash(user.pin_hash, pin):
             record_failed_pin(key)
-            flash(f"The name \"{user.username}\" is already taken. Enter its PIN, or choose a different name.", "danger")
+            flash(_('The name “{name}” is already taken. Enter its PIN, or choose a different name.').format(
+                name=user.username), "danger")
             return redirect(url_for('index'))
 
         FAILED_PINS.pop(key, None)
@@ -299,7 +354,7 @@ def custom_quiz():
             if saved_id:
                 saved_content = CustomContent.query.filter_by(id=saved_id, user_id=user.id).first()
                 if not saved_content:
-                    flash("That upload isn't available anymore.", "danger")
+                    flash(_("That upload isn't available anymore."), "danger")
                     return redirect(url_for('custom_quiz'))
                 content = saved_content.content
 
@@ -307,7 +362,7 @@ def custom_quiz():
                 file = request.files['file']
 
                 if not allowed_file(file.filename):
-                    flash("Invalid file type. Allowed types: PDF, TXT, DOCX", "danger")
+                    flash(_("Invalid file type. Allowed types: PDF, TXT, DOCX"), "danger")
                     return redirect(url_for('custom_quiz'))
 
                 filename = secure_filename(file.filename)
@@ -320,14 +375,14 @@ def custom_quiz():
                     content_type = 'file'
                     os.remove(filepath)  # Clean up after extraction
                 except Exception as e:
-                    flash(f"Error extracting file content: {str(e)}", "danger")
+                    flash(_("Error extracting file content: {error}").format(error=e), "danger")
                     return redirect(url_for('custom_quiz'))
 
             elif request.form.get('url'):
                 url = request.form.get('url').strip()
 
                 if not url:
-                    flash("Please provide a valid URL", "danger")
+                    flash(_("Please provide a valid URL"), "danger")
                     return redirect(url_for('custom_quiz'))
 
                 try:
@@ -335,18 +390,18 @@ def custom_quiz():
                     source_info = url
                     content_type = 'url'
                 except Exception as e:
-                    flash(f"Error extracting webpage content: {str(e)}", "danger")
+                    flash(_("Error extracting webpage content: {error}").format(error=e), "danger")
                     return redirect(url_for('custom_quiz'))
 
             else:
-                flash("Please upload a file or paste a URL", "danger")
+                flash(_("Please upload a file or paste a URL"), "danger")
                 return redirect(url_for('custom_quiz'))
 
             # Validate content length
             try:
                 validate_content_length(content)
             except ValueError as e:
-                flash(f"Content validation failed: {str(e)}", "danger")
+                flash(_("Content validation failed: {error}").format(error=e), "danger")
                 return redirect(url_for('custom_quiz'))
 
             # Store custom content in database, reusing the saved copy when the same content comes in again
@@ -373,7 +428,7 @@ def custom_quiz():
             session['language'] = language_code
 
             if not length_id or not difficulty_id:
-                flash("Please select game length and difficulty.", "warning")
+                flash(_("Please select game length and difficulty."), "warning")
                 return redirect(url_for('custom_quiz'))
 
             length_text = GAME_LENGTH_OPTIONS.get(length_id)
@@ -395,11 +450,11 @@ def custom_quiz():
                 return redirect(url_for('quiz'))
 
             except Exception as e:
-                flash(f"Error generating quiz: {str(e)}", "danger")
+                flash(_("Error generating quiz: {error}").format(error=e), "danger")
                 return redirect(url_for('custom_quiz'))
 
         except Exception as e:
-            flash(f"An unexpected error occurred: {str(e)}", "danger")
+            flash(_("An unexpected error occurred: {error}").format(error=e), "danger")
             return redirect(url_for('custom_quiz'))
 
     user = current_user()
@@ -419,7 +474,8 @@ def delete_upload(content_id):
     if upload:
         db.session.delete(upload)
         db.session.commit()
-        flash(f"Deleted \"{upload.title}\" from your uploads. Your past scores are kept.", "success")
+        flash(_('Deleted “{title}” from your uploads. Your past scores are kept.').format(title=upload.title),
+              "success")
     return redirect(url_for('custom_quiz', tab='uploads'))
 
 
@@ -435,7 +491,7 @@ def start_quiz():
     session['language'] = language_code
     
     if not category_id or not length_id or not difficulty_id:
-        flash("Please select a category, game length, and difficulty.", "warning")
+        flash(_("Please select a category, game length, and difficulty."), "warning")
         return redirect(url_for('setup'))
     
     category_name = CATEGORIES.get(category_id)
@@ -456,10 +512,10 @@ def start_quiz():
         return redirect(url_for('quiz'))
         
     except DisambiguationError:
-        flash("Wikipedia found multiple topics for this category. Trying again...", "info")
+        flash(_("Wikipedia found multiple topics for this category. Trying again..."), "info")
         return redirect(url_for('setup'))
     except Exception as e:
-        flash(f"An error occurred: {str(e)}", "danger")
+        flash(_("An error occurred: {error}").format(error=e), "danger")
         return redirect(url_for('setup'))
 
 
@@ -468,7 +524,7 @@ def quiz():
     if 'quiz_session_id' not in session:
         return redirect(url_for('setup'))
     
-    quiz_session = QuizSession.query.get(session['quiz_session_id'])
+    quiz_session = db.session.get(QuizSession, session['quiz_session_id'])
     if not quiz_session or quiz_session.is_completed:
         return redirect(url_for('setup'))
     
@@ -477,7 +533,7 @@ def quiz():
     if request.method == 'POST':
         selected_option = request.form.get('option')
         if not selected_option:
-            flash("Please select an option.", "warning")
+            flash(_("Please select an option."), "warning")
         else:
             current_q = questions[quiz_session.current_question_index]
             # The options were shuffled in the template, we need to check the value
@@ -490,11 +546,11 @@ def quiz():
 
             if is_correct:
                 quiz_session.score += 1
-                flash("Correct! You found the fake fact.", "success")
+                flash(_("Correct! You found the fake fact."), "success")
             else:
                 # Find the correct answer to show the user
                 correct_answer = next(k for k, v in current_q.items() if v is False)
-                flash(f"Incorrect. The fake fact was: {correct_answer}", "danger")
+                flash(_("Incorrect. The fake fact was:") + " " + correct_answer, "danger")
             
             quiz_session.current_question_index += 1
             
@@ -514,7 +570,8 @@ def quiz():
                 )
                 db.session.add(final_score)
                 db.session.commit()
-                
+
+                flash_new_badges(db.session.get(User, quiz_session.user_id))
                 return redirect(url_for('results'))
             
             db.session.commit()
@@ -538,7 +595,7 @@ def results():
     if 'quiz_session_id' not in session:
         return redirect(url_for('setup'))
     
-    quiz_session = QuizSession.query.get(session['quiz_session_id'])
+    quiz_session = db.session.get(QuizSession, session['quiz_session_id'])
     if not quiz_session:
         return redirect(url_for('setup'))
     
@@ -582,7 +639,7 @@ def daily_start():
     date = today_utc()
     attempt = daily_attempt(user, date)
     if attempt and attempt.is_completed:
-        flash("You've already played today's challenge. Come back tomorrow for a new one!", "info")
+        flash(_("You've already played today's challenge. Come back tomorrow for a new one!"), "info")
         return redirect(url_for('daily'))
     if attempt:
         # Resume an unfinished attempt instead of starting over
@@ -597,7 +654,7 @@ def daily_start():
                           daily_challenge_id=challenge.id)
         return redirect(url_for('quiz'))
     except Exception as e:
-        flash(f"An error occurred: {str(e)}", "danger")
+        flash(_("An error occurred: {error}").format(error=e), "danger")
         return redirect(url_for('daily'))
 
 
@@ -610,7 +667,7 @@ def history():
     scores = Score.query.filter_by(user_id=user.id).order_by(Score.timestamp).all()
     chart_points = [{
         'n': i + 1,
-        'date': s.timestamp.strftime('%b %d, %H:%M'),
+        'date': format_date(s.timestamp, with_time=True),
         'topic': s.topic,
         'pct': round(s.percentage),
         'score': s.score,
@@ -628,7 +685,7 @@ def review(quiz_session_id):
     quiz_session = db.session.get(QuizSession, quiz_session_id)
     # Reviews are private like the analysis; only finished quizzes can be reviewed
     if not quiz_session or quiz_session.user_id != user.id or not quiz_session.is_completed:
-        flash("That quiz review isn't available.", "warning")
+        flash(_("That quiz review isn't available."), "warning")
         return redirect(url_for('history'))
 
     score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
@@ -694,7 +751,9 @@ def players():
                 'id': user.id,
                 'username': user.username,
                 'games_played': len(scores),
-                'avg_score': round(avg_score, 2)
+                'avg_score': round(avg_score, 2),
+                'streak': compute_streaks([s.timestamp.date() for s in scores if s.timestamp])[0],
+                'badges': UserBadge.query.filter_by(user_id=user.id).count(),
             })
     
     # Sort by games played or avg score
@@ -713,17 +772,17 @@ def analysis(user_id=None):
 
     # Performance analysis is private: players can only open their own
     if user_id is not None and user_id != user.id:
-        flash("Performance analysis is private. You can only view your own.", "warning")
+        flash(_("Performance analysis is private. You can only view your own."), "warning")
         return redirect(url_for('analysis'))
 
     user_scores = Score.query.filter_by(user_id=user.id).order_by(Score.id).all()
 
     if not user_scores:
-        flash("Play some games first to see your performance analysis!", "info")
+        flash(_("Play some games first to see your performance analysis!"), "info")
         return redirect(url_for('setup'))
 
     analysis_data = get_topic_stats(user_scores)
-    practice_topic, _ = find_practice_topic(user, analysis_data)
+    practice_topic, _content = find_practice_topic(user, analysis_data)
 
     # Reuse the saved analysis unless there are new scores or the language changed
     language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
@@ -755,10 +814,18 @@ def analysis(user_id=None):
             # Fall back to the last saved analysis, even if it's missing the newest quizzes
             ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json) if saved else None
 
+    # Players who finished quizzes before badges existed get theirs on their next visit
+    flash_new_badges(user)
+    earned = {b.badge: b.earned_at for b in UserBadge.query.filter_by(user_id=user.id)}
+    current_streak, best_streak = player_streaks(user)
+
     return render_template('analysis.html',
                            analysis_data=analysis_data,
                            ai_analysis=ai_analysis,
                            practice_topic=practice_topic,
+                           badges=BADGES, earned_badges=earned,
+                           current_streak=current_streak, best_streak=best_streak,
+                           played_today=user_scores[-1].timestamp.date() == datetime.utcnow().date(),
                            profile_user=user)
 
 
@@ -774,7 +841,7 @@ def practice():
     user_scores = Score.query.filter_by(user_id=user.id).order_by(Score.id).all()
     practice_topic, custom_content = find_practice_topic(user, get_topic_stats(user_scores))
     if not practice_topic:
-        flash("Play a few quizzes first so we can find a topic to practice.", "info")
+        flash(_("Play a few quizzes first so we can find a topic to practice."), "info")
         return redirect(url_for('setup'))
 
     language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
@@ -788,7 +855,7 @@ def practice():
                                 language_name)
         return redirect(url_for('quiz'))
     except Exception as e:
-        flash(f"An error occurred: {str(e)}", "danger")
+        flash(_("An error occurred: {error}").format(error=e), "danger")
         return redirect(url_for('analysis'))
 
 
@@ -849,5 +916,5 @@ def chatbot_api():
 
 if __name__ == '__main__':
     with app.app_context():
-        ensure_schema()
+        init_database()
     app.run(debug=True, port=5003)

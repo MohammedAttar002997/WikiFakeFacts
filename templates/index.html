@@ -9,53 +9,53 @@
             <span class="floating-chip d-none d-md-block" style="bottom: 14%; right: 15%; animation-delay: -4s;">❓</span>
 
             <span class="badge rounded-pill bg-white text-dark px-3 py-2 mb-3 fw-bold">
-                <i class="bi bi-stars text-warning"></i> AI-powered trivia
+                <i class="bi bi-stars text-warning"></i> {{ _('AI-powered trivia') }}
             </span>
-            <h1 class="mb-3">{{ t.welcome }}</h1>
-            <p class="lead mb-0">{{ t.tagline }}</p>
+            <h1 class="mb-3">{{ _('Welcome to WikiFakeFact!') }}</h1>
+            <p class="lead mb-0">{{ _('The ultimate AI-powered trivia game where you spot the lie among Wikipedia facts.') }}</p>
 
             <form action="/setup" method="POST" class="hero-form">
-                <label for="username" class="visually-hidden">What is your name?</label>
+                <label for="username" class="visually-hidden">{{ _('What is your name?') }}</label>
                 <input type="text" class="form-control form-control-lg" id="username" name="username"
-                       placeholder="Enter your name" required minlength="3" autocomplete="nickname"
+                       placeholder="{{ _('Enter your name') }}" required minlength="3" autocomplete="nickname"
                        value="{{ session.get('username', '') }}">
-                <label for="pin" class="visually-hidden">4-digit PIN</label>
+                <label for="pin" class="visually-hidden">{{ _('4-digit PIN') }}</label>
                 <input type="password" class="form-control form-control-lg hero-pin" id="pin" name="pin"
-                       placeholder="PIN" required minlength="4" maxlength="4" pattern="[0-9]{4}"
-                       inputmode="numeric" autocomplete="current-password" title="4 digits">
+                       placeholder="{{ _('PIN') }}" required minlength="4" maxlength="4" pattern="[0-9]{4}"
+                       inputmode="numeric" autocomplete="current-password" title="{{ _('4 digits') }}">
                 <button type="submit" class="btn btn-lg">
-                    {{ t.start_playing }} <i class="bi bi-arrow-right-circle-fill ms-1"></i>
+                    {{ _('Start Playing') }} <i class="bi bi-arrow-right-circle-fill ms-1"></i>
                 </button>
             </form>
             <p class="small mt-3 mb-0 opacity-75">
-                New name? Pick any 4-digit PIN. Returning? Enter your PIN to get back to your results.
+                {{ _('New name? Pick any 4-digit PIN. Returning? Enter your PIN to get back to your results.') }}
                 {% if session.get('username') %}
-                    <br>Not {{ session['username'] }}? <a href="{{ url_for('logout') }}" class="text-reset fw-bold">Switch player</a>
+                    <br>{{ _('Not {name}?').format(name=session['username']) }} <a href="{{ url_for('logout') }}" class="text-reset fw-bold">{{ _('Switch player') }}</a>
                 {% endif %}
             </p>
         </section>
 
-        <h2 class="h4 text-center fw-black mb-4">How to play</h2>
+        <h2 class="h4 text-center fw-black mb-4">{{ _('How to play') }}</h2>
         <div class="row g-4">
             <div class="col-md-4">
                 <div class="feature-tile">
                     <div class="feature-icon" style="background: rgba(59,130,246,.15); color: #3b82f6;"><i class="bi bi-grid-3x3-gap-fill"></i></div>
-                    <h3 class="h5 fw-black">1. Pick a topic</h3>
-                    <p class="text-muted mb-0">Choose from 7 categories, or upload your own document or URL.</p>
+                    <h3 class="h5 fw-black">{{ _('1. Pick a topic') }}</h3>
+                    <p class="text-muted mb-0">{{ _('Choose from 7 categories, or upload your own document or URL.') }}</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="feature-tile">
                     <div class="feature-icon" style="background: rgba(229,72,77,.15); color: #e5484d;"><i class="bi bi-search"></i></div>
-                    <h3 class="h5 fw-black">2. Spot the fake</h3>
-                    <p class="text-muted mb-0">Each round shows four facts. Three are real, one is a convincing lie.</p>
+                    <h3 class="h5 fw-black">{{ _('2. Spot the fake') }}</h3>
+                    <p class="text-muted mb-0">{{ _('Each round shows four facts. Three are real, one is a convincing lie.') }}</p>
                 </div>
             </div>
             <div class="col-md-4">
                 <div class="feature-tile">
                     <div class="feature-icon" style="background: rgba(16,185,129,.15); color: #10b981;"><i class="bi bi-bar-chart-fill"></i></div>
-                    <h3 class="h5 fw-black">3. Level up</h3>
-                    <p class="text-muted mb-0">Climb the leaderboard and get AI coaching on your weak spots.</p>
+                    <h3 class="h5 fw-black">{{ _('3. Level up') }}</h3>
+                    <p class="text-muted mb-0">{{ _('Climb the leaderboard and get AI coaching on your weak spots.') }}</p>
                 </div>
             </div>
         </div>

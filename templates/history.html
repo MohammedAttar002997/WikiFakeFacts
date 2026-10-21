@@ -5,16 +5,16 @@
     <div class="col-lg-10">
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-clock-history"></i> {{ session['username'] }}</span>
-            <h1>Quiz history</h1>
-            <p>Every quiz you've played, newest first.</p>
+            <h1>{{ _('Quiz history') }}</h1>
+            <p>{{ _("Every quiz you've played, newest first.") }}</p>
         </div>
 
         {% if scores %}
         <div class="wf-card wf-card-pad mb-4">
-            <div class="section-label mb-1"><i class="bi bi-graph-up text-brand fs-4"></i>Score per quiz</div>
-            <p class="small text-muted mb-3">Percentage of fake facts spotted in each quiz, oldest to newest.</p>
+            <div class="section-label mb-1"><i class="bi bi-graph-up text-brand fs-4"></i>{{ _('Score per quiz') }}</div>
+            <p class="small text-muted mb-3">{{ _('Percentage of fake facts spotted in each quiz, oldest to newest.') }}</p>
             <div class="history-chart" id="historyChart" tabindex="0" role="img"
-                 aria-label="Line chart of your score in each of your {{ chart_points|length }} quizzes. The list below has every value.">
+                 aria-label="{{ _n('Line chart of your score in your {n} quiz. The list below has every value.', 'Line chart of your score in each of your {n} quizzes. The list below has every value.', chart_points|length) }}">
                 <div class="chart-tooltip" id="historyTooltip" hidden>
                     <strong class="tt-value"></strong>
                     <span class="tt-topic"></span>
@@ -31,7 +31,7 @@
                     <div class="who">
                         <span class="fw-bold text-truncate d-block">{{ s.topic }}</span>
                         <div class="meta text-truncate">
-                            {{ s.timestamp.strftime('%b %d, %Y · %H:%M') }} &middot; {{ s.difficulty.split(' (')[0] }}
+                            {{ s.timestamp|datetime }} &middot; {{ _(s.difficulty.split(' (')[0]) }}
                         </div>
                     </div>
                     <div class="history-meter d-none d-sm-block">
@@ -44,7 +44,7 @@
                     <div class="history-action">
                         {% if s.quiz_session_id %}
                         <a href="{{ url_for('review', quiz_session_id=s.quiz_session_id) }}" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-search"></i><span class="d-none d-md-inline ms-1">Review</span>
+                            <i class="bi bi-search"></i><span class="d-none d-md-inline ms-1">{{ _('Review') }}</span>
                         </a>
                         {% endif %}
                     </div>
@@ -55,9 +55,9 @@
         {% else %}
         <div class="wf-card wf-card-pad text-center">
             <div class="display-4 mb-3">🗂️</div>
-            <h2 class="h4 fw-black">No quizzes yet</h2>
-            <p class="text-muted">Your finished quizzes will show up here.</p>
-            <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-1"></i>Play now</a>
+            <h2 class="h4 fw-black">{{ _('No quizzes yet') }}</h2>
+            <p class="text-muted">{{ _('Your finished quizzes will show up here.') }}</p>
+            <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-1"></i>{{ _('Play now') }}</a>
         </div>
         {% endif %}
     </div>
@@ -69,6 +69,7 @@
 <script>
     (function () {
         const points = {{ chart_points|tojson }};
+        const quizLabel = n => {{ _('Quiz {n}')|tojson }}.replace('{n}', n);
         const box = document.getElementById('historyChart');
         const tip = document.getElementById('historyTooltip');
         const NS = 'http://www.w3.org/2000/svg';
@@ -103,7 +104,7 @@
             const xTicks = points.length === 1 ? [0] : [0, points.length - 1];
             xTicks.forEach(i => {
                 el('text', { x: x(i), y: H - 8, class: 'chart-tick', 'text-anchor': 'middle' }, svg)
-                    .textContent = 'Quiz ' + points[i].n;
+                    .textContent = quizLabel(points[i].n);
             });
 
             const coords = points.map((p, i) => [x(i), y(p.pct)]);
@@ -141,7 +142,7 @@
 
             tip.querySelector('.tt-value').textContent = `${p.pct}%  (${p.score} / ${p.total})`;
             tip.querySelector('.tt-topic').textContent = p.topic;
-            tip.querySelector('.tt-date').textContent = `Quiz ${p.n} · ${p.date}`;
+            tip.querySelector('.tt-date').textContent = `${quizLabel(p.n)} · ${p.date}`;
             tip.hidden = false;
             const left = Math.min(Math.max(cx - tip.offsetWidth / 2, 0), box.clientWidth - tip.offsetWidth);
             tip.style.left = left + 'px';

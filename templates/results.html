@@ -2,24 +2,25 @@
 
 {% block content %}
 {% if percentage >= 80 %}
-    {% set verdict = ('🏆', 'Fact-checking legend!', '#10b981') %}
+    {% set verdict = ('🏆', _('Fact-checking legend!'), '#10b981') %}
 {% elif percentage >= 50 %}
-    {% set verdict = ('🎉', 'Nice detective work!', '#f59e0b') %}
+    {% set verdict = ('🎉', _('Nice detective work!'), '#f59e0b') %}
 {% else %}
-    {% set verdict = ('💪', 'Keep practicing — you\'ll get them next time!', '#ef4444') %}
+    {% set verdict = ('💪', _("Keep practicing — you'll get them next time!"), '#ef4444') %}
 {% endif %}
 <div class="row justify-content-center">
     <div class="col-lg-7">
         <div class="wf-card wf-card-pad text-center">
             <div class="display-3 mb-2">{{ verdict[0] }}</div>
-            <h1 class="fw-black mb-1">{{ t.results_title }}</h1>
+            <h1 class="fw-black mb-1">{{ _('Game Results') }}</h1>
             <p class="lead text-muted mb-4">
+                {% set who %}<strong class="text-body">{{ session['username'] }}</strong>{% endset %}
                 {{ verdict[1] }}<br>
-                Thank you for playing, <strong class="text-body">{{ session['username'] }}</strong>!
+                {{ _('Thank you for playing, {name}!').format(name=who) }}
             </p>
 
             <div class="score-ring mb-4" style="--p: {{ percentage }}; --ring: {{ verdict[2] }};"
-                 role="img" aria-label="{{ t.final_score }} {{ score }} / {{ total }}">
+                 role="img" aria-label="{{ _('Final Score:') }} {{ score }} / {{ total }}">
                 <div class="inner">
                     <div class="pct">{{ percentage|round|int }}%</div>
                     <div class="frac">{{ score }} / {{ total }}</div>
@@ -30,36 +31,36 @@
                 <div class="col-4">
                     <div class="stat-tile">
                         <div class="value text-success">{{ score }}</div>
-                        <div class="label">Correct</div>
+                        <div class="label">{{ _('Correct') }}</div>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="stat-tile">
                         <div class="value text-danger">{{ total - score }}</div>
-                        <div class="label">Missed</div>
+                        <div class="label">{{ _('Missed') }}</div>
                     </div>
                 </div>
                 <div class="col-4">
                     <div class="stat-tile">
                         <div class="value text-truncate fs-6 pt-2" title="{{ topic }}">{{ topic }}</div>
-                        <div class="label">{{ t.topic|replace(':', '') }}</div>
+                        <div class="label">{{ _('Topic:')|replace(':', '') }}</div>
                     </div>
                 </div>
             </div>
 
             <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
-                <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-arrow-repeat me-1"></i>{{ t.play_again }}</a>
-                <a href="/leaderboard" class="btn btn-outline-primary btn-lg"><i class="bi bi-trophy me-1"></i>{{ t.view_leaderboard }}</a>
+                <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-arrow-repeat me-1"></i>{{ _('Play Again') }}</a>
+                <a href="/leaderboard" class="btn btn-outline-primary btn-lg"><i class="bi bi-trophy me-1"></i>{{ _('View Leaderboard') }}</a>
             </div>
-            <a href="/analysis" data-loading="Analyzing your progress…" data-loading-tips="analysis" class="d-inline-block mt-3 fw-bold text-decoration-none">
-                <i class="bi bi-graph-up-arrow me-1"></i>See my progress
+            <a href="/analysis" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis" class="d-inline-block mt-3 fw-bold text-decoration-none">
+                <i class="bi bi-graph-up-arrow me-1"></i>{{ _('See my progress') }}
             </a>
             <a href="{{ url_for('history') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
-                <i class="bi bi-clock-history me-1"></i>Quiz history
+                <i class="bi bi-clock-history me-1"></i>{{ _('Quiz history') }}
             </a>
             {% if is_daily %}
             <a href="{{ url_for('daily') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
-                <i class="bi bi-calendar-check me-1"></i>Today's daily leaderboard
+                <i class="bi bi-calendar-check me-1"></i>{{ _("Today's daily leaderboard") }}
             </a>
             {% endif %}
         </div>

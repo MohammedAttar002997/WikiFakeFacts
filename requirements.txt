@@ -15,3 +15,5 @@ beautifulsoup4
 PyPDF2
 python-docx
 chromadb
+flask-migrate
+pytest

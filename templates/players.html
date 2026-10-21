@@ -4,9 +4,9 @@
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="page-head">
-            <span class="eyebrow"><i class="bi bi-people-fill"></i> Community</span>
-            <h1>WikiFakeFact Players</h1>
-            <p>See how everyone is doing. Your AI-powered analysis is private to you.</p>
+            <span class="eyebrow"><i class="bi bi-people-fill"></i> {{ _('Community') }}</span>
+            <h1>{{ _('WikiFakeFact Players') }}</h1>
+            <p>{{ _('See how everyone is doing. Your AI-powered analysis is private to you.') }}</p>
         </div>
 
         <div class="row g-4">
@@ -14,19 +14,21 @@
             {% set meter = 'meter-good' if player.avg_score >= 80 else ('meter-mid' if player.avg_score >= 50 else 'meter-low') %}
             {% set is_me = player.username == session.get('username') %}
             <div class="col-sm-6 col-lg-4">
-                {% if is_me %}<a class="player-card" href="{{ url_for('analysis') }}" data-loading="Analyzing your progress…" data-loading-tips="analysis">{% else %}<div class="player-card player-card-static">{% endif %}
+                {% if is_me %}<a class="player-card" href="{{ url_for('analysis') }}" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis">{% else %}<div class="player-card player-card-static">{% endif %}
                     <div class="avatar avatar-lg avatar-c{{ (player.username|length % 5) + 1 }} mx-auto mb-3">{{ player.username[:1] }}</div>
-                    <h2 class="h5 fw-black mb-1 text-truncate">{{ player.username }}{% if is_me %} <span class="text-brand small">(you)</span>{% endif %}</h2>
+                    <h2 class="h5 fw-black mb-1 text-truncate">{{ player.username }}{% if is_me %} <span class="text-brand small">{{ _('(you)') }}</span>{% endif %}</h2>
                     <p class="text-muted small mb-3">
-                        <i class="bi bi-controller"></i> {{ player.games_played }} game{{ 's' if player.games_played != 1 }} played
+                        <i class="bi bi-controller"></i> {{ _n('{n} game played', '{n} games played', player.games_played) }}
+                        {% if player.streak >= 2 %}&middot; <span title="{{ _n('{n}-day streak', '{n}-day streak', player.streak) }}">🔥 {{ player.streak }}</span>{% endif %}
+                        {% if player.badges %}&middot; <span title="{{ _n('{n} badge', '{n} badges', player.badges) }}">🏅 {{ player.badges }}</span>{% endif %}
                     </p>
                     <div class="d-flex justify-content-between small fw-bold mb-1">
-                        <span class="text-muted">Avg score</span>
+                        <span class="text-muted">{{ _('Avg score') }}</span>
                         <span class="text-brand">{{ player.avg_score|round|int }}%</span>
                     </div>
                     <div class="meter{{ ' mb-3' if is_me }}"><span class="{{ meter }}" style="width: {{ player.avg_score }}%;"></span></div>
                 {% if is_me %}
-                    <span class="btn btn-outline-primary w-100"><i class="bi bi-cpu me-1"></i>View My AI Analysis</span>
+                    <span class="btn btn-outline-primary w-100"><i class="bi bi-cpu me-1"></i>{{ _('View My AI Analysis') }}</span>
                 </a>
                 {% else %}
                 </div>
@@ -36,9 +38,9 @@
             <div class="col-12">
                 <div class="wf-card wf-card-pad text-center">
                     <div class="display-4 mb-3">👋</div>
-                    <h2 class="h4 fw-black">No players found yet</h2>
-                    <p class="text-muted">Be the first to join!</p>
-                    <a href="/" class="btn btn-primary btn-lg">Get started</a>
+                    <h2 class="h4 fw-black">{{ _('No players found yet') }}</h2>
+                    <p class="text-muted">{{ _('Be the first to join!') }}</p>
+                    <a href="/" class="btn btn-primary btn-lg">{{ _('Get started') }}</a>
                 </div>
             </div>
             {% endfor %}

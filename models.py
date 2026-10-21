@@ -66,6 +66,14 @@ class PlayerAnalysis(db.Model):
     analysis_json = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
+class UserBadge(db.Model):
+    """A badge a player has earned (see badges.py for the definitions)."""
+    __table_args__ = (db.UniqueConstraint('user_id', 'badge'),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    badge = db.Column(db.String(50), nullable=False)
+    earned_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class ChatbotSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(100), unique=True, nullable=False)

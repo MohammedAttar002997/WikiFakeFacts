@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en" data-bs-theme="light">
+<html lang="{{ ui_language }}" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -24,36 +24,53 @@
 </head>
 <body>
     {% set nav_items = [
-        ('/', 'bi-house-door-fill', t.home),
-        ('/daily', 'bi-calendar-check-fill', 'Daily'),
-        ('/leaderboard', 'bi-trophy-fill', t.leaderboard),
-        ('/players', 'bi-people-fill', t.players),
-        ('/analysis', 'bi-graph-up-arrow', t.progress),
-        ('/custom_quiz', 'bi-file-earmark-plus-fill', 'Custom Quiz'),
-        ('/chatbot', 'bi-robot', 'Help'),
+        ('/', 'bi-house-door-fill', _('Home')),
+        ('/daily', 'bi-calendar-check-fill', _('Daily')),
+        ('/leaderboard', 'bi-trophy-fill', _('Leaderboard')),
+        ('/players', 'bi-people-fill', _('Players')),
+        ('/analysis', 'bi-graph-up-arrow', _('My Progress')),
+        ('/custom_quiz', 'bi-file-earmark-plus-fill', _('Custom Quiz')),
+        ('/chatbot', 'bi-robot', _('Help')),
     ] %}
-    <nav class="navbar navbar-expand-lg wf-navbar sticky-top mb-4">
+    {% set language_names = {'en': 'English', 'es': 'Español', 'fr': 'Français', 'de': 'Deutsch', 'it': 'Italiano', 'pt': 'Português'} %}
+    <nav class="navbar navbar-expand-xl wf-navbar sticky-top mb-4">
         <div class="container">
             <a class="navbar-brand wf-brand" href="/">
                 <span class="wf-brand-mark"><i class="bi bi-patch-question-fill"></i></span>
                 <span>Wiki<span class="accent">Fake</span>Fact</span>
             </a>
-            <div class="d-flex align-items-center gap-2 order-lg-last ms-auto ms-lg-3">
-                <button type="button" class="theme-toggle" data-theme-toggle aria-label="Toggle dark mode">
+            <div class="d-flex align-items-center gap-2 order-xl-last ms-auto ms-xl-3">
+                <div class="dropdown">
+                    <button type="button" class="theme-toggle lang-toggle" data-bs-toggle="dropdown" aria-expanded="false"
+                            aria-label="{{ _('Language') }}: {{ language_names[ui_language] }}" title="{{ _('Language') }}">
+                        <i class="bi bi-translate"></i><span class="lang-code">{{ ui_language|upper }}</span>
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end">
+                        {% for code in ui_languages %}
+                        <li>
+                            <a class="dropdown-item{% if code == ui_language %} active{% endif %}" lang="{{ code }}"
+                               href="{{ url_for('set_language', code=code, next=request.full_path.rstrip('?')) }}"{% if code == ui_language %} aria-current="true"{% endif %}>
+                                {{ language_names[code] }}
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                <button type="button" class="theme-toggle" data-theme-toggle aria-label="{{ _('Switch to dark mode') }}">
                     <i class="bi bi-moon-stars-fill"></i>
                     <i class="bi bi-sun-fill"></i>
                 </button>
                 <button class="navbar-toggler border-0" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
-                        aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+                        aria-controls="navbarNav" aria-expanded="false" aria-label="{{ _('Toggle navigation') }}">
                     <span class="navbar-toggler-icon"></span>
                 </button>
             </div>
             <div class="collapse navbar-collapse" id="navbarNav">
-                <ul class="navbar-nav ms-auto gap-lg-1 mt-2 mt-lg-0">
+                <ul class="navbar-nav ms-auto gap-xl-1 mt-2 mt-xl-0">
                     {% for href, icon, label in nav_items %}
                     {% set active = request.path == href or (href != '/' and request.path.startswith(href)) %}
                     <li class="nav-item">
-                        <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}{% if href == '/analysis' %} data-loading="Analyzing your progress…" data-loading-tips="analysis"{% endif %}>
+                        <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}{% if href == '/analysis' %} data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis"{% endif %}>
                             <i class="bi {{ icon }}"></i>{{ label }}
                         </a>
                     </li>
@@ -73,7 +90,7 @@
                     <div class="alert alert-{{ category }} wf-alert alert-dismissible fade show" role="alert">
                         <i class="bi {{ icon }} alert-icon"></i>
                         <div>{{ message }}</div>
-                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="{{ _('Close') }}"></button>
                     </div>
                 {% endfor %}
                 </div>
@@ -85,25 +102,40 @@
     </main>
 
     {% if request.path != '/chatbot' %}
-    <a href="/chatbot" class="chatbot-fab" title="Need help? Ask the assistant" aria-label="Open help assistant">
+    <a href="/chatbot" class="chatbot-fab" title="{{ _('Need help? Ask the assistant') }}" aria-label="{{ _('Open help assistant') }}">
         <i class="bi bi-chat-dots-fill"></i>
     </a>
     {% endif %}
 
     <footer class="wf-footer text-center py-4">
-        &copy; 2026 WikiFakeFact &middot; Hackathon Project
+        &copy; 2026 WikiFakeFact &middot; {{ _('Hackathon Project') }}
     </footer>
 
     <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
         <div class="loading-card">
             <div class="loading-dice"><i class="bi bi-magic"></i></div>
-            <h3 class="fw-black mb-2" data-loading-title>Generating your quiz…</h3>
+            <h3 class="fw-black mb-2" data-loading-title>{{ _('Generating your quiz…') }}</h3>
             <p class="loading-tip" id="loadingTip"></p>
             <div class="spinner-border text-brand" aria-hidden="true"></div>
         </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Strings used by app.js, in the interface language
+        window.WF_I18N = {{ {
+            'tips': {
+                'quiz': [_('Reading up on your topic…'), _('Mixing three true facts with one sneaky fake…'),
+                         _('Making the fake fact extra convincing…'), _('Shuffling the answers…'),
+                         _('Almost there — sharpen your detective skills!')],
+                'analysis': [_('Gathering your quiz history…'), _('Crunching your scores by topic…'),
+                             _('Spotting your strongest areas…'), _('Finding topics worth another try…'),
+                             _('Writing your personal learning path…')]
+            },
+            'switchToLight': _('Switch to light mode'), 'switchToDark': _('Switch to dark mode'),
+            'lightMode': _('Light mode'), 'darkMode': _('Dark mode')
+        }|tojson }};
+    </script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>

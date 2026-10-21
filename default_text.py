@@ -104,3 +104,4 @@ LANGUAGE_OPTIONS = {
 
 def show_available_options(option_number, option_value):
     return option_number + ": " + option_value
+LEADERBOARD_PERIODS = {'all': 'All time', 'week': 'Last 7 days', 'today': 'Today (UTC)'}

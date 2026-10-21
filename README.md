@@ -78,11 +78,44 @@ This will create a `chroma_db` directory inside `hackaton/` containing the index
 ### 6. Run the Flask Application
 
 ```bash
-export FLASK_APP=hackaton/app.py
-flask run
+python app.py
 ```
 
-The application should now be running at `http://127.0.0.1:5000/`.
+The application should now be running at `http://127.0.0.1:5003/`. On startup it creates `quiz.sqlite` if needed and applies any pending database migrations.
+
+## Database migrations
+
+The schema is managed with [Flask-Migrate](https://flask-migrate.readthedocs.io/) (Alembic); migration scripts live in `migrations/versions/`.
+
+- **Applying migrations** happens automatically when you start the app with `python app.py`. To apply them by hand: `flask --app app db upgrade`.
+- **Changing the schema:** edit the models in `models.py`, then generate a migration and review it before committing:
+
+  ```bash
+  flask --app app db migrate -m "describe the change"
+  ```
+
+- **Checking** that the database matches the models: `flask --app app db check`.
+
+Databases created before migrations were added are detected on startup, brought up to the baseline schema, and stamped, so existing data is kept.
+
+Set `DATABASE_URL` to use a different database (for example `sqlite:///other.sqlite`); it defaults to `quiz.sqlite` next to `app.py`.
+
+## Running the tests
+
+```bash
+python -m pytest            # everything (about 10 seconds)
+python -m pytest -m "not slow"   # skip the migration tests, which start the app in a subprocess
+```
+
+The tests use a throwaway database and stub every OpenAI, Wikipedia and web request, so they're free and run offline.
+
+## Translations
+
+The interface is available in English, Spanish, French, German, Italian and Portuguese; players switch with the language menu in the navbar (it also sets the default quiz language).
+
+- Write UI text in English and wrap it: `{{ _('Play now') }}` in templates, `_("…")` in `app.py`. Use `{{ _n('{n} game', '{n} games', count) }}` for plurals and `.format(name=…)` for values.
+- Translations live in `locales/<lang>.json`, keyed by the English text. Missing strings fall back to English.
+- Run `python translations.py` to list strings that still need translating. Translations must not contain HTML or ASCII double quotes; `tests/test_i18n.py` checks this and that every string is translated.
 
 ## Usage
 

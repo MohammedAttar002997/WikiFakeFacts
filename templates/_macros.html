@@ -10,7 +10,7 @@
 {% macro length_tiles(lengths) %}
 <div class="row g-3">
     {% for id, text in lengths.items() %}
-    {# "Short (3 rounds)" -> title "Short", sub "3 rounds" #}
+    {# "Short (3 rounds)" -> title "Short", sub "3 rounds", each translated #}
     {% set parts = text.split(' (', 1) %}
     {% set title = parts[0] %}
     {% set sub = parts[1].rstrip(')') if parts|length > 1 else '' %}
@@ -19,8 +19,8 @@
         <label class="tile" for="len{{ id }}">
             <i class="bi bi-check-circle-fill tile-check"></i>
             <i class="bi {{ LENGTH_ICONS.get(id, 'bi-list-ol') }} tile-icon"></i>
-            <span class="tile-title">{{ title }}</span>
-            <span class="tile-sub">{{ sub }}</span>
+            <span class="tile-title">{{ _(title) }}</span>
+            <span class="tile-sub">{{ _(sub) }}</span>
         </label>
     </div>
     {% endfor %}
@@ -30,7 +30,7 @@
 {% macro difficulty_tiles(difficulties) %}
 <div class="row g-3">
     {% for id, text in difficulties.items() %}
-    {# "Short (3 rounds)" -> title "Short", sub "3 rounds" #}
+    {# "Short (3 rounds)" -> title "Short", sub "3 rounds", each translated #}
     {% set parts = text.split(' (', 1) %}
     {% set title = parts[0] %}
     {% set sub = parts[1].rstrip(')') if parts|length > 1 else '' %}
@@ -39,20 +39,20 @@
         <label class="tile" for="diff{{ id }}">
             <i class="bi bi-check-circle-fill tile-check"></i>
             <span class="tile-emoji">{{ DIFFICULTY_EMOJI.get(id, '🎯') }}</span>
-            <span class="tile-title">{{ title }}</span>
-            <span class="tile-sub">{{ sub }}</span>
+            <span class="tile-title">{{ _(title) }}</span>
+            <span class="tile-sub">{{ _(sub) }}</span>
         </label>
     </div>
     {% endfor %}
 </div>
 {% endmacro %}
 
-{% macro language_select(languages) %}
+{% macro language_select(languages, selected='en') %}
 <div class="input-group input-group-lg">
     <span class="input-group-text bg-transparent border-2"><i class="bi bi-translate"></i></span>
-    <select class="form-select fw-bold" name="language" required aria-label="Quiz language">
+    <select class="form-select fw-bold" name="language" required aria-label="{{ _('Quiz Language:')|replace(':', '') }}">
         {% for code, name in languages.items() %}
-        <option value="{{ code }}" {% if code == 'en' %}selected{% endif %}>{{ name }}</option>
+        <option value="{{ code }}" {% if code == selected %}selected{% endif %}>{{ name }}</option>
         {% endfor %}
     </select>
 </div>
