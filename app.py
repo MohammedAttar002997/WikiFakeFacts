@@ -439,15 +439,17 @@ def players():
 @app.route('/analysis')
 @app.route('/analysis/<int:user_id>')
 def analysis(user_id=None):
-    if user_id:
-        user = User.query.get_or_404(user_id)
-    else:
-        if 'username' not in session:
-            return redirect(url_for('index'))
-        user = User.query.filter_by(username=session['username']).first()
-        if not user:
-            return redirect(url_for('index'))
-    
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return redirect(url_for('index'))
+
+    # Performance analysis is private: players can only open their own
+    if user_id is not None and user_id != user.id:
+        flash("Performance analysis is private. You can only view your own.", "warning")
+        return redirect(url_for('analysis'))
+
     user_scores = Score.query.filter_by(user_id=user.id).all()
     
     if not user_scores:

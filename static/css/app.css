@@ -660,6 +660,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease;
 }
 .player-card:hover { transform: translateY(-5px); box-shadow: var(--wf-shadow-lg); border-color: rgba(var(--wf-brand-rgb), .5); color: inherit; }
+.player-card-static:hover { transform: none; box-shadow: var(--wf-shadow); border-color: var(--wf-border); }
 
 .meter {
     height: .6rem;

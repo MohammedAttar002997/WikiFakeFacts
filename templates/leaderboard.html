@@ -12,13 +12,14 @@
         {% if standings %}
         <div class="podium">
             {% for row in standings[:3] %}
-            <a class="podium-spot podium-{{ loop.index }}" href="{{ url_for('analysis', user_id=row.user.id) }}">
+            {% set is_me = row.user.username == session.get('username') %}
+            {% if is_me %}<a class="podium-spot podium-{{ loop.index }}" href="{{ url_for('analysis') }}">{% else %}<div class="podium-spot podium-{{ loop.index }}">{% endif %}
                 <div class="medal">{{ ['🥇', '🥈', '🥉'][loop.index0] }}</div>
                 <div class="avatar avatar-c{{ (row.user.username|length % 5) + 1 }} mx-auto my-2">{{ row.user.username[:1] }}</div>
                 <div class="name">{{ row.user.username }}</div>
                 <div class="pct">{{ row.points }} pts</div>
                 <div class="block">{{ loop.index }}</div>
-            </a>
+            {% if is_me %}</a>{% else %}</div>{% endif %}
             {% endfor %}
         </div>
 
@@ -29,7 +30,11 @@
                     <div class="rank">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 else loop.index }}</div>
                     <div class="avatar avatar-sm avatar-c{{ (row.user.username|length % 5) + 1 }}">{{ row.user.username[:1] }}</div>
                     <div class="who">
-                        <a href="{{ url_for('analysis', user_id=row.user.id) }}">{{ row.user.username }}</a>
+                        {% if row.user.username == session.get('username') %}
+                            <a href="{{ url_for('analysis') }}">{{ row.user.username }}</a> <span class="text-brand small fw-bold">(you)</span>
+                        {% else %}
+                            <span class="fw-bold">{{ row.user.username }}</span>
+                        {% endif %}
                         <div class="meta text-truncate">
                             <i class="bi bi-controller"></i> {{ row.quizzes }} quiz{{ 'zes' if row.quizzes != 1 }} played
                             <span class="d-none d-sm-inline">&middot; {{ row.percentage|round|int }}% accuracy</span>
