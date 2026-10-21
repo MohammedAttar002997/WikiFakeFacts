@@ -12,6 +12,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
+CHAT_MODEL = os.getenv("OPENAI_CHAT_MODEL", "gpt-4o-mini")
 
 
 # Pydantic model for structured chatbot responses
@@ -86,7 +87,7 @@ def get_chatbot_response(user_message, conversation_history=None):
     try:
         # Use structured outputs for consistent response format
         response = client.beta.chat.completions.parse(
-            model="gpt-4o-mini",
+            model=CHAT_MODEL,
             messages=messages,
             response_format=ChatbotResponse,
         )

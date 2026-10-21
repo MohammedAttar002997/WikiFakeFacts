@@ -27,6 +27,11 @@ wikipedia.set_user_agent("WikiFakeFact/1.0 (educational quiz game)")
 OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
 
+# Models can be changed in .env without touching the code
+QUIZ_MODEL = os.getenv("OPENAI_QUIZ_MODEL", "gpt-4o-mini")
+ANALYSIS_MODEL = os.getenv("OPENAI_ANALYSIS_MODEL", "gpt-5-mini")
+EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
+
 
 # time.perf_counter()
 
@@ -64,7 +69,7 @@ def fetch_local_knowledge(query):
         persist_directory = os.path.join(os.path.dirname(__file__), 'chroma_db')
         if os.path.exists(persist_directory):
             embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small",
+                model=EMBEDDING_MODEL,
                 api_key=OPEN_AI_KEY
             )
             vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
@@ -120,7 +125,7 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
 
     # Using Structured Outputs with beta.chat.completions.parse
     response = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
+        model=QUIZ_MODEL,
         messages=[
             {"role": "system",
              "content": f"You are a quiz generator for a {difficulty} audience. Adjust the complexity, vocabulary, and trickiness of the facts accordingly. The entire quiz MUST be in {language}."},
@@ -178,7 +183,7 @@ def get_ai_analysis(user_history_json, language="English"):
     client = OpenAI(api_key=OPEN_AI_KEY)
 
     response = client.beta.chat.completions.parse(
-        model="gpt-5-mini",
+        model=ANALYSIS_MODEL,
         messages=[
             {"role": "system", "content": f"You are an expert educational analyst. Analyze the user's quiz history and provide deep insights and a learning path. The entire analysis MUST be in {language}."},
             {"role": "user", "content": f"Here is the user's quiz history in JSON format: {user_history_json}"}

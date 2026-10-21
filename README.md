@@ -69,6 +69,11 @@ OPENAI_API_KEY="your_openai_api_key_here"
 SECRET_KEY="a long random string"   # signs login cookies; generate one with: python -c "import secrets; print(secrets.token_hex(32))"
 # Optional: a custom OpenAI base URL
 # OPENAI_BASE_URL="https://api.openai.com/v1"
+# Optional: which OpenAI models to use (these are the defaults)
+# OPENAI_QUIZ_MODEL="gpt-4o-mini"
+# OPENAI_ANALYSIS_MODEL="gpt-5-mini"
+# OPENAI_CHAT_MODEL="gpt-4o-mini"
+# OPENAI_EMBEDDING_MODEL="text-embedding-3-small"
 ```
 
 ### 5. Optional: Build the Local Knowledge Base
