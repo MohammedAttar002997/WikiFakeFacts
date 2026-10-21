@@ -1114,3 +1114,20 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .challenge-result { border-top: 5px solid var(--wf-brand); }
 .challenge-result.is-win { border-top-color: #10b981; }
 .challenge-result.is-loss { border-top-color: #ef4444; }
+
+/* ---------- Recommended difficulty -------------------------------------------- */
+.tile { position: relative; }
+.tile-badge {
+    position: absolute;
+    top: .5rem;
+    left: .5rem;
+    font-size: .68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: .04em;
+    padding: .1rem .45rem;
+    border-radius: 999px;
+    background: rgba(245, 158, 11, .18);
+    color: #b45309;
+}
+[data-bs-theme="dark"] .tile-badge { color: #fbbf24; }

@@ -463,10 +463,36 @@ def delete_player_command(username, yes):
     click.echo(f'Deleted {username}.')
 
 
+RECENT_QUIZZES_FOR_DIFFICULTY = 5
+
+
+def recommend_difficulty(user):
+    """Suggest a difficulty from the player's last few quizzes: up a level after doing well, down after a
+    rough patch. Returns {'id', 'direction', 'average', 'count'} or None until there are 3 quizzes."""
+    if not user:
+        return None
+    recent = (Score.query.filter_by(user_id=user.id).order_by(Score.timestamp.desc(), Score.id.desc())
+              .limit(RECENT_QUIZZES_FOR_DIFFICULTY).all())
+    if len(recent) < 3:
+        return None
+    levels = list(DIFFICULTY_OPTIONS)  # '1' Easy, '2' Medium, '3' Hard
+    current = next((key for key, label in DIFFICULTY_OPTIONS.items() if label == recent[0].difficulty), '2')
+    average = sum(s.percentage for s in recent) / len(recent)
+    index = levels.index(current)
+    if average >= 80 and index < len(levels) - 1:
+        index, direction = index + 1, 'up'
+    elif average < 50 and index > 0:
+        index, direction = index - 1, 'down'
+    else:
+        direction = 'stay'
+    return {'id': levels[index], 'direction': direction, 'average': round(average), 'count': len(recent)}
+
+
 def render_setup():
     return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS,
                            difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
-                           daily_topic=daily_topic(today_utc()), timed_seconds=TIMED_ROUND_SECONDS)
+                           daily_topic=daily_topic(today_utc()), timed_seconds=TIMED_ROUND_SECONDS,
+                           recommended=recommend_difficulty(current_user()))
 
 
 @app.route('/setup', methods=['GET', 'POST'])
@@ -649,7 +675,7 @@ def custom_quiz():
     uploads = (CustomContent.query.filter_by(user_id=user.id).order_by(CustomContent.created_at.desc()).all()
                if user else [])
     return render_template('custom_quiz.html', lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS,
-                           languages=LANGUAGE_OPTIONS, uploads=uploads)
+                           languages=LANGUAGE_OPTIONS, uploads=uploads, recommended=recommend_difficulty(user))
 
 
 @app.route('/uploads/<int:content_id>/delete', methods=['POST'])
