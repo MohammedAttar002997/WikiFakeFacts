@@ -26,6 +26,8 @@ class QuizSession(db.Model):
     topic = db.Column(db.String(100), nullable=False)
     difficulty = db.Column(db.String(50), nullable=False, default='Medium')
     questions_json = db.Column(db.Text, nullable=False) # Store the generated questions as JSON
+    explanations_json = db.Column(db.Text, nullable=True)  # Why each round's fake fact is false
+    answers_json = db.Column(db.Text, nullable=True)  # Statement the player picked in each round
     current_question_index = db.Column(db.Integer, default=0)
     score = db.Column(db.Integer, default=0)
     total_questions = db.Column(db.Integer, nullable=False)
@@ -40,6 +42,15 @@ class CustomContent(db.Model):
     source = db.Column(db.String(500), nullable=True)  # filename or URL
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.relationship('User', backref='custom_contents')
+
+class PlayerAnalysis(db.Model):
+    """Last AI analysis per player, reused until they finish another quiz or switch language."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    language = db.Column(db.String(50), nullable=False)
+    last_score_id = db.Column(db.Integer, nullable=False)  # Newest score included in the analysis
+    analysis_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class ChatbotSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)

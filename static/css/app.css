@@ -920,6 +920,47 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 }
 .loading-tip { min-height: 3em; color: var(--wf-muted); transition: opacity .3s ease; }
 
+/* ---------- Practice card / answer review --------------------------------- */
+.practice-card { display: flex; align-items: center; gap: 1.25rem; border-left: 5px solid #f59e0b; }
+.practice-card .min-w-0 { min-width: 0; }
+.practice-icon {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 1rem;
+    font-size: 1.6rem;
+    color: #f59e0b;
+    background: rgba(245, 158, 11, .15);
+}
+@media (max-width: 576px) {
+    .practice-card { flex-wrap: wrap; }
+    .practice-card .btn { width: 100%; }
+}
+
+.review-round + .review-round { border-top: 1px solid var(--wf-border); padding-top: 1.5rem; }
+.review-chip-good { background: rgba(16, 185, 129, .14); border-color: transparent; color: #10b981; }
+.review-chip-bad { background: rgba(239, 68, 68, .14); border-color: transparent; color: #ef4444; }
+.review-facts { display: flex; flex-direction: column; gap: .5rem; }
+.review-fact {
+    display: flex;
+    align-items: flex-start;
+    gap: .6rem;
+    padding: .65rem .85rem;
+    border-radius: .8rem;
+    background: var(--wf-surface-2);
+    border: 1px solid var(--wf-border);
+}
+.review-fact > .bi { color: #10b981; padding-top: .1rem; }
+.review-fact.is-fake { border-color: rgba(239, 68, 68, .55); background: rgba(239, 68, 68, .08); }
+.review-fact.is-fake > .bi { color: #ef4444; }
+.review-fact.is-wrong-pick { border-style: dashed; border-color: var(--wf-muted); }
+.review-tags { display: flex; flex-direction: column; align-items: flex-end; gap: .25rem; flex-shrink: 0; }
+.review-tag { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: .1rem .5rem; border-radius: 999px; }
+.tag-fake { background: #ef4444; color: #fff; }
+.tag-pick { background: var(--wf-brand-soft); color: var(--wf-brand); }
+
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }

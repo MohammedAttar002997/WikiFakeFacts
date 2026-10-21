@@ -2,12 +2,13 @@ import os
 import json
 import random
 import time
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Score, QuizSession, CustomContent, ChatbotSession
-from data import get_ai_response, get_ai_analysis
+from models import db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis
+from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS
 from wikipedia import DisambiguationError
 from translations import TRANSLATIONS
@@ -54,10 +55,79 @@ def inject_translations():
 
 def ensure_schema():
     db.create_all()
-    # create_all() doesn't add columns to existing tables, so add pin_hash to older databases
-    if 'pin_hash' not in [c['name'] for c in inspect(db.engine).get_columns('user')]:
-        with db.engine.begin() as conn:
-            conn.execute(text('ALTER TABLE user ADD COLUMN pin_hash VARCHAR(255)'))
+    # create_all() doesn't add columns to existing tables, so add newer columns to older databases
+    new_columns = [
+        ('user', 'pin_hash', 'VARCHAR(255)'),
+        ('quiz_session', 'explanations_json', 'TEXT'),
+        ('quiz_session', 'answers_json', 'TEXT'),
+    ]
+    inspector = inspect(db.engine)
+    with db.engine.begin() as conn:
+        for table, column, column_type in new_columns:
+            if column not in [c['name'] for c in inspector.get_columns(table)]:
+                conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {column_type}'))
+
+
+def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
+                        custom_title=None):
+    """Generate a quiz, save it, and make it the player's current quiz."""
+    quiz_data, source, ai_topic, explanations = get_ai_response(questions_count, topic, difficulty, language_name,
+                                                                custom_content=custom_content)
+    if custom_content:
+        # Label custom quizzes by their subject so progress/leaderboard show a real topic:
+        # the user's own title wins, then the AI-detected topic
+        topic = (custom_title or '').strip() or ai_topic or "Custom Content"
+
+    quiz_session = QuizSession(
+        user_id=user.id,
+        topic=topic[:100],
+        difficulty=difficulty,
+        questions_json=json.dumps(quiz_data),
+        explanations_json=json.dumps(explanations),
+        answers_json='[]',
+        total_questions=questions_count,
+        current_question_index=0,
+        score=0
+    )
+    db.session.add(quiz_session)
+    db.session.commit()
+
+    session['quiz_session_id'] = quiz_session.id
+    session['quiz_source'] = source
+    return quiz_session
+
+
+def get_topic_stats(user_scores):
+    """Per-topic accuracy for a player's scores, best topic first."""
+    topic_stats = {}
+    for s in user_scores:
+        stats = topic_stats.setdefault(s.topic, {'total_score': 0, 'total_q': 0, 'count': 0, 'difficulty': s.difficulty})
+        stats['total_score'] += s.score
+        stats['total_q'] += s.total_questions
+        stats['count'] += 1
+        stats['difficulty'] = s.difficulty  # Scores come oldest first, so this ends as the latest difficulty
+
+    analysis_data = [{
+        'topic': topic,
+        'avg_percentage': round(stats['total_score'] / stats['total_q'] * 100, 2),
+        'games_played': stats['count'],
+        'difficulty': stats['difficulty'],
+    } for topic, stats in topic_stats.items()]
+    analysis_data.sort(key=lambda x: x['avg_percentage'], reverse=True)
+    return analysis_data
+
+
+def find_practice_topic(user, analysis_data):
+    """The player's weakest topic that a new quiz can be made for, with its saved custom content if any."""
+    menu_topics = {topic for topics in MENU.values() for topic in topics}
+    for data in reversed(analysis_data):
+        if data['topic'] in menu_topics:
+            return data, None
+        content = (CustomContent.query.filter_by(user_id=user.id, title=data['topic'])
+                   .order_by(CustomContent.created_at.desc()).first())
+        if content:
+            return data, content
+    return None, None
 
 
 def is_locked_out(key):
@@ -225,28 +295,13 @@ def custom_quiz():
             try:
                 # Generate quiz from custom content
                 language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-                quiz_data, source, ai_topic = get_ai_response(questions_count, "Custom Content", difficulty_text,
-                                                              language_name, custom_content=content)
-                session['quiz_source'] = source
+                quiz_session = create_quiz_session(user, "Custom Content", difficulty_text, questions_count,
+                                                   language_name, custom_content=content,
+                                                   custom_title=request.form.get('title'))
 
-                # Label the quiz by its subject so progress/leaderboard show a real topic:
-                # the user's own title wins, then the AI-detected topic
-                custom_topic = (request.form.get('title') or '').strip() or ai_topic or "Custom Content"
-
-                # Create quiz session
-                quiz_session = QuizSession(
-                    user_id=user.id,
-                    topic=custom_topic[:100],
-                    difficulty=difficulty_text,
-                    questions_json=json.dumps(quiz_data),
-                    total_questions=questions_count,
-                    current_question_index=0,
-                    score=0
-                )
-                db.session.add(quiz_session)
+                # Save the content under the quiz topic so "Practice my weak spots" can reuse it
+                custom_content_obj.title = quiz_session.topic
                 db.session.commit()
-
-                session['quiz_session_id'] = quiz_session.id
                 return redirect(url_for('quiz'))
 
             except Exception as e:
@@ -290,23 +345,7 @@ def start_quiz():
     try:
         # Fetch questions from AI
         language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-        quiz_data, source, _ = get_ai_response(questions_count, topic, difficulty_text, language_name)
-        session['quiz_source'] = source
-
-        # Create a new quiz session
-        quiz_session = QuizSession(
-            user_id=user.id,
-            topic=topic,
-            difficulty=difficulty_text,
-            questions_json=json.dumps(quiz_data),
-            total_questions=questions_count,
-            current_question_index=0,
-            score=0
-        )
-        db.session.add(quiz_session)
-        db.session.commit()
-        
-        session['quiz_session_id'] = quiz_session.id
+        create_quiz_session(user, topic, difficulty_text, questions_count, language_name)
         return redirect(url_for('quiz'))
         
     except DisambiguationError:
@@ -336,7 +375,12 @@ def quiz():
             current_q = questions[quiz_session.current_question_index]
             # The options were shuffled in the template, we need to check the value
             is_correct = current_q.get(selected_option) is False # False means it's the fake one
-            
+
+            # Remember the pick for the answer review on the results page
+            answers = json.loads(quiz_session.answers_json or '[]')
+            answers.append(selected_option)
+            quiz_session.answers_json = json.dumps(answers)
+
             if is_correct:
                 quiz_session.score += 1
                 flash("Correct! You found the fake fact.", "success")
@@ -391,12 +435,24 @@ def results():
         return redirect(url_for('setup'))
     
     percentage = (quiz_session.score / quiz_session.total_questions) * 100
-    
-    return render_template('results.html', 
-                           score=quiz_session.score, 
-                           total=quiz_session.total_questions, 
+
+    # Round-by-round answer review: which statement was fake, what the player picked, and why
+    questions = json.loads(quiz_session.questions_json)
+    answers = json.loads(quiz_session.answers_json or '[]')
+    explanations = json.loads(quiz_session.explanations_json or '[]')
+    review = [{
+        'facts': list(facts.items()),
+        'picked': answers[i] if i < len(answers) else None,
+        'correct': i < len(answers) and facts.get(answers[i]) is False,
+        'explanation': explanations[i] if i < len(explanations) else None,
+    } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
+
+    return render_template('results.html',
+                           score=quiz_session.score,
+                           total=quiz_session.total_questions,
                            percentage=round(percentage, 2),
-                           topic=quiz_session.topic)
+                           topic=quiz_session.topic,
+                           review=review)
 
 
 @app.route('/leaderboard')
@@ -454,55 +510,80 @@ def analysis(user_id=None):
         flash("Performance analysis is private. You can only view your own.", "warning")
         return redirect(url_for('analysis'))
 
-    user_scores = Score.query.filter_by(user_id=user.id).all()
-    
+    user_scores = Score.query.filter_by(user_id=user.id).order_by(Score.id).all()
+
     if not user_scores:
         flash("Play some games first to see your performance analysis!", "info")
         return redirect(url_for('setup'))
-    
-    # Prepare history for AI
-    history = []
-    topic_stats = {}
-    for s in user_scores:
-        history.append({
+
+    analysis_data = get_topic_stats(user_scores)
+    practice_topic, _ = find_practice_topic(user, analysis_data)
+
+    # Reuse the saved analysis unless there are new scores or the language changed
+    language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
+    latest_score_id = user_scores[-1].id
+    saved = PlayerAnalysis.query.filter_by(user_id=user.id).first()
+    if saved and saved.last_score_id == latest_score_id and saved.language == language_name:
+        ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json)
+    else:
+        history = [{
             'topic': s.topic,
             'score': s.score,
             'total': s.total_questions,
             'percentage': s.percentage,
             'difficulty': s.difficulty,
             'date': s.timestamp.strftime("%Y-%m-%d")
-        })
-        
-        if s.topic not in topic_stats:
-            topic_stats[s.topic] = {'total_score': 0, 'total_q': 0, 'count': 0}
-        topic_stats[s.topic]['total_score'] += s.score
-        topic_stats[s.topic]['total_q'] += s.total_questions
-        topic_stats[s.topic]['count'] += 1
-    
-    # Basic stats for the table
-    analysis_data = []
-    for topic, stats in topic_stats.items():
-        avg_percentage = (stats['total_score'] / stats['total_q']) * 100
-        analysis_data.append({
-            'topic': topic,
-            'avg_percentage': round(avg_percentage, 2),
-            'games_played': stats['count']
-        })
-    analysis_data.sort(key=lambda x: x['avg_percentage'], reverse=True)
+        } for s in user_scores]
+        try:
+            ai_analysis = get_ai_analysis(json.dumps(history), language_name)
+            if not saved:
+                saved = PlayerAnalysis(user_id=user.id)
+                db.session.add(saved)
+            saved.language = language_name
+            saved.last_score_id = latest_score_id
+            saved.analysis_json = ai_analysis.model_dump_json()
+            saved.created_at = datetime.utcnow()
+            db.session.commit()
+        except Exception as e:
+            print(f"AI Analysis Error: {e}")
+            # Fall back to the last saved analysis, even if it's missing the newest quizzes
+            ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json) if saved else None
 
-    # Get AI Analysis
-    try:
-        lang = session.get('language', 'en')
-        language_name = LANGUAGE_OPTIONS.get(lang, "English")
-        ai_analysis = get_ai_analysis(json.dumps(history), language_name)
-    except Exception as e:
-        print(f"AI Analysis Error: {e}")
-        ai_analysis = None
-
-    return render_template('analysis.html', 
-                           analysis_data=analysis_data, 
+    return render_template('analysis.html',
+                           analysis_data=analysis_data,
                            ai_analysis=ai_analysis,
+                           practice_topic=practice_topic,
                            profile_user=user)
+
+
+@app.route('/practice', methods=['POST'])
+def practice():
+    """Start a quiz on the player's weakest topic."""
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return redirect(url_for('index'))
+
+    user_scores = Score.query.filter_by(user_id=user.id).order_by(Score.id).all()
+    practice_topic, custom_content = find_practice_topic(user, get_topic_stats(user_scores))
+    if not practice_topic:
+        flash("Play a few quizzes first so we can find a topic to practice.", "info")
+        return redirect(url_for('setup'))
+
+    language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
+    questions_count = 5  # Medium length
+    try:
+        if custom_content:
+            create_quiz_session(user, "Custom Content", practice_topic['difficulty'], questions_count, language_name,
+                                custom_content=custom_content.content, custom_title=practice_topic['topic'])
+        else:
+            create_quiz_session(user, practice_topic['topic'], practice_topic['difficulty'], questions_count,
+                                language_name)
+        return redirect(url_for('quiz'))
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('analysis'))
 
 
 @app.route('/chatbot')

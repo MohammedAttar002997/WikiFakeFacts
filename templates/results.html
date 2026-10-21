@@ -55,6 +55,42 @@
                 <i class="bi bi-graph-up-arrow me-1"></i>See my progress
             </a>
         </div>
+
+        {% if review %}
+        <div class="wf-card wf-card-pad mt-4">
+            <div class="section-label"><i class="bi bi-search text-brand fs-4"></i>Answer review</div>
+            <div class="d-flex flex-column gap-4">
+                {% for round in review %}
+                <div class="review-round">
+                    <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                        <span class="fw-black">Round {{ loop.index }}</span>
+                        {% if round.correct %}
+                        <span class="chip review-chip-good"><i class="bi bi-check-circle-fill"></i>Spotted it</span>
+                        {% else %}
+                        <span class="chip review-chip-bad"><i class="bi bi-x-circle-fill"></i>Missed</span>
+                        {% endif %}
+                    </div>
+                    <ul class="review-facts list-unstyled mb-2">
+                        {% for statement, is_real in round.facts %}
+                        {% set picked = statement == round.picked %}
+                        <li class="review-fact{% if not is_real %} is-fake{% elif picked %} is-wrong-pick{% endif %}">
+                            <i class="bi {{ 'bi-patch-check-fill' if is_real else 'bi-incognito' }}" aria-hidden="true"></i>
+                            <span class="flex-grow-1">{{ statement }}</span>
+                            <span class="review-tags">
+                                {% if not is_real %}<span class="review-tag tag-fake">Fake</span>{% endif %}
+                                {% if picked %}<span class="review-tag tag-pick">Your pick</span>{% endif %}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% if round.explanation %}
+                    <div class="tip"><strong>Why it's fake:</strong> {{ round.explanation }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
