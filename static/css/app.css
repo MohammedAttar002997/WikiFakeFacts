@@ -1064,3 +1064,10 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .upload-input:checked + .upload-label .upload-check { opacity: 1; }
 .upload-input:focus-visible + .upload-label { box-shadow: 0 0 0 3px rgba(var(--wf-brand-rgb), .35); }
 .upload-delete { flex-shrink: 0; }
+
+/* ---------- Leaderboard filters ----------------------------------------------- */
+.leaderboard-filters { display: flex; flex-wrap: wrap; align-items: flex-end; gap: .75rem 1rem; padding: 1rem 1.25rem; }
+.filter-field { flex: 1 1 10rem; min-width: 0; }
+.filter-label { display: block; font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--wf-muted); margin-bottom: .3rem; }
+.filter-actions { display: flex; align-items: center; gap: .5rem; min-height: calc(1.5em + .75rem + 4px); }
+.filter-actions:empty { display: none; }

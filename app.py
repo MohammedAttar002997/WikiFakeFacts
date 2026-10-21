@@ -2,7 +2,7 @@ import os
 import json
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -105,6 +105,8 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
     session['quiz_source'] = source
     return quiz_session
 
+
+LEADERBOARD_PERIODS = {'all': 'All time', 'week': 'Last 7 days', 'today': 'Today (UTC)'}
 
 DAILY_DIFFICULTY = DIFFICULTY_OPTIONS["2"]  # Medium
 DAILY_ROUNDS = 5
@@ -636,11 +638,33 @@ def review(quiz_session_id):
 
 @app.route('/leaderboard')
 def leaderboard():
+    # Filters: unknown values fall back to "all"
+    period = request.args.get('period', 'all')
+    category = request.args.get('category', 'all')
+    difficulty = request.args.get('difficulty', 'all')
+    period = period if period in LEADERBOARD_PERIODS else 'all'
+    category = category if category in CATEGORIES or category == 'custom' else 'all'
+    difficulty = difficulty if difficulty in DIFFICULTY_OPTIONS else 'all'
+
+    conditions = []
+    if period == 'today':
+        conditions.append(Score.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0))
+    elif period == 'week':
+        conditions.append(Score.timestamp >= datetime.utcnow() - timedelta(days=7))
+    if category == 'custom':
+        # Anything that isn't a built-in topic came from a custom quiz
+        conditions.append(Score.topic.notin_([t for topics in MENU.values() for t in topics]))
+    elif category != 'all':
+        conditions.append(Score.topic.in_(MENU[CATEGORIES[category]]))
+    if difficulty != 'all':
+        conditions.append(Score.difficulty == DIFFICULTY_OPTIONS[difficulty])
+
     # One row per player: total correct answers across all their quizzes, ties broken by accuracy
     total_points = func.sum(Score.score)
     total_questions = func.sum(Score.total_questions)
     rows = (db.session.query(User, total_points, total_questions, func.count(Score.id))
             .join(Score, Score.user_id == User.id)
+            .filter(*conditions)
             .group_by(User.id)
             .order_by(total_points.desc(), (total_points * 1.0 / total_questions).desc())
             .limit(10)
@@ -652,7 +676,10 @@ def leaderboard():
         'quizzes': quizzes,
         'percentage': points / questions * 100 if questions else 0,
     } for user, points, questions, quizzes in rows]
-    return render_template('leaderboard.html', standings=standings)
+    filters = {'period': period, 'category': category, 'difficulty': difficulty}
+    return render_template('leaderboard.html', standings=standings, filters=filters,
+                           filtered=any(v != 'all' for v in filters.values()),
+                           periods=LEADERBOARD_PERIODS, categories=CATEGORIES, difficulties=DIFFICULTY_OPTIONS)
 
 
 @app.route('/players')
