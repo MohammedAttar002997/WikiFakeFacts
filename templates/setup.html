@@ -62,6 +62,16 @@
                 {{ language_select(languages, ui_language) }}
             </section>
 
+            <section class="mb-5">
+                <div class="form-check form-switch timed-switch">
+                    <input class="form-check-input" type="checkbox" role="switch" id="timed" name="timed" value="1">
+                    <label class="form-check-label" for="timed">
+                        <span class="fw-black d-block"><i class="bi bi-stopwatch-fill text-brand me-1"></i>{{ _('Timed mode') }}</span>
+                        <span class="small text-muted">{{ _('{n} seconds per round. Run out of time and the round counts as missed.').format(n=timed_seconds) }}</span>
+                    </label>
+                </div>
+            </section>
+
             <div class="text-center">
                 <button type="submit" class="btn btn-primary btn-lg px-5">
                     <i class="bi bi-play-fill me-1"></i>{{ _('Start Game') }}

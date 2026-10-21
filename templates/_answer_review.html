@@ -8,6 +8,8 @@
                 <span class="fw-black">{{ _('Round {n}').format(n=loop.index) }}</span>
                 {% if round.correct %}
                 <span class="chip review-chip-good"><i class="bi bi-check-circle-fill"></i>{{ _('Spotted it') }}</span>
+                {% elif round.timed_out %}
+                <span class="chip review-chip-bad"><i class="bi bi-stopwatch-fill"></i>{{ _('Time ran out') }}</span>
                 {% else %}
                 <span class="chip review-chip-bad"><i class="bi bi-x-circle-fill"></i>{{ _('Missed') }}</span>
                 {% endif %}

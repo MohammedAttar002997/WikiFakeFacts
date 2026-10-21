@@ -147,7 +147,7 @@ def init_database():
 
 
 def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
-                        custom_title=None):
+                        custom_title=None, time_limit=None):
     """Generate a quiz, save it, and make it the player's current quiz."""
     quiz_data, source, ai_topic, explanations = get_ai_response(questions_count, topic, difficulty, language_name,
                                                                 custom_content=custom_content)
@@ -156,10 +156,11 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
         # the user's own title wins, then the AI-detected topic
         topic = (custom_title or '').strip() or ai_topic or "Custom Content"
 
-    return save_quiz_session(user, topic, difficulty, quiz_data, explanations, source)
+    return save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, time_limit=time_limit)
 
 
-def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None):
+def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None,
+                      time_limit=None):
     """Save already-generated questions as the player's current quiz."""
     quiz_session = QuizSession(
         user_id=user.id,
@@ -171,7 +172,8 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
         total_questions=len(quiz_data),
         current_question_index=0,
         score=0,
-        daily_challenge_id=daily_challenge_id
+        daily_challenge_id=daily_challenge_id,
+        time_limit=time_limit
     )
     db.session.add(quiz_session)
     db.session.commit()
@@ -181,6 +183,9 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
     return quiz_session
 
 
+
+TIMED_ROUND_SECONDS = 20
+TIMER_GRACE_SECONDS = 3  # Allowance for page load and network delay before a late answer counts as timed out
 
 DAILY_DIFFICULTY = DIFFICULTY_OPTIONS["2"]  # Medium
 DAILY_ROUNDS = 5
@@ -235,6 +240,12 @@ def current_user():
     return User.query.filter_by(username=session['username']).first()
 
 
+def seconds_left(quiz_session):
+    """Seconds remaining in the current timed round (negative once it's over)."""
+    started = quiz_session.round_started_at or utcnow()
+    return quiz_session.time_limit - (utcnow() - started).total_seconds()
+
+
 def build_answer_review(quiz_session):
     """Round-by-round answer review: which statement was fake, what the player picked, and why."""
     questions = json.loads(quiz_session.questions_json)
@@ -244,6 +255,7 @@ def build_answer_review(quiz_session):
         'facts': list(facts.items()),
         'picked': answers[i] if i < len(answers) else None,
         'correct': i < len(answers) and facts.get(answers[i]) is False,
+        'timed_out': i < len(answers) and answers[i] is None,
         'explanation': explanations[i] if i < len(explanations) else None,
     } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
 
@@ -421,6 +433,12 @@ def delete_player_command(username, yes):
     click.echo(f'Deleted {username}.')
 
 
+def render_setup():
+    return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS,
+                           difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
+                           daily_topic=daily_topic(today_utc()), timed_seconds=TIMED_ROUND_SECONDS)
+
+
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
     if request.method == 'POST':
@@ -457,14 +475,12 @@ def setup():
         clear_failed_pins(key)
         session['username'] = user.username
 
-        return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
-                           daily_topic=daily_topic(today_utc()))
+        return render_setup()
     
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
-                           daily_topic=daily_topic(today_utc()))
+    return render_setup()
 
 
 @app.route('/custom_quiz', methods=['GET', 'POST'])
@@ -646,7 +662,8 @@ def start_quiz():
     try:
         # Fetch questions from AI
         language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-        create_quiz_session(user, topic, difficulty_text, questions_count, language_name)
+        time_limit = TIMED_ROUND_SECONDS if request.form.get('timed') else None
+        create_quiz_session(user, topic, difficulty_text, questions_count, language_name, time_limit=time_limit)
         return redirect(url_for('quiz'))
         
     except DisambiguationError:
@@ -667,34 +684,42 @@ def quiz():
         return redirect(url_for('setup'))
     
     questions = json.loads(quiz_session.questions_json)
-    
+
     if request.method == 'POST':
         selected_option = request.form.get('option')
-        if not selected_option:
+        current_q = questions[quiz_session.current_question_index]
+        # Timed mode: the browser submits when the countdown ends; the server also checks the clock, so a late
+        # answer (or one sent with JavaScript turned off) can't beat the timer
+        timed_out = bool(quiz_session.time_limit) and (
+            request.form.get('timeout') == '1' or seconds_left(quiz_session) <= -TIMER_GRACE_SECONDS)
+        if not selected_option and not timed_out:
             flash(_("Please select an option."), "warning")
         else:
-            current_q = questions[quiz_session.current_question_index]
+            pick = None if timed_out else selected_option
             # The options were shuffled in the template, we need to check the value
-            is_correct = current_q.get(selected_option) is False # False means it's the fake one
+            is_correct = pick is not None and current_q.get(pick) is False  # False means it's the fake one
 
-            # Remember the pick for the answer review on the results page
+            # Remember the pick for the answer review on the results page (None = time ran out)
             answers = json.loads(quiz_session.answers_json or '[]')
-            answers.append(selected_option)
+            answers.append(pick)
             quiz_session.answers_json = json.dumps(answers)
 
+            correct_answer = next(k for k, v in current_q.items() if v is False)
             if is_correct:
                 quiz_session.score += 1
                 flash(_("Correct! You found the fake fact."), "success")
+            elif timed_out:
+                flash(_("Time's up! The fake fact was:") + " " + correct_answer, "danger")
             else:
                 # Find the correct answer to show the user
-                correct_answer = next(k for k, v in current_q.items() if v is False)
                 flash(_("Incorrect. The fake fact was:") + " " + correct_answer, "danger")
-            
+
             quiz_session.current_question_index += 1
-            
+            quiz_session.round_started_at = None
+
             if quiz_session.current_question_index >= quiz_session.total_questions:
                 quiz_session.is_completed = True
-                
+
                 # Save final score
                 percentage = (quiz_session.score / quiz_session.total_questions) * 100
                 final_score = Score(
@@ -711,9 +736,14 @@ def quiz():
 
                 flash_new_badges(db.session.get(User, quiz_session.user_id))
                 return redirect(url_for('results'))
-            
+
             db.session.commit()
             return redirect(url_for('quiz'))
+
+    # The round's clock starts the first time it's shown; reloading the page doesn't restart it
+    if quiz_session.time_limit and quiz_session.round_started_at is None:
+        quiz_session.round_started_at = utcnow()
+        db.session.commit()
 
     # Prepare current question
     current_q = questions[quiz_session.current_question_index]
@@ -725,6 +755,8 @@ def quiz():
                            total_questions=quiz_session.total_questions,
                            topic=quiz_session.topic,
                            options=options,
+                           time_limit=quiz_session.time_limit,
+                           seconds_left=max(0, round(seconds_left(quiz_session))) if quiz_session.time_limit else None,
                            source=session.get('quiz_source', 'Wikipedia'))
 
 

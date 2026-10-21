@@ -1099,3 +1099,13 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 
 /* ---------- Account ----------------------------------------------------------- */
 .danger-zone { border-left: 5px solid #ef4444; }
+
+/* ---------- Timed mode -------------------------------------------------------- */
+.timed-switch { display: flex; align-items: flex-start; gap: .75rem; padding-left: 0; }
+.timed-switch .form-check-input { float: none; margin: .2rem 0 0; width: 2.75rem; height: 1.4rem; flex-shrink: 0; }
+.quiz-timer { display: flex; align-items: center; gap: .75rem; margin: 1rem 0 0; font-weight: 900; color: var(--wf-brand); }
+.timer-track { flex: 1; height: .5rem; border-radius: 999px; background: var(--wf-surface-2); border: 1px solid var(--wf-border); overflow: hidden; }
+.timer-bar { height: 100%; background: var(--wf-brand); border-radius: 999px; transition: width .2s linear; }
+.timer-count { min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
+.quiz-timer.is-low { color: #ef4444; }
+.quiz-timer.is-low .timer-bar { background: #ef4444; }

@@ -18,6 +18,14 @@
                 <div class="bar" style="width: {{ ((question_num - 1) / total_questions * 100)|round(1) }}%;"></div>
             </div>
 
+            {% if time_limit %}
+            <div class="quiz-timer" id="quizTimer" data-seconds-left="{{ seconds_left }}" data-time-limit="{{ time_limit }}">
+                <i class="bi bi-stopwatch-fill"></i>
+                <div class="timer-track" aria-hidden="true"><div class="timer-bar" style="width: {{ (seconds_left / time_limit * 100)|round(1) }}%;"></div></div>
+                <span class="timer-count" role="timer" aria-live="off" aria-label="{{ _('Seconds left') }}">{{ seconds_left }}</span>
+            </div>
+            {% endif %}
+
             <div class="quiz-question">
                 <div class="q-icon">🕵️</div>
                 <h2 class="mb-1">{{ _('Spot the Fake Fact!') }}</h2>
@@ -26,6 +34,7 @@
 
             <form action="/quiz" method="POST" id="quizForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {% if time_limit %}<input type="hidden" name="timeout" id="timeoutField" value="0">{% endif %}
                 <div class="row g-3 mb-4">
                     {% for option in options %}
                     <div class="col-md-6">
@@ -64,6 +73,28 @@
 
         inputs.forEach(input => input.addEventListener('change', () => { submit.disabled = false; }));
         form.addEventListener('submit', () => { submit.disabled = true; });
+
+        // Timed mode: count down, then submit the round as timed out
+        const timer = document.getElementById('quizTimer');
+        if (timer) {
+            const limit = Number(timer.dataset.timeLimit);
+            const deadline = Date.now() + Number(timer.dataset.secondsLeft) * 1000;
+            const bar = timer.querySelector('.timer-bar');
+            const count = timer.querySelector('.timer-count');
+            const tick = () => {
+                const left = Math.max(0, (deadline - Date.now()) / 1000);
+                bar.style.width = (left / limit * 100) + '%';
+                count.textContent = Math.ceil(left);
+                timer.classList.toggle('is-low', left <= 5);
+                if (left > 0) return;
+                clearInterval(interval);
+                document.getElementById('timeoutField').value = '1';
+                inputs.forEach(input => { input.required = false; });
+                form.submit();
+            };
+            const interval = setInterval(tick, 200);
+            tick();
+        }
 
         document.addEventListener('keydown', e => {
             if (e.ctrlKey || e.metaKey || e.altKey) return;
