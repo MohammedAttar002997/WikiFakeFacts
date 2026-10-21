@@ -145,6 +145,8 @@ python -m pytest -m "not slow"   # skip the migration tests, which start the app
 
 The tests use a throwaway database and stub every OpenAI, Wikipedia and web request, so they're free and run offline.
 
+GitHub Actions runs the suite on every push and pull request (`.github/workflows/tests.yml`).
+
 ## Translations
 
 The interface is available in English, Spanish, French, German, Italian and Portuguese; players switch with the language menu in the navbar (it also sets the default quiz language).
