@@ -8,7 +8,7 @@ from app import db
 from badges import compute_streaks, earned_badge_keys
 from conftest import answers, play_quiz
 from default_text import MENU
-from models import Score, User, UserBadge
+from models import Score, User, UserBadge, utcnow
 
 TODAY = date(2026, 10, 21)
 
@@ -70,7 +70,7 @@ def test_my_progress_backfills_badges_and_shows_streak(login, app_ctx):
     user = User.query.filter_by(username='Player').one()
     for days_ago in (1, 2):
         db.session.add(Score(user_id=user.id, topic='Cat', difficulty='Easy (Ages 7-12)', score=1, total_questions=3,
-                             percentage=33.3, timestamp=datetime.utcnow() - timedelta(days=days_ago)))
+                             percentage=33.3, timestamp=utcnow() - timedelta(days=days_ago)))
     db.session.commit()
     html = client.get('/analysis').get_data(as_text=True)
     assert 'On a roll' in html and 'Badge unlocked' in html

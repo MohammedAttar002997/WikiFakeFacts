@@ -16,7 +16,7 @@ from flask_wtf.csrf import CSRFError, CSRFProtect
 from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from models import (db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
+from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
                     UserBadge)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
@@ -184,7 +184,7 @@ DAILY_ROUNDS = 5
 
 
 def today_utc():
-    return datetime.utcnow().strftime('%Y-%m-%d')
+    return utcnow().strftime('%Y-%m-%d')
 
 
 def daily_topic(date):
@@ -832,9 +832,9 @@ def leaderboard():
 
     conditions = []
     if period == 'today':
-        conditions.append(Score.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0))
+        conditions.append(Score.timestamp >= utcnow().replace(hour=0, minute=0, second=0, microsecond=0))
     elif period == 'week':
-        conditions.append(Score.timestamp >= datetime.utcnow() - timedelta(days=7))
+        conditions.append(Score.timestamp >= utcnow() - timedelta(days=7))
     if category == 'custom':
         # Anything that isn't a built-in topic came from a custom quiz
         conditions.append(Score.topic.notin_([t for topics in MENU.values() for t in topics]))
@@ -934,7 +934,7 @@ def analysis(user_id=None):
             saved.language = language_name
             saved.last_score_id = latest_score_id
             saved.analysis_json = ai_analysis.model_dump_json()
-            saved.created_at = datetime.utcnow()
+            saved.created_at = utcnow()
             db.session.commit()
         except Exception as e:
             print(f"AI Analysis Error: {e}")
@@ -952,7 +952,7 @@ def analysis(user_id=None):
                            practice_topic=practice_topic,
                            badges=BADGES, earned_badges=earned,
                            current_streak=current_streak, best_streak=best_streak,
-                           played_today=user_scores[-1].timestamp.date() == datetime.utcnow().date(),
+                           played_today=user_scores[-1].timestamp.date() == utcnow().date(),
                            profile_user=user)
 
 

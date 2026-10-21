@@ -5,14 +5,14 @@ from datetime import datetime, timedelta
 import pytest
 
 from app import db
-from models import Score, User
+from models import Score, User, utcnow
 
 EASY, MEDIUM, HARD = 'Easy (Ages 7-12)', 'Medium (Ages 13-17)', 'Hard (Ages 18-99)'
 
 
 @pytest.fixture
 def scores(app_ctx):
-    now = datetime.utcnow()
+    now = utcnow()
     rows = [
         ('Animals', 'Tiger', EASY, 9, timedelta(days=30)),
         ('Animals', 'Cat', EASY, 2, timedelta(minutes=1)),
