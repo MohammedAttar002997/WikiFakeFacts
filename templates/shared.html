@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+
+{% set headline = _('{name} spotted {score} of {total} fake facts').format(name=player.username, score=quiz_session.score, total=quiz_session.total_questions) %}
+
+{% block title %}{{ headline }} · WikiFakeFact{% endblock %}
+
+{% block head %}
+    {# Link previews in chat apps and social networks #}
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="WikiFakeFact">
+    <meta property="og:title" content="{{ headline }}">
+    <meta property="og:description" content="{{ _('Topic:') }} {{ quiz_session.topic }} · {{ _('Can you beat that? Three facts are true, one is a lie.') }}">
+    <meta name="twitter:card" content="summary">
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="wf-card wf-card-pad text-center shared-card">
+            <div class="avatar avatar-lg avatar-c{{ (player.username|length % 5) + 1 }} mx-auto mb-3">{{ player.username[:1] }}</div>
+            <h1 class="h3 fw-black mb-2">{{ headline }}</h1>
+            <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
+                <span class="chip chip-brand"><i class="bi bi-tag-fill"></i>{{ quiz_session.topic }}</span>
+                <span class="chip">{{ _(quiz_session.difficulty.split(' (')[0]) }}</span>
+                {% if quiz_session.time_limit %}<span class="chip"><i class="bi bi-stopwatch-fill"></i>{{ _('Timed mode') }}</span>{% endif %}
+                {% if score %}<span class="chip">{{ score.timestamp|date }}</span>{% endif %}
+            </div>
+            <div class="score-ring mx-auto mb-4" style="--p: {{ percentage }}; --ring: {{ '#10b981' if percentage >= 80 else ('#f59e0b' if percentage >= 50 else '#ef4444') }};"
+                 role="img" aria-label="{{ quiz_session.score }} / {{ quiz_session.total_questions }}">
+                <div class="inner">
+                    <div class="pct">{{ percentage }}%</div>
+                    <div class="frac">{{ quiz_session.score }} / {{ quiz_session.total_questions }}</div>
+                </div>
+            </div>
+            <p class="text-muted">{{ _('Can you beat that? Three facts are true, one is a lie.') }}</p>
+            <a href="/" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-1"></i>{{ _('Play WikiFakeFact') }}</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

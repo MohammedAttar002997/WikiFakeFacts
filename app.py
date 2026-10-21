@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime, timedelta
 
 import click
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, abort, render_template, request, redirect, url_for, session, flash, jsonify
 from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -238,6 +238,18 @@ def current_user():
     if 'username' not in session:
         return None
     return User.query.filter_by(username=session['username']).first()
+
+
+def share_details(quiz_session):
+    """Link and message for sharing a finished quiz; the link is created the first time it's needed."""
+    if not quiz_session.is_completed:
+        return None
+    if not quiz_session.share_code:
+        quiz_session.share_code = secrets.token_urlsafe(8)
+        db.session.commit()
+    text = _("I spotted {score} of {total} fake facts about {topic} on WikiFakeFact. Can you beat me?").format(
+        score=quiz_session.score, total=quiz_session.total_questions, topic=quiz_session.topic)
+    return {'url': url_for('shared_result', code=quiz_session.share_code, _external=True), 'text': text}
 
 
 def seconds_left(quiz_session):
@@ -777,7 +789,20 @@ def results():
                            percentage=round(percentage, 2),
                            topic=quiz_session.topic,
                            is_daily=quiz_session.daily_challenge_id is not None,
+                           share=share_details(quiz_session),
                            review=build_answer_review(quiz_session))
+
+
+@app.route('/r/<code>')
+def shared_result(code):
+    """Public card for a finished quiz, reachable only through the link its player shared."""
+    quiz_session = QuizSession.query.filter_by(share_code=code, is_completed=True).first()
+    if not quiz_session:
+        abort(404)
+    player = db.session.get(User, quiz_session.user_id)
+    score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
+    return render_template('shared.html', quiz_session=quiz_session, player=player, score=score,
+                           percentage=round(quiz_session.score / quiz_session.total_questions * 100))
 
 
 @app.route('/daily')
@@ -860,7 +885,7 @@ def review(quiz_session_id):
 
     score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
     return render_template('review.html', quiz_session=quiz_session, score=score,
-                           review=build_answer_review(quiz_session))
+                           share=share_details(quiz_session), review=build_answer_review(quiz_session))
 
 
 @app.route('/leaderboard')

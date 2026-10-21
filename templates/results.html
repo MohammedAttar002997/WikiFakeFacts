@@ -65,6 +65,10 @@
             {% endif %}
         </div>
 
+        {% if share %}
+        <div class="mt-4">{% include "_share.html" %}</div>
+        {% endif %}
+
         {% if review %}
         <div class="mt-4">{% include "_answer_review.html" %}</div>
         {% endif %}
