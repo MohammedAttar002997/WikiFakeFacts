@@ -2,155 +2,80 @@
 
 {% block content %}
 <div class="row justify-content-center">
-    <div class="col-md-10">
-        <div class="card p-5">
-            <h1 class="display-4 fw-bold mb-5 text-center text-primary">🤖 WikiFakeFact Assistant</h1>
-            
-            <div class="row">
-                <!-- Chat Interface -->
-                <div class="col-md-8">
-                    <div class="card border-light" style="height: 500px; display: flex; flex-direction: column;">
-                        <!-- Chat Messages -->
-                        <div id="chatMessages" class="card-body overflow-auto" style="flex: 1; background-color: #f8f9fa;">
-                            <div class="mb-3">
-                                <div class="d-flex justify-content-start mb-3">
-                                    <div class="bg-primary text-white rounded-3 p-3" style="max-width: 70%;">
-                                        <p class="mb-0">👋 Hi! I'm your WikiFakeFact assistant. How can I help you navigate the app today?</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
+    <div class="col-lg-10">
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-robot"></i> Assistant</span>
+            <h1>How can we help?</h1>
+            <p>Ask anything about playing WikiFakeFact.</p>
+        </div>
 
-                        <!-- Chat Input -->
-                        <div class="card-footer border-top">
-                            <form id="chatForm" class="d-flex gap-2">
-                                <input 
-                                    type="text" 
-                                    id="messageInput" 
-                                    class="form-control" 
-                                    placeholder="Ask me anything..." 
-                                    autocomplete="off"
-                                >
-                                <button type="submit" class="btn btn-primary">
-                                    <i class="bi bi-send"></i> Send
-                                </button>
-                            </form>
+        <div class="row g-4">
+            <div class="col-lg-8">
+                <div class="chat-shell">
+                    <div class="chat-header">
+                        <div class="avatar avatar-sm"><i class="bi bi-robot"></i></div>
+                        <div>
+                            <div class="fw-black">WikiFakeFact Assistant</div>
+                            <div class="status"><i class="bi bi-circle-fill" style="font-size: .5rem;"></i> Online</div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Quick Suggestions -->
-                <div class="col-md-4">
-                    <h5 class="mb-3">Quick Help</h5>
-                    <div class="d-flex flex-column gap-2">
-                        {% for suggestion in suggestions %}
-                        <button 
-                            type="button" 
-                            class="btn btn-outline-primary text-start quick-suggestion"
-                            data-question="{{ suggestion.question }}"
-                            data-url="{{ suggestion.url }}"
-                        >
-                            <small>{{ suggestion.question }}</small>
+                    <div id="chatMessages" class="chat-messages" aria-live="polite">
+                        <div class="chat-message assistant">
+                            <div class="bot-avatar"><i class="bi bi-robot"></i></div>
+                            <div class="message-content assistant">👋 Hi! I'm your WikiFakeFact assistant. How can I help you navigate the app today?</div>
+                        </div>
+                    </div>
+
+                    <form id="chatForm" class="chat-input">
+                        <input type="text" id="messageInput" class="form-control form-control-lg"
+                               placeholder="Ask me anything..." autocomplete="off" aria-label="Message">
+                        <button type="submit" class="btn btn-primary" id="sendButton" aria-label="Send">
+                            <i class="bi bi-send-fill"></i>
                         </button>
-                        {% endfor %}
-                    </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="col-lg-4">
+                <div class="section-label"><i class="bi bi-lightning-charge-fill text-brand"></i>Quick Help</div>
+                <div class="d-flex flex-column gap-2">
+                    {% for suggestion in suggestions %}
+                    <button type="button" class="suggestion-chip quick-suggestion"
+                            data-question="{{ suggestion.question }}" data-url="{{ suggestion.url }}">
+                        <i class="bi bi-chat-left-text-fill"></i>
+                        <span>{{ suggestion.question }}</span>
+                    </button>
+                    {% endfor %}
                 </div>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
 
-<style>
-    #chatMessages {
-        scroll-behavior: smooth;
-    }
-
-    .chat-message {
-        margin-bottom: 1rem;
-        display: flex;
-        animation: slideIn 0.3s ease-in-out;
-    }
-
-    .chat-message.user {
-        justify-content: flex-end;
-    }
-
-    .chat-message.assistant {
-        justify-content: flex-start;
-    }
-
-    .message-content {
-        max-width: 70%;
-        padding: 0.75rem 1rem;
-        border-radius: 1rem;
-        word-wrap: break-word;
-    }
-
-    .message-content.user {
-        background-color: #6f42c1;
-        color: white;
-    }
-
-    .message-content.assistant {
-        background-color: #e9ecef;
-        color: #333;
-    }
-
-    .suggested-action {
-        margin-top: 0.5rem;
-        font-size: 0.85rem;
-    }
-
-    .suggested-action a {
-        color: #6f42c1;
-        text-decoration: none;
-        font-weight: 600;
-    }
-
-    .suggested-action a:hover {
-        text-decoration: underline;
-    }
-
-    @keyframes slideIn {
-        from {
-            opacity: 0;
-            transform: translateY(10px);
-        }
-        to {
-            opacity: 1;
-            transform: translateY(0);
-        }
-    }
-
-    .quick-suggestion {
-        padding: 0.75rem;
-        border-radius: 0.5rem;
-        transition: all 0.2s;
-    }
-
-    .quick-suggestion:hover {
-        background-color: #6f42c1;
-        color: white;
-    }
-</style>
-
+{% block scripts %}
 <script>
     const chatForm = document.getElementById('chatForm');
     const messageInput = document.getElementById('messageInput');
+    const sendButton = document.getElementById('sendButton');
     const chatMessages = document.getElementById('chatMessages');
     const quickSuggestions = document.querySelectorAll('.quick-suggestion');
+    let pending = false;
 
     // Handle form submission
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const message = messageInput.value.trim();
-        
-        if (!message) return;
+
+        if (!message || pending) return;
 
         // Add user message to chat
         addMessage(message, 'user');
         messageInput.value = '';
         messageInput.focus();
+        setPending(true);
+        const typing = addTypingIndicator();
 
         // Send to backend
         try {
@@ -167,40 +92,65 @@
             }
 
             const data = await response.json();
-            
+
             // Add assistant message
+            typing.remove();
             addMessage(data.message, 'assistant', data.suggested_action, data.action_url);
         } catch (error) {
             console.error('Error:', error);
+            typing.remove();
             addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+        } finally {
+            setPending(false);
         }
     });
 
     // Handle quick suggestions
     quickSuggestions.forEach(btn => {
         btn.addEventListener('click', () => {
-            const question = btn.dataset.question;
-            messageInput.value = question;
-            chatForm.dispatchEvent(new Event('submit'));
+            messageInput.value = btn.dataset.question;
+            chatForm.requestSubmit();
         });
     });
 
+    function setPending(state) {
+        pending = state;
+        sendButton.disabled = state;
+    }
+
+    function messageRow(sender) {
+        const row = document.createElement('div');
+        row.className = `chat-message ${sender}`;
+        if (sender === 'assistant') {
+            row.innerHTML = '<div class="bot-avatar"><i class="bi bi-robot"></i></div>';
+        }
+        return row;
+    }
+
+    function addTypingIndicator() {
+        const row = messageRow('assistant');
+        row.insertAdjacentHTML('beforeend',
+            '<div class="message-content assistant typing" aria-label="Assistant is typing"><span></span><span></span><span></span></div>');
+        chatMessages.appendChild(row);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+        return row;
+    }
+
     function addMessage(text, sender, action = null, actionUrl = null) {
-        const messageDiv = document.createElement('div');
-        messageDiv.className = `chat-message ${sender}`;
+        const row = messageRow(sender);
 
         let content = `<div class="message-content ${sender}">${escapeHtml(text)}`;
-        
+
         if (action && actionUrl) {
             content += `<div class="suggested-action">
-                <a href="${actionUrl}">→ ${escapeHtml(action)}</a>
+                <a href="${escapeHtml(actionUrl)}"><i class="bi bi-arrow-right-circle-fill"></i>${escapeHtml(action)}</a>
             </div>`;
         }
-        
+
         content += '</div>';
-        messageDiv.innerHTML = content;
-        
-        chatMessages.appendChild(messageDiv);
+        row.insertAdjacentHTML('beforeend', content);
+
+        chatMessages.appendChild(row);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
 

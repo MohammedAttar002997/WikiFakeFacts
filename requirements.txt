@@ -10,3 +10,8 @@ openai
 wikipedia
 python-dotenv
 Wikipedia-API
+requests
+beautifulsoup4
+PyPDF2
+python-docx
+chromadb

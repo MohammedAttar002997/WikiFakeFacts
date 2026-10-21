@@ -8,7 +8,8 @@ from pydantic import BaseModel
 import os
 from dotenv import load_dotenv
 
-load_dotenv()
+# override=True so a debug-server reload picks up a changed .env
+load_dotenv(override=True)
 
 OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
 
