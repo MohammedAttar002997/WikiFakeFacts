@@ -397,8 +397,23 @@ def results():
 
 @app.route('/leaderboard')
 def leaderboard():
-    top_scores = Score.query.order_by(Score.percentage.desc()).limit(10).all()
-    return render_template('leaderboard.html', scores=top_scores)
+    # One row per player: total correct answers across all their quizzes, ties broken by accuracy
+    total_points = func.sum(Score.score)
+    total_questions = func.sum(Score.total_questions)
+    rows = (db.session.query(User, total_points, total_questions, func.count(Score.id))
+            .join(Score, Score.user_id == User.id)
+            .group_by(User.id)
+            .order_by(total_points.desc(), (total_points * 1.0 / total_questions).desc())
+            .limit(10)
+            .all())
+    standings = [{
+        'user': user,
+        'points': points,
+        'total_questions': questions,
+        'quizzes': quizzes,
+        'percentage': points / questions * 100 if questions else 0,
+    } for user, points, questions, quizzes in rows]
+    return render_template('leaderboard.html', standings=standings)
 
 
 @app.route('/players')

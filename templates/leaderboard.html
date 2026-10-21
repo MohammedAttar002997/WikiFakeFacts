@@ -6,17 +6,17 @@
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-trophy-fill"></i> Top 10</span>
             <h1>Leaderboard</h1>
-            <p>The sharpest fake-fact detectors so far.</p>
+            <p>The sharpest fake-fact detectors so far, ranked by total correct answers.</p>
         </div>
 
-        {% if scores %}
+        {% if standings %}
         <div class="podium">
-            {% for score in scores[:3] %}
-            <a class="podium-spot podium-{{ loop.index }}" href="{{ url_for('analysis', user_id=score.user.id) }}">
+            {% for row in standings[:3] %}
+            <a class="podium-spot podium-{{ loop.index }}" href="{{ url_for('analysis', user_id=row.user.id) }}">
                 <div class="medal">{{ ['🥇', '🥈', '🥉'][loop.index0] }}</div>
-                <div class="avatar avatar-c{{ (score.user.username|length % 5) + 1 }} mx-auto my-2">{{ score.user.username[:1] }}</div>
-                <div class="name">{{ score.user.username }}</div>
-                <div class="pct">{{ score.percentage|round|int }}%</div>
+                <div class="avatar avatar-c{{ (row.user.username|length % 5) + 1 }} mx-auto my-2">{{ row.user.username[:1] }}</div>
+                <div class="name">{{ row.user.username }}</div>
+                <div class="pct">{{ row.points }} pts</div>
                 <div class="block">{{ loop.index }}</div>
             </a>
             {% endfor %}
@@ -24,20 +24,20 @@
 
         <div class="wf-card p-3 p-md-4">
             <div class="d-flex flex-column gap-2">
-                {% for score in scores %}
+                {% for row in standings %}
                 <div class="rank-row">
                     <div class="rank">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 else loop.index }}</div>
-                    <div class="avatar avatar-sm avatar-c{{ (score.user.username|length % 5) + 1 }}">{{ score.user.username[:1] }}</div>
+                    <div class="avatar avatar-sm avatar-c{{ (row.user.username|length % 5) + 1 }}">{{ row.user.username[:1] }}</div>
                     <div class="who">
-                        <a href="{{ url_for('analysis', user_id=score.user.id) }}">{{ score.user.username }}</a>
+                        <a href="{{ url_for('analysis', user_id=row.user.id) }}">{{ row.user.username }}</a>
                         <div class="meta text-truncate">
-                            <i class="bi bi-tag-fill"></i> {{ score.topic }}
-                            <span class="d-none d-sm-inline">&middot; {{ score.timestamp.strftime('%Y-%m-%d %H:%M') }}</span>
+                            <i class="bi bi-controller"></i> {{ row.quizzes }} quiz{{ 'zes' if row.quizzes != 1 }} played
+                            <span class="d-none d-sm-inline">&middot; {{ row.percentage|round|int }}% accuracy</span>
                         </div>
                     </div>
                     <div class="score">
-                        <div class="pct">{{ score.percentage|round|int }}%</div>
-                        <div class="meta">{{ score.score }} / {{ score.total_questions }}</div>
+                        <div class="pct">{{ row.points }} pts</div>
+                        <div class="meta">{{ row.points }} / {{ row.total_questions }}</div>
                     </div>
                 </div>
                 {% endfor %}
