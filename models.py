@@ -40,6 +40,10 @@ class QuizSession(db.Model):
     total_questions = db.Column(db.Integer, nullable=False)
     is_completed = db.Column(db.Boolean, default=False)
     daily_challenge_id = db.Column(db.Integer, db.ForeignKey('daily_challenge.id'), nullable=True)
+    time_limit = db.Column(db.Integer, nullable=True)  # Seconds per round in timed mode, None otherwise
+    round_started_at = db.Column(db.DateTime, nullable=True)  # When the current round was first shown (timed mode)
+    share_code = db.Column(db.String(16), unique=True, nullable=True)  # Unguessable id for the public result link
+    challenge_of_id = db.Column(db.Integer, db.ForeignKey('quiz_session.id'), nullable=True)  # Quiz this one replays
 
 class DailyChallenge(db.Model):
     """One shared quiz per day and language; every player gets the same questions."""

@@ -14,6 +14,10 @@
             </p>
         </div>
 
+        {% if share %}
+        <div class="mb-4">{% include "_share.html" %}</div>
+        {% endif %}
+
         {% if review %}
         {% include "_answer_review.html" %}
         {% endif %}

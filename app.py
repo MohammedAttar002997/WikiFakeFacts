@@ -5,7 +5,7 @@ import secrets
 from datetime import datetime, timedelta
 
 import click
-from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, abort, render_template, request, redirect, url_for, session, flash, jsonify
 from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -147,7 +147,7 @@ def init_database():
 
 
 def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
-                        custom_title=None):
+                        custom_title=None, time_limit=None):
     """Generate a quiz, save it, and make it the player's current quiz."""
     quiz_data, source, ai_topic, explanations = get_ai_response(questions_count, topic, difficulty, language_name,
                                                                 custom_content=custom_content)
@@ -156,10 +156,11 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
         # the user's own title wins, then the AI-detected topic
         topic = (custom_title or '').strip() or ai_topic or "Custom Content"
 
-    return save_quiz_session(user, topic, difficulty, quiz_data, explanations, source)
+    return save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, time_limit=time_limit)
 
 
-def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None):
+def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None,
+                      time_limit=None, challenge_of_id=None):
     """Save already-generated questions as the player's current quiz."""
     quiz_session = QuizSession(
         user_id=user.id,
@@ -171,7 +172,9 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
         total_questions=len(quiz_data),
         current_question_index=0,
         score=0,
-        daily_challenge_id=daily_challenge_id
+        daily_challenge_id=daily_challenge_id,
+        time_limit=time_limit,
+        challenge_of_id=challenge_of_id
     )
     db.session.add(quiz_session)
     db.session.commit()
@@ -181,6 +184,9 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
     return quiz_session
 
 
+
+TIMED_ROUND_SECONDS = 20
+TIMER_GRACE_SECONDS = 3  # Allowance for page load and network delay before a late answer counts as timed out
 
 DAILY_DIFFICULTY = DIFFICULTY_OPTIONS["2"]  # Medium
 DAILY_ROUNDS = 5
@@ -235,6 +241,36 @@ def current_user():
     return User.query.filter_by(username=session['username']).first()
 
 
+def share_details(quiz_session):
+    """Link and message for sharing a finished quiz; the link is created the first time it's needed."""
+    if not quiz_session.is_completed:
+        return None
+    if not quiz_session.share_code:
+        quiz_session.share_code = secrets.token_urlsafe(8)
+        db.session.commit()
+    text = _("I spotted {score} of {total} fake facts about {topic} on WikiFakeFact. Can you beat me?").format(
+        score=quiz_session.score, total=quiz_session.total_questions, topic=quiz_session.topic)
+    return {'url': url_for('shared_result', code=quiz_session.share_code, _external=True), 'text': text}
+
+
+def challenge_comparison(quiz_session):
+    """How a finished challenge attempt compares with the quiz it replayed, or None."""
+    original = db.session.get(QuizSession, quiz_session.challenge_of_id) if quiz_session.challenge_of_id else None
+    if not original:
+        return None
+    opponent = db.session.get(User, original.user_id)
+    diff = quiz_session.score - original.score
+    return {'opponent': opponent.username, 'their_score': original.score, 'my_score': quiz_session.score,
+            'total': quiz_session.total_questions, 'outcome': 'win' if diff > 0 else ('tie' if diff == 0 else 'loss'),
+            'code': original.share_code}
+
+
+def seconds_left(quiz_session):
+    """Seconds remaining in the current timed round (negative once it's over)."""
+    started = quiz_session.round_started_at or utcnow()
+    return quiz_session.time_limit - (utcnow() - started).total_seconds()
+
+
 def build_answer_review(quiz_session):
     """Round-by-round answer review: which statement was fake, what the player picked, and why."""
     questions = json.loads(quiz_session.questions_json)
@@ -244,6 +280,7 @@ def build_answer_review(quiz_session):
         'facts': list(facts.items()),
         'picked': answers[i] if i < len(answers) else None,
         'correct': i < len(answers) and facts.get(answers[i]) is False,
+        'timed_out': i < len(answers) and answers[i] is None,
         'explanation': explanations[i] if i < len(explanations) else None,
     } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
 
@@ -321,6 +358,11 @@ def logout():
 
 def delete_player_data(user, chat_id=None):
     """Remove a player and everything stored about them (shared daily-challenge quizzes stay)."""
+    # Other players' challenge attempts against this player's quizzes are kept, without the link back
+    own_quiz_ids = [q.id for q in QuizSession.query.filter_by(user_id=user.id).with_entities(QuizSession.id)]
+    if own_quiz_ids:
+        QuizSession.query.filter(QuizSession.challenge_of_id.in_(own_quiz_ids)).update(
+            {QuizSession.challenge_of_id: None}, synchronize_session=False)
     for model in (UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
@@ -421,6 +463,38 @@ def delete_player_command(username, yes):
     click.echo(f'Deleted {username}.')
 
 
+RECENT_QUIZZES_FOR_DIFFICULTY = 5
+
+
+def recommend_difficulty(user):
+    """Suggest a difficulty from the player's last few quizzes: up a level after doing well, down after a
+    rough patch. Returns {'id', 'direction', 'average', 'count'} or None until there are 3 quizzes."""
+    if not user:
+        return None
+    recent = (Score.query.filter_by(user_id=user.id).order_by(Score.timestamp.desc(), Score.id.desc())
+              .limit(RECENT_QUIZZES_FOR_DIFFICULTY).all())
+    if len(recent) < 3:
+        return None
+    levels = list(DIFFICULTY_OPTIONS)  # '1' Easy, '2' Medium, '3' Hard
+    current = next((key for key, label in DIFFICULTY_OPTIONS.items() if label == recent[0].difficulty), '2')
+    average = sum(s.percentage for s in recent) / len(recent)
+    index = levels.index(current)
+    if average >= 80 and index < len(levels) - 1:
+        index, direction = index + 1, 'up'
+    elif average < 50 and index > 0:
+        index, direction = index - 1, 'down'
+    else:
+        direction = 'stay'
+    return {'id': levels[index], 'direction': direction, 'average': round(average), 'count': len(recent)}
+
+
+def render_setup():
+    return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS,
+                           difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
+                           daily_topic=daily_topic(today_utc()), timed_seconds=TIMED_ROUND_SECONDS,
+                           recommended=recommend_difficulty(current_user()))
+
+
 @app.route('/setup', methods=['GET', 'POST'])
 def setup():
     if request.method == 'POST':
@@ -457,14 +531,16 @@ def setup():
         clear_failed_pins(key)
         session['username'] = user.username
 
-        return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
-                           daily_topic=daily_topic(today_utc()))
+        # Back to the challenge (or other page) that asked the player to sign in; only paths on this site
+        next_url = session.pop('next_url', None)
+        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+            return redirect(next_url)
+        return render_setup()
     
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
-                           daily_topic=daily_topic(today_utc()))
+    return render_setup()
 
 
 @app.route('/custom_quiz', methods=['GET', 'POST'])
@@ -599,7 +675,7 @@ def custom_quiz():
     uploads = (CustomContent.query.filter_by(user_id=user.id).order_by(CustomContent.created_at.desc()).all()
                if user else [])
     return render_template('custom_quiz.html', lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS,
-                           languages=LANGUAGE_OPTIONS, uploads=uploads)
+                           languages=LANGUAGE_OPTIONS, uploads=uploads, recommended=recommend_difficulty(user))
 
 
 @app.route('/uploads/<int:content_id>/delete', methods=['POST'])
@@ -646,7 +722,8 @@ def start_quiz():
     try:
         # Fetch questions from AI
         language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-        create_quiz_session(user, topic, difficulty_text, questions_count, language_name)
+        time_limit = TIMED_ROUND_SECONDS if request.form.get('timed') else None
+        create_quiz_session(user, topic, difficulty_text, questions_count, language_name, time_limit=time_limit)
         return redirect(url_for('quiz'))
         
     except DisambiguationError:
@@ -667,34 +744,42 @@ def quiz():
         return redirect(url_for('setup'))
     
     questions = json.loads(quiz_session.questions_json)
-    
+
     if request.method == 'POST':
         selected_option = request.form.get('option')
-        if not selected_option:
+        current_q = questions[quiz_session.current_question_index]
+        # Timed mode: the browser submits when the countdown ends; the server also checks the clock, so a late
+        # answer (or one sent with JavaScript turned off) can't beat the timer
+        timed_out = bool(quiz_session.time_limit) and (
+            request.form.get('timeout') == '1' or seconds_left(quiz_session) <= -TIMER_GRACE_SECONDS)
+        if not selected_option and not timed_out:
             flash(_("Please select an option."), "warning")
         else:
-            current_q = questions[quiz_session.current_question_index]
+            pick = None if timed_out else selected_option
             # The options were shuffled in the template, we need to check the value
-            is_correct = current_q.get(selected_option) is False # False means it's the fake one
+            is_correct = pick is not None and current_q.get(pick) is False  # False means it's the fake one
 
-            # Remember the pick for the answer review on the results page
+            # Remember the pick for the answer review on the results page (None = time ran out)
             answers = json.loads(quiz_session.answers_json or '[]')
-            answers.append(selected_option)
+            answers.append(pick)
             quiz_session.answers_json = json.dumps(answers)
 
+            correct_answer = next(k for k, v in current_q.items() if v is False)
             if is_correct:
                 quiz_session.score += 1
                 flash(_("Correct! You found the fake fact."), "success")
+            elif timed_out:
+                flash(_("Time's up! The fake fact was:") + " " + correct_answer, "danger")
             else:
                 # Find the correct answer to show the user
-                correct_answer = next(k for k, v in current_q.items() if v is False)
                 flash(_("Incorrect. The fake fact was:") + " " + correct_answer, "danger")
-            
+
             quiz_session.current_question_index += 1
-            
+            quiz_session.round_started_at = None
+
             if quiz_session.current_question_index >= quiz_session.total_questions:
                 quiz_session.is_completed = True
-                
+
                 # Save final score
                 percentage = (quiz_session.score / quiz_session.total_questions) * 100
                 final_score = Score(
@@ -711,9 +796,14 @@ def quiz():
 
                 flash_new_badges(db.session.get(User, quiz_session.user_id))
                 return redirect(url_for('results'))
-            
+
             db.session.commit()
             return redirect(url_for('quiz'))
+
+    # The round's clock starts the first time it's shown; reloading the page doesn't restart it
+    if quiz_session.time_limit and quiz_session.round_started_at is None:
+        quiz_session.round_started_at = utcnow()
+        db.session.commit()
 
     # Prepare current question
     current_q = questions[quiz_session.current_question_index]
@@ -725,6 +815,8 @@ def quiz():
                            total_questions=quiz_session.total_questions,
                            topic=quiz_session.topic,
                            options=options,
+                           time_limit=quiz_session.time_limit,
+                           seconds_left=max(0, round(seconds_left(quiz_session))) if quiz_session.time_limit else None,
                            source=session.get('quiz_source', 'Wikipedia'))
 
 
@@ -745,7 +837,63 @@ def results():
                            percentage=round(percentage, 2),
                            topic=quiz_session.topic,
                            is_daily=quiz_session.daily_challenge_id is not None,
+                           share=share_details(quiz_session),
+                           challenge=challenge_comparison(quiz_session),
                            review=build_answer_review(quiz_session))
+
+
+@app.route('/r/<code>')
+def shared_result(code):
+    """Public card for a finished quiz, reachable only through the link its player shared."""
+    quiz_session = QuizSession.query.filter_by(share_code=code, is_completed=True).first()
+    if not quiz_session:
+        abort(404)
+    player = db.session.get(User, quiz_session.user_id)
+    score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
+    viewer = current_user()
+    my_attempt = (QuizSession.query.filter_by(user_id=viewer.id, challenge_of_id=quiz_session.id).first()
+                  if viewer else None)
+    challengers = (db.session.query(QuizSession, User).join(User, QuizSession.user_id == User.id)
+                   .filter(QuizSession.challenge_of_id == quiz_session.id, QuizSession.is_completed.is_(True))
+                   .order_by(QuizSession.score.desc(), QuizSession.id).all())
+    return render_template('shared.html', quiz_session=quiz_session, player=player, score=score,
+                           percentage=round(quiz_session.score / quiz_session.total_questions * 100),
+                           is_owner=viewer is not None and viewer.id == player.id, my_attempt=my_attempt,
+                           challengers=challengers)
+
+
+@app.route('/r/<code>/play', methods=['POST'])
+def take_challenge(code):
+    """Play the exact questions of a shared quiz and compare scores."""
+    original = QuizSession.query.filter_by(share_code=code, is_completed=True).first()
+    if not original:
+        abort(404)
+    user = current_user()
+    if not user:
+        # Come back here after signing in
+        session['next_url'] = url_for('shared_result', code=code)
+        flash(_("Sign in to take the challenge."), "info")
+        return redirect(url_for('index'))
+    if original.daily_challenge_id:
+        # Replaying a daily challenge would reveal today's questions
+        flash(_("This was a daily challenge. Play today's daily challenge instead!"), "info")
+        return redirect(url_for('daily'))
+    if original.user_id == user.id:
+        flash(_("This is your own quiz, so here are your answers instead."), "info")
+        return redirect(url_for('review', quiz_session_id=original.id))
+
+    attempt = QuizSession.query.filter_by(user_id=user.id, challenge_of_id=original.id).first()
+    if attempt and attempt.is_completed:
+        flash(_("You've already taken this challenge."), "info")
+        return redirect(url_for('shared_result', code=code))
+    if attempt:
+        session['quiz_session_id'] = attempt.id
+        return redirect(url_for('quiz'))
+
+    save_quiz_session(user, original.topic, original.difficulty, json.loads(original.questions_json),
+                      json.loads(original.explanations_json or '[]'), _('Challenge'),
+                      time_limit=original.time_limit, challenge_of_id=original.id)
+    return redirect(url_for('quiz'))
 
 
 @app.route('/daily')
@@ -828,7 +976,7 @@ def review(quiz_session_id):
 
     score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
     return render_template('review.html', quiz_session=quiz_session, score=score,
-                           review=build_answer_review(quiz_session))
+                           share=share_details(quiz_session), review=build_answer_review(quiz_session))
 
 
 @app.route('/leaderboard')
