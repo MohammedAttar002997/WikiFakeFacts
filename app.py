@@ -28,7 +28,12 @@ from badges import BADGES, award_badges, compute_streaks, player_streaks
 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'hackathon-secret-key')
+DEV_SECRET_KEY = 'hackathon-secret-key'  # Only for local development; serve.py refuses to run with it
+app.secret_key = os.environ.get('SECRET_KEY') or DEV_SECRET_KEY
+# Browsers don't send the session cookie on cross-site POSTs (a second layer next to CSRF tokens)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# Set SESSION_COOKIE_SECURE=1 when the site is served over HTTPS, so the cookie is never sent unencrypted
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
 
 # File upload configuration
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
@@ -1050,6 +1055,8 @@ def chatbot_api():
 
 
 if __name__ == '__main__':
+    # Development server. FLASK_DEBUG=1 turns on auto-reload and the in-browser debugger, which can run code,
+    # so it's off unless asked for. For anything other people use, run serve.py instead.
     with app.app_context():
         init_database()
-    app.run(debug=True, port=5003)
+    app.run(debug=os.environ.get('FLASK_DEBUG') == '1', port=int(os.environ.get('PORT', 5003)))
