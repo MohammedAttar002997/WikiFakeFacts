@@ -14,7 +14,7 @@
             {% set meter = 'meter-good' if player.avg_score >= 80 else ('meter-mid' if player.avg_score >= 50 else 'meter-low') %}
             {% set is_me = player.username == session.get('username') %}
             <div class="col-sm-6 col-lg-4">
-                {% if is_me %}<a class="player-card" href="{{ url_for('analysis') }}">{% else %}<div class="player-card player-card-static">{% endif %}
+                {% if is_me %}<a class="player-card" href="{{ url_for('analysis') }}" data-loading="Analyzing your progress…" data-loading-tips="analysis">{% else %}<div class="player-card player-card-static">{% endif %}
                     <div class="avatar avatar-lg avatar-c{{ (player.username|length % 5) + 1 }} mx-auto mb-3">{{ player.username[:1] }}</div>
                     <h2 class="h5 fw-black mb-1 text-truncate">{{ player.username }}{% if is_me %} <span class="text-brand small">(you)</span>{% endif %}</h2>
                     <p class="text-muted small mb-3">

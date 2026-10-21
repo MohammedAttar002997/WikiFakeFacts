@@ -52,7 +52,7 @@
                     {% for href, icon, label in nav_items %}
                     {% set active = request.path == href or (href != '/' and request.path.startswith(href)) %}
                     <li class="nav-item">
-                        <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}>
+                        <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}{% if href == '/analysis' %} data-loading="Analyzing your progress…" data-loading-tips="analysis"{% endif %}>
                             <i class="bi {{ icon }}"></i>{{ label }}
                         </a>
                     </li>
