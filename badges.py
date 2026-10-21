@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.exc import IntegrityError
 
 from default_text import MENU
-from models import db, Score, QuizSession, UserBadge
+from models import db, utcnow, Score, QuizSession, UserBadge
 
 TOPIC_CATEGORY = {topic: category for category, topics in MENU.items() for topic in topics}
 
@@ -29,7 +29,7 @@ def compute_streaks(play_dates, today=None):
     """(current, best) runs of consecutive days with at least one finished quiz.
 
     The current streak is still alive if the last play was today or yesterday."""
-    today = today or datetime.utcnow().date()
+    today = today or utcnow().date()
     days = sorted(set(play_dates))
     best = run = 0
     previous = None

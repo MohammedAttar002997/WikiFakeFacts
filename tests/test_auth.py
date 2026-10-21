@@ -54,3 +54,32 @@ def test_logout_switches_player(login):
     client.get('/logout')
     with client.session_transaction() as sess:
         assert 'username' not in sess
+
+
+def test_lockout_is_stored_in_the_database(app, app_ctx):
+    from models import PinAttempt
+    sign_in(app, 'Phoenix', '1234')
+    for _ in range(5):
+        sign_in(app, 'Phoenix', '0001')
+    # Kept in the database, so restarting the app doesn't lift it
+    assert db.session.get(PinAttempt, 'phoenix').failures == 5
+
+
+def test_lockout_expires_after_five_minutes(app, app_ctx):
+    from datetime import timedelta
+    from models import PinAttempt, utcnow
+    sign_in(app, 'Phoenix', '1234')
+    for _ in range(5):
+        sign_in(app, 'Phoenix', '0001')
+    db.session.get(PinAttempt, 'phoenix').first_failure = utcnow() - timedelta(minutes=6)
+    db.session.commit()
+    assert sign_in(app, 'Phoenix', '1234')[1] == 'Phoenix'
+    assert db.session.get(PinAttempt, 'phoenix') is None
+
+
+def test_right_pin_clears_earlier_wrong_guesses(app, app_ctx):
+    from models import PinAttempt
+    sign_in(app, 'Phoenix', '1234')
+    sign_in(app, 'Phoenix', '0001')
+    sign_in(app, 'Phoenix', '1234')
+    assert db.session.get(PinAttempt, 'phoenix') is None

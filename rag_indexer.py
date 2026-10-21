@@ -6,6 +6,8 @@ from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_core.documents import Document
 
+from data import EMBEDDING_MODEL
+
 
 load_dotenv()
 OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
@@ -40,7 +42,7 @@ def index_knowledge_base():
     # Initialize OpenAI Embeddings
     # Using the pre-configured environment variables for OpenAI
     embeddings = OpenAIEmbeddings(
-        model="text-embedding-3-small",
+        model=EMBEDDING_MODEL,
         api_key=OPEN_AI_KEY
     )
 
@@ -56,7 +58,7 @@ def index_knowledge_base():
         persist_directory=persist_directory
     )
 
-    print(f"Successfully indexed {len(documents)} topics into {len(splits)} chunks using text-embedding-3-small.")
+    print(f"Successfully indexed {len(documents)} topics into {len(splits)} chunks using {EMBEDDING_MODEL}.")
     return vectorstore
 
 

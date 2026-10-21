@@ -7,7 +7,10 @@ import os
 from langchain_community.vectorstores import Chroma
 from langchain_core.embeddings import Embeddings
 import numpy as np
+import re
 import time
+
+from default_text import MENU
 
 # override=True so a debug-server reload picks up a changed .env
 load_dotenv(override=True)
@@ -26,6 +29,11 @@ wikipedia.set_user_agent("WikiFakeFact/1.0 (educational quiz game)")
 
 OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
 GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
+
+# Models can be changed in .env without touching the code
+QUIZ_MODEL = os.getenv("OPENAI_QUIZ_MODEL", "gpt-4o-mini")
+ANALYSIS_MODEL = os.getenv("OPENAI_ANALYSIS_MODEL", "gpt-5-mini")
+EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
 
 # time.perf_counter()
@@ -56,22 +64,39 @@ class AIAnalysis(BaseModel):
     topic_insights: list[TopicInsight]
 
 
+# Each knowledge-base article covers a whole category; rag_indexer.py tags every chunk with it as metadata "topic"
+TOPIC_CATEGORY = {topic: category for category, topics in MENU.items() for topic in topics}
+MAX_KNOWLEDGE_CHUNKS = 3
+
+
+def select_relevant_chunks(topic, chunks):
+    """Chunks that actually mention the quiz topic, best match first. "Mercury (planet)" matches "Mercury"."""
+    name = re.sub(r'\s*\(.*\)$', '', topic).strip().lower()
+    return [chunk for chunk in chunks if name and name in chunk.page_content.lower()][:MAX_KNOWLEDGE_CHUNKS]
+
+
 def fetch_local_knowledge(query):
     """
-    LangChain RAG Retrieval: Fetches content from the Chroma vector store.
+    LangChain RAG Retrieval: Fetches content about a built-in topic from the Chroma vector store.
+
+    Only chunks from the topic's own category article that mention the topic are used; otherwise nothing is
+    returned, so the quiz falls back to the AI's own knowledge instead of an unrelated passage.
     """
+    category = TOPIC_CATEGORY.get(query)
+    if not category:
+        return "", ""
     try:
         persist_directory = os.path.join(os.path.dirname(__file__), 'chroma_db')
         if os.path.exists(persist_directory):
             embeddings = OpenAIEmbeddings(
-                model="text-embedding-3-small",
+                model=EMBEDDING_MODEL,
                 api_key=OPEN_AI_KEY
             )
             vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
 
-            # Perform similarity search
-            # Increased k to 3 to retrieve more context from full articles
-            docs = vectorstore.similarity_search(query, k=3)
+            # Search more widely within the category, then keep the chunks that mention the topic
+            candidates = vectorstore.similarity_search(query, k=10, filter={"topic": category})
+            docs = select_relevant_chunks(query, candidates)
             if docs:
                 combined_content = "\n\n".join([doc.page_content for doc in docs])
                 return combined_content, "LangChain RAG"
@@ -120,7 +145,7 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
 
     # Using Structured Outputs with beta.chat.completions.parse
     response = client.beta.chat.completions.parse(
-        model="gpt-4o-mini",
+        model=QUIZ_MODEL,
         messages=[
             {"role": "system",
              "content": f"You are a quiz generator for a {difficulty} audience. Adjust the complexity, vocabulary, and trickiness of the facts accordingly. The entire quiz MUST be in {language}."},
@@ -178,7 +203,7 @@ def get_ai_analysis(user_history_json, language="English"):
     client = OpenAI(api_key=OPEN_AI_KEY)
 
     response = client.beta.chat.completions.parse(
-        model="gpt-5-mini",
+        model=ANALYSIS_MODEL,
         messages=[
             {"role": "system", "content": f"You are an expert educational analyst. Analyze the user's quiz history and provide deep insights and a learning path. The entire analysis MUST be in {language}."},
             {"role": "user", "content": f"Here is the user's quiz history in JSON format: {user_history_json}"}

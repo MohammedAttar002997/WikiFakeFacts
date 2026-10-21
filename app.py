@@ -2,7 +2,6 @@ import os
 import json
 import random
 import secrets
-import time
 from datetime import datetime, timedelta
 
 import click
@@ -16,8 +15,8 @@ from flask_wtf.csrf import CSRFError, CSRFProtect
 from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from models import (db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
-                    UserBadge)
+from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
+                    UserBadge, PinAttempt)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from wikipedia import DisambiguationError
@@ -29,7 +28,12 @@ from badges import BADGES, award_badges, compute_streaks, player_streaks
 
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'hackathon-secret-key')
+DEV_SECRET_KEY = 'hackathon-secret-key'  # Only for local development; serve.py refuses to run with it
+app.secret_key = os.environ.get('SECRET_KEY') or DEV_SECRET_KEY
+# Browsers don't send the session cookie on cross-site POSTs (a second layer next to CSRF tokens)
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+# Set SESSION_COOKIE_SECURE=1 when the site is served over HTTPS, so the cookie is never sent unencrypted
+app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
 
 # File upload configuration
 UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
@@ -56,10 +60,9 @@ csrf = CSRFProtect(app)
 # render_as_batch lets Alembic alter SQLite tables (it recreates them instead of using unsupported ALTERs)
 migrate = Migrate(app, db, directory=os.path.join(basedir, 'migrations'), render_as_batch=True)
 
-# Wrong-PIN throttling, keyed by lowercase username: {name: (failed_count, first_failure_time)}
+# Wrong-PIN throttling per lowercase name (stored in pin_attempt): 5 wrong PINs lock the name for 5 minutes
 MAX_PIN_ATTEMPTS = 5
-PIN_LOCKOUT_SECONDS = 5 * 60
-FAILED_PINS = {}
+PIN_LOCKOUT = timedelta(minutes=5)
 
 
 def allowed_file(filename):
@@ -184,7 +187,7 @@ DAILY_ROUNDS = 5
 
 
 def today_utc():
-    return datetime.utcnow().strftime('%Y-%m-%d')
+    return utcnow().strftime('%Y-%m-%d')
 
 
 def daily_topic(date):
@@ -279,19 +282,27 @@ def find_practice_topic(user, analysis_data):
 
 
 def is_locked_out(key):
-    attempts = FAILED_PINS.get(key)
-    if not attempts:
+    attempt = db.session.get(PinAttempt, key)
+    if not attempt:
         return False
-    count, first_failure = attempts
-    if time.time() - first_failure > PIN_LOCKOUT_SECONDS:
-        FAILED_PINS.pop(key, None)
+    if utcnow() - attempt.first_failure > PIN_LOCKOUT:
+        clear_failed_pins(key)
         return False
-    return count >= MAX_PIN_ATTEMPTS
+    return attempt.failures >= MAX_PIN_ATTEMPTS
 
 
 def record_failed_pin(key):
-    count, first_failure = FAILED_PINS.get(key, (0, time.time()))
-    FAILED_PINS[key] = (count + 1, first_failure)
+    attempt = db.session.get(PinAttempt, key)
+    if attempt:
+        attempt.failures += 1
+    else:
+        db.session.add(PinAttempt(name=key, failures=1, first_failure=utcnow()))
+    db.session.commit()
+
+
+def clear_failed_pins(key):
+    PinAttempt.query.filter_by(name=key).delete()
+    db.session.commit()
 
 
 @app.route('/')
@@ -328,7 +339,7 @@ def check_account_pin(user, pin):
         record_failed_pin(key)
         flash(_("That PIN isn't right."), "danger")
         return False
-    FAILED_PINS.pop(key, None)
+    clear_failed_pins(key)
     return True
 
 
@@ -443,7 +454,7 @@ def setup():
                 name=user.username), "danger")
             return redirect(url_for('index'))
 
-        FAILED_PINS.pop(key, None)
+        clear_failed_pins(key)
         session['username'] = user.username
 
         return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
@@ -832,9 +843,9 @@ def leaderboard():
 
     conditions = []
     if period == 'today':
-        conditions.append(Score.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0))
+        conditions.append(Score.timestamp >= utcnow().replace(hour=0, minute=0, second=0, microsecond=0))
     elif period == 'week':
-        conditions.append(Score.timestamp >= datetime.utcnow() - timedelta(days=7))
+        conditions.append(Score.timestamp >= utcnow() - timedelta(days=7))
     if category == 'custom':
         # Anything that isn't a built-in topic came from a custom quiz
         conditions.append(Score.topic.notin_([t for topics in MENU.values() for t in topics]))
@@ -934,7 +945,7 @@ def analysis(user_id=None):
             saved.language = language_name
             saved.last_score_id = latest_score_id
             saved.analysis_json = ai_analysis.model_dump_json()
-            saved.created_at = datetime.utcnow()
+            saved.created_at = utcnow()
             db.session.commit()
         except Exception as e:
             print(f"AI Analysis Error: {e}")
@@ -952,7 +963,7 @@ def analysis(user_id=None):
                            practice_topic=practice_topic,
                            badges=BADGES, earned_badges=earned,
                            current_streak=current_streak, best_streak=best_streak,
-                           played_today=user_scores[-1].timestamp.date() == datetime.utcnow().date(),
+                           played_today=user_scores[-1].timestamp.date() == utcnow().date(),
                            profile_user=user)
 
 
@@ -1044,6 +1055,8 @@ def chatbot_api():
 
 
 if __name__ == '__main__':
+    # Development server. FLASK_DEBUG=1 turns on auto-reload and the in-browser debugger, which can run code,
+    # so it's off unless asked for. For anything other people use, run serve.py instead.
     with app.app_context():
         init_database()
-    app.run(debug=True, port=5003)
+    app.run(debug=os.environ.get('FLASK_DEBUG') == '1', port=int(os.environ.get('PORT', 5003)))

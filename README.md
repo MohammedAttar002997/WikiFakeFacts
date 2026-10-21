@@ -17,6 +17,7 @@ WikiFakeFact is an AI-powered quiz game designed to test players' knowledge with
 ```
 WikiFakeFacts/
 ├── app.py                  # Flask application: routes, accounts, admin commands
+├── serve.py                # Production server (waitress)
 ├── data.py                 # AI quiz generation and analysis, Wikipedia / knowledge-base lookup
 ├── badges.py               # Badge rules and daily streaks
 ├── translations.py         # UI translation helpers; catalogs in locales/
@@ -67,8 +68,14 @@ Create a `.env` file next to `app.py`:
 ```
 OPENAI_API_KEY="your_openai_api_key_here"
 SECRET_KEY="a long random string"   # signs login cookies; generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+FLASK_DEBUG=1                       # development only: auto-reload and in-browser debugger
 # Optional: a custom OpenAI base URL
 # OPENAI_BASE_URL="https://api.openai.com/v1"
+# Optional: which OpenAI models to use (these are the defaults)
+# OPENAI_QUIZ_MODEL="gpt-4o-mini"
+# OPENAI_ANALYSIS_MODEL="gpt-5-mini"
+# OPENAI_CHAT_MODEL="gpt-4o-mini"
+# OPENAI_EMBEDDING_MODEL="text-embedding-3-small"
 ```
 
 ### 5. Optional: Build the Local Knowledge Base
@@ -86,7 +93,19 @@ python rag_indexer.py      # creates chroma_db/ from knowledge_base.json
 python app.py
 ```
 
-The application should now be running at `http://127.0.0.1:5003/`. On startup it creates `quiz.sqlite` if needed and applies any pending database migrations.
+The application should now be running at `http://127.0.0.1:5003/`. On startup it creates `quiz.sqlite` if needed and applies any pending database migrations. Set `FLASK_DEBUG=1` in `.env` while developing to get auto-reload and the in-browser debugger.
+
+## Running it for other people
+
+`python app.py` uses Flask's development server. To let others play, use the production server instead:
+
+```bash
+python serve.py                # http://127.0.0.1:8000
+```
+
+- Set `HOST=0.0.0.0` to accept connections from other machines and `PORT` to change the port.
+- It won't start without a real `SECRET_KEY` or with `FLASK_DEBUG=1`, since either would let people take over accounts or run code on the server.
+- If the site is served over HTTPS, also set `SESSION_COOKIE_SECURE=1`.
 
 ## Database migrations
 
@@ -125,6 +144,8 @@ python -m pytest -m "not slow"   # skip the migration tests, which start the app
 ```
 
 The tests use a throwaway database and stub every OpenAI, Wikipedia and web request, so they're free and run offline.
+
+GitHub Actions runs the suite on every push and pull request (`.github/workflows/tests.yml`).
 
 ## Translations
 
