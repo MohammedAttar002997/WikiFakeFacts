@@ -160,7 +160,7 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
 
 
 def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None,
-                      time_limit=None):
+                      time_limit=None, challenge_of_id=None):
     """Save already-generated questions as the player's current quiz."""
     quiz_session = QuizSession(
         user_id=user.id,
@@ -173,7 +173,8 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
         current_question_index=0,
         score=0,
         daily_challenge_id=daily_challenge_id,
-        time_limit=time_limit
+        time_limit=time_limit,
+        challenge_of_id=challenge_of_id
     )
     db.session.add(quiz_session)
     db.session.commit()
@@ -250,6 +251,18 @@ def share_details(quiz_session):
     text = _("I spotted {score} of {total} fake facts about {topic} on WikiFakeFact. Can you beat me?").format(
         score=quiz_session.score, total=quiz_session.total_questions, topic=quiz_session.topic)
     return {'url': url_for('shared_result', code=quiz_session.share_code, _external=True), 'text': text}
+
+
+def challenge_comparison(quiz_session):
+    """How a finished challenge attempt compares with the quiz it replayed, or None."""
+    original = db.session.get(QuizSession, quiz_session.challenge_of_id) if quiz_session.challenge_of_id else None
+    if not original:
+        return None
+    opponent = db.session.get(User, original.user_id)
+    diff = quiz_session.score - original.score
+    return {'opponent': opponent.username, 'their_score': original.score, 'my_score': quiz_session.score,
+            'total': quiz_session.total_questions, 'outcome': 'win' if diff > 0 else ('tie' if diff == 0 else 'loss'),
+            'code': original.share_code}
 
 
 def seconds_left(quiz_session):
@@ -345,6 +358,11 @@ def logout():
 
 def delete_player_data(user, chat_id=None):
     """Remove a player and everything stored about them (shared daily-challenge quizzes stay)."""
+    # Other players' challenge attempts against this player's quizzes are kept, without the link back
+    own_quiz_ids = [q.id for q in QuizSession.query.filter_by(user_id=user.id).with_entities(QuizSession.id)]
+    if own_quiz_ids:
+        QuizSession.query.filter(QuizSession.challenge_of_id.in_(own_quiz_ids)).update(
+            {QuizSession.challenge_of_id: None}, synchronize_session=False)
     for model in (UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
@@ -487,6 +505,10 @@ def setup():
         clear_failed_pins(key)
         session['username'] = user.username
 
+        # Back to the challenge (or other page) that asked the player to sign in; only paths on this site
+        next_url = session.pop('next_url', None)
+        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+            return redirect(next_url)
         return render_setup()
     
     if 'username' not in session:
@@ -790,6 +812,7 @@ def results():
                            topic=quiz_session.topic,
                            is_daily=quiz_session.daily_challenge_id is not None,
                            share=share_details(quiz_session),
+                           challenge=challenge_comparison(quiz_session),
                            review=build_answer_review(quiz_session))
 
 
@@ -801,8 +824,50 @@ def shared_result(code):
         abort(404)
     player = db.session.get(User, quiz_session.user_id)
     score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
+    viewer = current_user()
+    my_attempt = (QuizSession.query.filter_by(user_id=viewer.id, challenge_of_id=quiz_session.id).first()
+                  if viewer else None)
+    challengers = (db.session.query(QuizSession, User).join(User, QuizSession.user_id == User.id)
+                   .filter(QuizSession.challenge_of_id == quiz_session.id, QuizSession.is_completed.is_(True))
+                   .order_by(QuizSession.score.desc(), QuizSession.id).all())
     return render_template('shared.html', quiz_session=quiz_session, player=player, score=score,
-                           percentage=round(quiz_session.score / quiz_session.total_questions * 100))
+                           percentage=round(quiz_session.score / quiz_session.total_questions * 100),
+                           is_owner=viewer is not None and viewer.id == player.id, my_attempt=my_attempt,
+                           challengers=challengers)
+
+
+@app.route('/r/<code>/play', methods=['POST'])
+def take_challenge(code):
+    """Play the exact questions of a shared quiz and compare scores."""
+    original = QuizSession.query.filter_by(share_code=code, is_completed=True).first()
+    if not original:
+        abort(404)
+    user = current_user()
+    if not user:
+        # Come back here after signing in
+        session['next_url'] = url_for('shared_result', code=code)
+        flash(_("Sign in to take the challenge."), "info")
+        return redirect(url_for('index'))
+    if original.daily_challenge_id:
+        # Replaying a daily challenge would reveal today's questions
+        flash(_("This was a daily challenge. Play today's daily challenge instead!"), "info")
+        return redirect(url_for('daily'))
+    if original.user_id == user.id:
+        flash(_("This is your own quiz, so here are your answers instead."), "info")
+        return redirect(url_for('review', quiz_session_id=original.id))
+
+    attempt = QuizSession.query.filter_by(user_id=user.id, challenge_of_id=original.id).first()
+    if attempt and attempt.is_completed:
+        flash(_("You've already taken this challenge."), "info")
+        return redirect(url_for('shared_result', code=code))
+    if attempt:
+        session['quiz_session_id'] = attempt.id
+        return redirect(url_for('quiz'))
+
+    save_quiz_session(user, original.topic, original.difficulty, json.loads(original.questions_json),
+                      json.loads(original.explanations_json or '[]'), _('Challenge'),
+                      time_limit=original.time_limit, challenge_of_id=original.id)
+    return redirect(url_for('quiz'))
 
 
 @app.route('/daily')

@@ -1109,3 +1109,8 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .timer-count { min-width: 2ch; text-align: right; font-variant-numeric: tabular-nums; }
 .quiz-timer.is-low { color: #ef4444; }
 .quiz-timer.is-low .timer-bar { background: #ef4444; }
+
+/* ---------- Challenges -------------------------------------------------------- */
+.challenge-result { border-top: 5px solid var(--wf-brand); }
+.challenge-result.is-win { border-top-color: #10b981; }
+.challenge-result.is-loss { border-top-color: #ef4444; }
