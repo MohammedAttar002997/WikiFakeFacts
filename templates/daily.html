@@ -5,32 +5,32 @@
     <div class="col-lg-9">
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-calendar-check-fill"></i> {{ date }}</span>
-            <h1>Daily challenge</h1>
-            <p>One quiz, the same for everyone, once a day. A new challenge starts at midnight UTC.</p>
+            <h1>{{ _('Daily challenge') }}</h1>
+            <p>{{ _('One quiz, the same for everyone, once a day. A new challenge starts at midnight UTC.') }}</p>
         </div>
 
         <div class="wf-card wf-card-pad mb-4 daily-card">
             <div class="daily-icon"><i class="bi bi-calendar-check-fill"></i></div>
             <div class="flex-grow-1 min-w-0">
-                <div class="small fw-bold text-muted text-uppercase">Today's topic</div>
+                <div class="small fw-bold text-muted text-uppercase">{{ _("Today's topic") }}</div>
                 <div class="h3 fw-black mb-1 text-truncate">{{ topic }}</div>
-                <div class="small text-muted">{{ rounds }} rounds &middot; {{ difficulty.split(' (')[0] }} &middot; one attempt</div>
+                <div class="small text-muted">{{ _n('{n} round', '{n} rounds', rounds) }} &middot; {{ _(difficulty.split(' (')[0]) }} &middot; {{ _('one attempt') }}</div>
             </div>
             <div class="flex-shrink-0 daily-action">
                 {% if not session.get('username') %}
-                <a href="/" class="btn btn-primary btn-lg"><i class="bi bi-person-fill me-1"></i>Sign in to play</a>
+                <a href="/" class="btn btn-primary btn-lg"><i class="bi bi-person-fill me-1"></i>{{ _('Sign in to play') }}</a>
                 {% elif attempt_score %}
                 <div class="text-center">
                     <div class="h2 fw-black text-brand mb-0">{{ attempt_score.score }} / {{ attempt_score.total_questions }}</div>
-                    <div class="small text-muted mb-2">Your score today</div>
+                    <div class="small text-muted mb-2">{{ _('Your score today') }}</div>
                     <a href="{{ url_for('review', quiz_session_id=attempt.id) }}" class="btn btn-sm btn-outline-primary">
-                        <i class="bi bi-search me-1"></i>Review answers
+                        <i class="bi bi-search me-1"></i>{{ _('Review answers') }}
                     </a>
                 </div>
                 {% else %}
-                <form action="{{ url_for('daily_start') }}" method="POST" data-loading="Preparing today's challenge…">
+                <form action="{{ url_for('daily_start') }}" method="POST" data-loading="{{ _("Preparing today's challenge…") }}">
                     <button type="submit" class="btn btn-primary btn-lg">
-                        {% if attempt %}<i class="bi bi-play-fill me-1"></i>Continue{% else %}<i class="bi bi-play-fill me-1"></i>Play today's challenge{% endif %}
+                        {% if attempt %}<i class="bi bi-play-fill me-1"></i>{{ _('Continue') }}{% else %}<i class="bi bi-play-fill me-1"></i>{{ _("Play today's challenge") }}{% endif %}
                     </button>
                 </form>
                 {% endif %}
@@ -38,7 +38,7 @@
         </div>
 
         <div class="wf-card p-3 p-md-4">
-            <div class="section-label px-1"><i class="bi bi-trophy-fill text-brand fs-4"></i>Today's leaderboard</div>
+            <div class="section-label px-1"><i class="bi bi-trophy-fill text-brand fs-4"></i>{{ _("Today's leaderboard") }}</div>
             {% if standings %}
             <div class="d-flex flex-column gap-2">
                 {% for score, player in standings %}
@@ -47,8 +47,8 @@
                     <div class="rank">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 else loop.index }}</div>
                     <div class="avatar avatar-sm avatar-c{{ (player.username|length % 5) + 1 }}">{{ player.username[:1] }}</div>
                     <div class="who">
-                        <span class="fw-bold">{{ player.username }}</span>{% if is_me %} <span class="text-brand small fw-bold">(you)</span>{% endif %}
-                        <div class="meta">Finished {{ score.timestamp.strftime('%H:%M') }} UTC</div>
+                        <span class="fw-bold">{{ player.username }}</span>{% if is_me %} <span class="text-brand small fw-bold">{{ _('(you)') }}</span>{% endif %}
+                        <div class="meta">{{ _('Finished {time} UTC').format(time=score.timestamp.strftime('%H:%M')) }}</div>
                     </div>
                     <div class="score">
                         <div class="pct">{{ score.score }} / {{ score.total_questions }}</div>
@@ -58,7 +58,7 @@
                 {% endfor %}
             </div>
             {% else %}
-            <p class="text-muted text-center my-4">Nobody has finished today's challenge yet. Be the first!</p>
+            <p class="text-muted text-center my-4">{{ _("Nobody has finished today's challenge yet. Be the first!") }}</p>
             {% endif %}
         </div>
     </div>

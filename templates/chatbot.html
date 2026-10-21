@@ -4,9 +4,9 @@
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="page-head">
-            <span class="eyebrow"><i class="bi bi-robot"></i> Assistant</span>
-            <h1>How can we help?</h1>
-            <p>Ask anything about playing WikiFakeFact.</p>
+            <span class="eyebrow"><i class="bi bi-robot"></i> {{ _('Assistant') }}</span>
+            <h1>{{ _('How can we help?') }}</h1>
+            <p>{{ _('Ask anything about playing WikiFakeFact.') }}</p>
         </div>
 
         <div class="row g-4">
@@ -15,22 +15,22 @@
                     <div class="chat-header">
                         <div class="avatar avatar-sm"><i class="bi bi-robot"></i></div>
                         <div>
-                            <div class="fw-black">WikiFakeFact Assistant</div>
-                            <div class="status"><i class="bi bi-circle-fill" style="font-size: .5rem;"></i> Online</div>
+                            <div class="fw-black">{{ _('WikiFakeFact Assistant') }}</div>
+                            <div class="status"><i class="bi bi-circle-fill" style="font-size: .5rem;"></i> {{ _('Online') }}</div>
                         </div>
                     </div>
 
                     <div id="chatMessages" class="chat-messages" aria-live="polite">
                         <div class="chat-message assistant">
                             <div class="bot-avatar"><i class="bi bi-robot"></i></div>
-                            <div class="message-content assistant">👋 Hi! I'm your WikiFakeFact assistant. How can I help you navigate the app today?</div>
+                            <div class="message-content assistant">👋 {{ _("Hi! I'm your WikiFakeFact assistant. How can I help you navigate the app today?") }}</div>
                         </div>
                     </div>
 
                     <form id="chatForm" class="chat-input">
                         <input type="text" id="messageInput" class="form-control form-control-lg"
-                               placeholder="Ask me anything..." autocomplete="off" aria-label="Message">
-                        <button type="submit" class="btn btn-primary" id="sendButton" aria-label="Send">
+                               placeholder="{{ _('Ask me anything...') }}" autocomplete="off" aria-label="{{ _('Message') }}">
+                        <button type="submit" class="btn btn-primary" id="sendButton" aria-label="{{ _('Send') }}">
                             <i class="bi bi-send-fill"></i>
                         </button>
                     </form>
@@ -38,7 +38,7 @@
             </div>
 
             <div class="col-lg-4">
-                <div class="section-label"><i class="bi bi-lightning-charge-fill text-brand"></i>Quick Help</div>
+                <div class="section-label"><i class="bi bi-lightning-charge-fill text-brand"></i>{{ _('Quick Help') }}</div>
                 <div class="d-flex flex-column gap-2">
                     {% for suggestion in suggestions %}
                     <button type="button" class="suggestion-chip quick-suggestion"
@@ -99,7 +99,7 @@
         } catch (error) {
             console.error('Error:', error);
             typing.remove();
-            addMessage('Sorry, I encountered an error. Please try again.', 'assistant');
+            addMessage({{ _('Sorry, I encountered an error. Please try again.')|tojson }}, 'assistant');
         } finally {
             setPending(false);
         }
@@ -130,7 +130,8 @@
     function addTypingIndicator() {
         const row = messageRow('assistant');
         row.insertAdjacentHTML('beforeend',
-            '<div class="message-content assistant typing" aria-label="Assistant is typing"><span></span><span></span><span></span></div>');
+            '<div class="message-content assistant typing"><span></span><span></span><span></span></div>');
+        row.querySelector('.typing').setAttribute('aria-label', {{ _('Assistant is typing')|tojson }});
         chatMessages.appendChild(row);
         chatMessages.scrollTop = chatMessages.scrollHeight;
         return row;

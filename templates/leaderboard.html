@@ -4,43 +4,43 @@
 <div class="row justify-content-center">
     <div class="col-lg-9">
         <div class="page-head">
-            <span class="eyebrow"><i class="bi bi-trophy-fill"></i> Top 10</span>
-            <h1>Leaderboard</h1>
-            <p>The sharpest fake-fact detectors so far, ranked by total correct answers.</p>
+            <span class="eyebrow"><i class="bi bi-trophy-fill"></i> {{ _('Top 10') }}</span>
+            <h1>{{ _('Leaderboard') }}</h1>
+            <p>{{ _('The sharpest fake-fact detectors so far, ranked by total correct answers.') }}</p>
         </div>
 
         <form method="get" action="{{ url_for('leaderboard') }}" class="wf-card leaderboard-filters mb-4" id="leaderboardFilters">
             <div class="filter-field">
-                <label for="fPeriod" class="filter-label">Time</label>
+                <label for="fPeriod" class="filter-label">{{ _('Time') }}</label>
                 <select id="fPeriod" name="period" class="form-select">
                     {% for value, label in periods.items() %}
-                    <option value="{{ value }}"{% if filters.period == value %} selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}"{% if filters.period == value %} selected{% endif %}>{{ _(label) }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="filter-field">
-                <label for="fCategory" class="filter-label">Category</label>
+                <label for="fCategory" class="filter-label">{{ _('Category') }}</label>
                 <select id="fCategory" name="category" class="form-select">
-                    <option value="all">All categories</option>
+                    <option value="all">{{ _('All categories') }}</option>
                     {% for value, label in categories.items() %}
-                    <option value="{{ value }}"{% if filters.category == value %} selected{% endif %}>{{ label }}</option>
+                    <option value="{{ value }}"{% if filters.category == value %} selected{% endif %}>{{ _(label) }}</option>
                     {% endfor %}
-                    <option value="custom"{% if filters.category == 'custom' %} selected{% endif %}>Custom quizzes</option>
+                    <option value="custom"{% if filters.category == 'custom' %} selected{% endif %}>{{ _('Custom quizzes') }}</option>
                 </select>
             </div>
             <div class="filter-field">
-                <label for="fDifficulty" class="filter-label">Difficulty</label>
+                <label for="fDifficulty" class="filter-label">{{ _('Difficulty') }}</label>
                 <select id="fDifficulty" name="difficulty" class="form-select">
-                    <option value="all">All difficulties</option>
+                    <option value="all">{{ _('All difficulties') }}</option>
                     {% for value, label in difficulties.items() %}
-                    <option value="{{ value }}"{% if filters.difficulty == value %} selected{% endif %}>{{ label.split(' (')[0] }}</option>
+                    <option value="{{ value }}"{% if filters.difficulty == value %} selected{% endif %}>{{ _(label.split(' (')[0]) }}</option>
                     {% endfor %}
                 </select>
             </div>
             <div class="filter-actions">
-                <noscript><button type="submit" class="btn btn-primary">Apply</button></noscript>
+                <noscript><button type="submit" class="btn btn-primary">{{ _('Apply') }}</button></noscript>
                 {% if filtered %}
-                <a href="{{ url_for('leaderboard') }}" class="btn btn-link text-brand fw-bold text-decoration-none px-1">Reset</a>
+                <a href="{{ url_for('leaderboard') }}" class="btn btn-link text-brand fw-bold text-decoration-none px-1">{{ _('Reset') }}</a>
                 {% endif %}
             </div>
         </form>
@@ -49,11 +49,11 @@
         <div class="podium">
             {% for row in standings[:3] %}
             {% set is_me = row.user.username == session.get('username') %}
-            {% if is_me %}<a class="podium-spot podium-{{ loop.index }}" href="{{ url_for('analysis') }}" data-loading="Analyzing your progress…" data-loading-tips="analysis">{% else %}<div class="podium-spot podium-{{ loop.index }}">{% endif %}
+            {% if is_me %}<a class="podium-spot podium-{{ loop.index }}" href="{{ url_for('analysis') }}" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis">{% else %}<div class="podium-spot podium-{{ loop.index }}">{% endif %}
                 <div class="medal">{{ ['🥇', '🥈', '🥉'][loop.index0] }}</div>
                 <div class="avatar avatar-c{{ (row.user.username|length % 5) + 1 }} mx-auto my-2">{{ row.user.username[:1] }}</div>
                 <div class="name">{{ row.user.username }}</div>
-                <div class="pct">{{ row.points }} pts</div>
+                <div class="pct">{{ _('{points} pts').format(points=row.points) }}</div>
                 <div class="block">{{ loop.index }}</div>
             {% if is_me %}</a>{% else %}</div>{% endif %}
             {% endfor %}
@@ -67,17 +67,17 @@
                     <div class="avatar avatar-sm avatar-c{{ (row.user.username|length % 5) + 1 }}">{{ row.user.username[:1] }}</div>
                     <div class="who">
                         {% if row.user.username == session.get('username') %}
-                            <a href="{{ url_for('analysis') }}" data-loading="Analyzing your progress…" data-loading-tips="analysis">{{ row.user.username }}</a> <span class="text-brand small fw-bold">(you)</span>
+                            <a href="{{ url_for('analysis') }}" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis">{{ row.user.username }}</a> <span class="text-brand small fw-bold">{{ _('(you)') }}</span>
                         {% else %}
                             <span class="fw-bold">{{ row.user.username }}</span>
                         {% endif %}
                         <div class="meta text-truncate">
-                            <i class="bi bi-controller"></i> {{ row.quizzes }} quiz{{ 'zes' if row.quizzes != 1 }} played
-                            <span class="d-none d-sm-inline">&middot; {{ row.percentage|round|int }}% accuracy</span>
+                            <i class="bi bi-controller"></i> {{ _n('{n} quiz played', '{n} quizzes played', row.quizzes) }}
+                            <span class="d-none d-sm-inline">&middot; {{ _('{pct}% accuracy').format(pct=row.percentage|round|int) }}</span>
                         </div>
                     </div>
                     <div class="score">
-                        <div class="pct">{{ row.points }} pts</div>
+                        <div class="pct">{{ _('{points} pts').format(points=row.points) }}</div>
                         <div class="meta">{{ row.points }} / {{ row.total_questions }}</div>
                     </div>
                 </div>
@@ -87,16 +87,16 @@
         {% elif filtered %}
         <div class="wf-card wf-card-pad text-center">
             <div class="display-4 mb-3">🔍</div>
-            <h2 class="h4 fw-black">No scores match these filters</h2>
-            <p class="text-muted">Try a longer time range or another category.</p>
-            <a href="{{ url_for('leaderboard') }}" class="btn btn-outline-primary btn-lg">Show all scores</a>
+            <h2 class="h4 fw-black">{{ _('No scores match these filters') }}</h2>
+            <p class="text-muted">{{ _('Try a longer time range or another category.') }}</p>
+            <a href="{{ url_for('leaderboard') }}" class="btn btn-outline-primary btn-lg">{{ _('Show all scores') }}</a>
         </div>
         {% else %}
         <div class="wf-card wf-card-pad text-center">
             <div class="display-4 mb-3">🏁</div>
-            <h2 class="h4 fw-black">No scores recorded yet</h2>
-            <p class="text-muted">Be the first to play and claim the top spot!</p>
-            <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-1"></i>Play now</a>
+            <h2 class="h4 fw-black">{{ _('No scores recorded yet') }}</h2>
+            <p class="text-muted">{{ _('Be the first to play and claim the top spot!') }}</p>
+            <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-1"></i>{{ _('Play now') }}</a>
         </div>
         {% endif %}
     </div>

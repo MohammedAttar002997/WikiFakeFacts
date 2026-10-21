@@ -3,6 +3,8 @@
 
 (function () {
     const root = document.documentElement;
+    // Interface strings from base.html; English if a page doesn't provide them
+    const i18n = window.WF_I18N || {};
 
     function storedTheme() {
         try { return localStorage.getItem('theme'); } catch (e) { return null; }
@@ -11,8 +13,8 @@
     function applyTheme(theme) {
         root.setAttribute('data-bs-theme', theme);
         document.querySelectorAll('[data-theme-toggle]').forEach(btn => {
-            btn.setAttribute('aria-label', theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode');
-            btn.setAttribute('title', theme === 'dark' ? 'Light mode' : 'Dark mode');
+            btn.setAttribute('aria-label', theme === 'dark' ? (i18n.switchToLight || 'Switch to light mode') : (i18n.switchToDark || 'Switch to dark mode'));
+            btn.setAttribute('title', theme === 'dark' ? (i18n.lightMode || 'Light mode') : (i18n.darkMode || 'Dark mode'));
         });
     }
 
@@ -35,7 +37,7 @@
     // Loading overlay for forms and links that trigger slow AI generation
     const overlay = document.getElementById('loadingOverlay');
     const tipEl = document.getElementById('loadingTip');
-    const tipSets = {
+    const tipSets = (i18n.tips) || {
         quiz: [
             'Reading up on your topic…',
             'Mixing three true facts with one sneaky fake…',

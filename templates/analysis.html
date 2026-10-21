@@ -8,44 +8,45 @@
             <div class="d-flex flex-column flex-md-row align-items-center gap-4">
                 <div class="avatar avatar-lg avatar-c{{ (profile_user.username|length % 5) + 1 }}">{{ profile_user.username[:1] }}</div>
                 <div class="text-center text-md-start flex-grow-1">
-                    <span class="eyebrow chip chip-brand mb-2"><i class="bi bi-graph-up-arrow"></i>{{ t.analysis_title }}</span>
+                    <span class="eyebrow chip chip-brand mb-2"><i class="bi bi-graph-up-arrow"></i>{{ _('Performance Analysis') }}</span>
                     <h1 class="fw-black mb-0">{{ profile_user.username }}</h1>
                 </div>
                 <div class="row g-2 flex-shrink-0" style="min-width: min(100%, 340px);">
-                    <div class="col-4"><div class="stat-tile"><div class="value">{{ total_games }}</div><div class="label">Games</div></div></div>
-                    <div class="col-4"><div class="stat-tile"><div class="value">{{ analysis_data|length }}</div><div class="label">Topics</div></div></div>
-                    <div class="col-4"><div class="stat-tile"><div class="value text-brand">{{ analysis_data[0].avg_percentage|round|int if analysis_data else 0 }}%</div><div class="label">Best</div></div></div>
+                    <div class="col-4"><div class="stat-tile"><div class="value">{{ total_games }}</div><div class="label">{{ _('Games') }}</div></div></div>
+                    <div class="col-4"><div class="stat-tile"><div class="value">{{ analysis_data|length }}</div><div class="label">{{ _('Topics') }}</div></div></div>
+                    <div class="col-4"><div class="stat-tile"><div class="value text-brand">{{ analysis_data[0].avg_percentage|round|int if analysis_data else 0 }}%</div><div class="label">{{ _('Best') }}</div></div></div>
                 </div>
             </div>
         </div>
 
         {% if practice_topic %}
         <form action="{{ url_for('practice') }}" method="POST" class="wf-card wf-card-pad mb-4 practice-card"
-              data-loading="Building your practice quiz…">
+              data-loading="{{ _('Building your practice quiz…') }}">
             <div class="practice-icon"><i class="bi bi-bullseye"></i></div>
             <div class="flex-grow-1 min-w-0">
-                <div class="small fw-bold text-muted text-uppercase">Practice your weak spot</div>
+                <div class="small fw-bold text-muted text-uppercase">{{ _('Practice your weak spot') }}</div>
                 <div class="h5 fw-black mb-0 text-truncate">{{ practice_topic.topic }}</div>
                 <div class="small text-muted">
-                    {{ practice_topic.avg_percentage|round|int }}% across {{ practice_topic.games_played }}
-                    game{{ 's' if practice_topic.games_played != 1 }} &middot; 5 rounds at {{ practice_topic.difficulty.split(' (')[0] }}
+                    {{ _('{pct}% average').format(pct=practice_topic.avg_percentage|round|int) }} &middot;
+                    {{ _n('{n} game', '{n} games', practice_topic.games_played) }} &middot;
+                    {{ _('{rounds} rounds at {difficulty}').format(rounds=5, difficulty=_(practice_topic.difficulty.split(' (')[0])) }}
                 </div>
             </div>
             <button type="submit" class="btn btn-primary btn-lg flex-shrink-0">
-                <i class="bi bi-play-fill me-1"></i>Practice now
+                <i class="bi bi-play-fill me-1"></i>{{ _('Practice now') }}
             </button>
         </form>
         {% endif %}
 
         <div class="wf-card wf-card-pad mb-4">
             <div class="d-flex flex-column flex-md-row align-items-md-center justify-content-between gap-3 mb-3">
-                <div class="section-label mb-0"><i class="bi bi-award-fill text-brand fs-4"></i>Badges &amp; streak</div>
+                <div class="section-label mb-0"><i class="bi bi-award-fill text-brand fs-4"></i>{{ _('Badges & streak') }}</div>
                 <div class="d-flex gap-2 flex-wrap">
                     <span class="chip streak-chip{% if current_streak %} is-active{% endif %}">
-                        🔥 {{ current_streak }}-day streak{% if current_streak and not played_today %} &middot; play today to keep it{% endif %}
+                        🔥 {{ _n('{n}-day streak', '{n}-day streak', current_streak) }}{% if current_streak and not played_today %} &middot; {{ _('play today to keep it') }}{% endif %}
                     </span>
-                    <span class="chip">Best: {{ best_streak }} day{{ 's' if best_streak != 1 }}</span>
-                    <span class="chip">{{ earned_badges|length }} / {{ badges|length }} badges</span>
+                    <span class="chip">{{ _('Best: {days}').format(days=_n('{n} day', '{n} days', best_streak)) }}</span>
+                    <span class="chip">{{ _('{earned} / {total} badges').format(earned=earned_badges|length, total=badges|length) }}</span>
                 </div>
             </div>
             <div class="badge-grid">
@@ -53,12 +54,12 @@
                 {% set earned_at = earned_badges.get(badge.key) %}
                 <div class="badge-tile{% if not earned_at %} is-locked{% endif %}">
                     <div class="badge-icon" aria-hidden="true">{{ badge.icon if earned_at else '🔒' }}</div>
-                    <div class="fw-black small">{{ badge.name }}</div>
-                    <div class="badge-desc">{{ badge.description }}</div>
+                    <div class="fw-black small">{{ _(badge.name) }}</div>
+                    <div class="badge-desc">{{ _(badge.description) }}</div>
                     {% if earned_at %}
-                    <div class="badge-date">Earned {{ earned_at.strftime('%b %d, %Y') }}</div>
+                    <div class="badge-date">{{ _('Earned {date}').format(date=earned_at|date) }}</div>
                     {% else %}
-                    <span class="visually-hidden">Not earned yet</span>
+                    <span class="visually-hidden">{{ _('Not earned yet') }}</span>
                     {% endif %}
                 </div>
                 {% endfor %}
@@ -67,18 +68,18 @@
 
         {% if ai_analysis %}
         <div class="wf-card wf-card-pad mb-4">
-            <div class="section-label"><i class="bi bi-cpu-fill text-brand fs-4"></i>AI Performance Summary</div>
+            <div class="section-label"><i class="bi bi-cpu-fill text-brand fs-4"></i>{{ _('AI Performance Summary') }}</div>
             <p class="lead">{{ ai_analysis.overall_summary }}</p>
             <div class="row g-3 mt-1">
                 <div class="col-md-6">
                     <div class="insight-box insight-good">
-                        <h3 class="h6 fw-black text-success mb-1"><i class="bi bi-star-fill me-1"></i>Strongest Area</h3>
+                        <h3 class="h6 fw-black text-success mb-1"><i class="bi bi-star-fill me-1"></i>{{ _('Strongest Area') }}</h3>
                         <p class="mb-0">{{ ai_analysis.strongest_area }}</p>
                     </div>
                 </div>
                 <div class="col-md-6">
                     <div class="insight-box insight-warn">
-                        <h3 class="h6 fw-black text-warning mb-1"><i class="bi bi-bullseye me-1"></i>Area to Improve</h3>
+                        <h3 class="h6 fw-black text-warning mb-1"><i class="bi bi-bullseye me-1"></i>{{ _('Area to Improve') }}</h3>
                         <p class="mb-0">{{ ai_analysis.weakest_area }}</p>
                     </div>
                 </div>
@@ -88,7 +89,7 @@
         <div class="row g-4 mb-4">
             <div class="col-lg-5">
                 <div class="wf-card wf-card-pad h-100">
-                    <div class="section-label"><i class="bi bi-map-fill text-brand fs-4"></i>Your Learning Path</div>
+                    <div class="section-label"><i class="bi bi-map-fill text-brand fs-4"></i>{{ _('Your Learning Path') }}</div>
                     {% for step in ai_analysis.learning_path %}
                     <div class="path-step">
                         <span class="num">{{ loop.index }}</span>
@@ -99,14 +100,14 @@
             </div>
             <div class="col-lg-7">
                 <div class="wf-card wf-card-pad h-100">
-                    <div class="section-label"><i class="bi bi-lightbulb-fill text-brand fs-4"></i>Deep Topic Insights</div>
+                    <div class="section-label"><i class="bi bi-lightbulb-fill text-brand fs-4"></i>{{ _('Deep Topic Insights') }}</div>
                     <div class="d-flex flex-column gap-3">
                         {% for insight in ai_analysis.topic_insights %}
                         <div class="stat-tile text-start">
                             <h3 class="h6 fw-black mb-2">{{ insight.topic }}</h3>
-                            <p class="small mb-1"><i class="bi bi-plus-circle-fill text-success me-1"></i><strong>Strength:</strong> {{ insight.strength }}</p>
-                            <p class="small mb-2"><i class="bi bi-dash-circle-fill text-danger me-1"></i><strong>Weakness:</strong> {{ insight.weakness }}</p>
-                            <div class="tip"><strong>Coach's Tip:</strong> {{ insight.recommendation }}</div>
+                            <p class="small mb-1"><i class="bi bi-plus-circle-fill text-success me-1"></i><strong>{{ _('Strength:') }}</strong> {{ insight.strength }}</p>
+                            <p class="small mb-2"><i class="bi bi-dash-circle-fill text-danger me-1"></i><strong>{{ _('Weakness:') }}</strong> {{ insight.weakness }}</p>
+                            <div class="tip"><strong>{{ _("Coach's Tip:") }}</strong> {{ insight.recommendation }}</div>
                         </div>
                         {% endfor %}
                     </div>
@@ -116,12 +117,12 @@
         {% else %}
         <div class="alert alert-info wf-alert mb-4">
             <i class="bi bi-info-circle-fill alert-icon"></i>
-            <div>AI Analysis is currently unavailable. Showing basic statistics below.</div>
+            <div>{{ _('AI Analysis is currently unavailable. Showing basic statistics below.') }}</div>
         </div>
         {% endif %}
 
         <div class="wf-card wf-card-pad">
-            <div class="section-label"><i class="bi bi-bar-chart-fill text-brand fs-4"></i>{{ t.topic_breakdown }}</div>
+            <div class="section-label"><i class="bi bi-bar-chart-fill text-brand fs-4"></i>{{ _('Topic Breakdown') }}</div>
             <div class="d-flex flex-column gap-3">
                 {% for data in analysis_data %}
                 {% set meter = 'meter-good' if data.avg_percentage >= 80 else ('meter-mid' if data.avg_percentage >= 50 else 'meter-low') %}
@@ -129,11 +130,11 @@
                     <div class="d-flex justify-content-between align-items-baseline mb-1 gap-2">
                         <span class="fw-bold text-truncate">{{ data.topic }}</span>
                         <span class="small text-muted flex-shrink-0">
-                            {{ data.games_played }} {{ t.games_played|lower }} &middot;
+                            {{ _n('{n} game', '{n} games', data.games_played) }} &middot;
                             <strong class="text-body">{{ data.avg_percentage|round|int }}%</strong>
                         </span>
                     </div>
-                    <div class="meter" role="progressbar" aria-label="{{ data.topic }} {{ t.avg_score }}"
+                    <div class="meter" role="progressbar" aria-label="{{ data.topic }} {{ _('Average Score') }}"
                          aria-valuenow="{{ data.avg_percentage }}" aria-valuemin="0" aria-valuemax="100">
                         <span class="{{ meter }}" style="width: {{ data.avg_percentage }}%;"></span>
                     </div>
@@ -143,8 +144,8 @@
         </div>
 
         <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mt-4">
-            <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-arrow-repeat me-1"></i>{{ t.play_again }}</a>
-            <a href="{{ url_for('history') }}" class="btn btn-outline-primary btn-lg"><i class="bi bi-clock-history me-1"></i>Quiz history</a>
+            <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-arrow-repeat me-1"></i>{{ _('Play Again') }}</a>
+            <a href="{{ url_for('history') }}" class="btn btn-outline-primary btn-lg"><i class="bi bi-clock-history me-1"></i>{{ _('Quiz history') }}</a>
         </div>
     </div>
 </div>

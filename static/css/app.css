@@ -188,6 +188,11 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     display: flex;
     align-items: center;
     gap: .4rem;
+    white-space: nowrap;
+}
+/* Translated labels are longer; tighten the horizontal nav on mid-size screens */
+@media (min-width: 1200px) and (max-width: 1399.98px) {
+    .wf-navbar .nav-link { padding: .45rem .55rem !important; font-size: .95rem; }
 }
 .wf-navbar .nav-link:hover { color: var(--wf-text); background: var(--wf-brand-soft); }
 .wf-navbar .nav-link.active { color: var(--wf-brand); background: var(--wf-brand-soft); }
@@ -207,6 +212,9 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .theme-toggle .bi-sun-fill { display: none; }
 [data-bs-theme="dark"] .theme-toggle .bi-sun-fill { display: inline; }
 [data-bs-theme="dark"] .theme-toggle .bi-moon-stars-fill { display: none; }
+.theme-toggle.lang-toggle { width: auto; min-width: 2.5rem; padding: 0 .65rem; border-radius: 999px; display: inline-flex; gap: .3rem; font-weight: 800; font-size: .8rem; }
+.theme-toggle.lang-toggle:hover { transform: none; }
+.lang-toggle .lang-code { letter-spacing: .03em; }
 
 /* ---------- Surfaces ------------------------------------------------------ */
 

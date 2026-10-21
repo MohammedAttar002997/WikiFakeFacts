@@ -5,25 +5,26 @@
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="page-head">
-            <span class="eyebrow"><i class="bi bi-controller"></i> New game</span>
-            <h1>{{ t.setup_title }}</h1>
+            <span class="eyebrow"><i class="bi bi-controller"></i> {{ _('New game') }}</span>
+            <h1>{{ _('Game Setup') }}</h1>
             {% if session.get('username') %}
-            <p>Ready, <strong>{{ session['username'] }}</strong>? Set up your round below.</p>
+            {% set who %}<strong>{{ session['username'] }}</strong>{% endset %}
+            <p>{{ _('Ready, {name}? Set up your round below.').format(name=who) }}</p>
             {% endif %}
         </div>
 
         <a href="{{ url_for('daily') }}" class="wf-card daily-banner mb-4">
             <span class="daily-banner-icon"><i class="bi bi-calendar-check-fill"></i></span>
             <span class="flex-grow-1 min-w-0">
-                <span class="d-block fw-black">Daily challenge</span>
-                <span class="d-block small text-muted text-truncate">Today's topic: {{ daily_topic }} &middot; same quiz for everyone</span>
+                <span class="d-block fw-black">{{ _('Daily challenge') }}</span>
+                <span class="d-block small text-muted text-truncate">{{ _("Today's topic: {topic} · same quiz for everyone").format(topic=daily_topic) }}</span>
             </span>
             <i class="bi bi-chevron-right text-brand"></i>
         </a>
 
-        <form action="/start_quiz" method="POST" class="wf-card wf-card-pad" data-loading="Generating your quiz…">
+        <form action="/start_quiz" method="POST" class="wf-card wf-card-pad" data-loading="{{ _('Generating your quiz…') }}">
             <section class="mb-5">
-                <div class="section-label"><span class="step">1</span>{{ t.select_category }}</div>
+                <div class="section-label"><span class="step">1</span>{{ _('Select Category:') }}</div>
                 <div class="row g-3">
                     {% for id, name in categories.items() %}
                     <div class="col-6 col-md-4 col-lg-3">
@@ -31,38 +32,38 @@
                         <label class="tile" for="cat{{ id }}">
                             <i class="bi bi-check-circle-fill tile-check"></i>
                             <span class="tile-emoji">{{ CATEGORY_EMOJI.get(name, '❓') }}</span>
-                            <span class="tile-title">{{ name }}</span>
+                            <span class="tile-title">{{ _(name) }}</span>
                         </label>
                     </div>
                     {% endfor %}
                     <div class="col-6 col-md-4 col-lg-3">
                         <a class="tile tile-link" href="/custom_quiz">
                             <span class="tile-emoji">📄</span>
-                            <span class="tile-title text-brand">Custom Content</span>
-                            <span class="tile-sub">Upload file or URL</span>
+                            <span class="tile-title text-brand">{{ _('Custom Content') }}</span>
+                            <span class="tile-sub">{{ _('Upload file or URL') }}</span>
                         </a>
                     </div>
                 </div>
             </section>
 
             <section class="mb-5">
-                <div class="section-label"><span class="step">2</span>{{ t.game_length }}</div>
+                <div class="section-label"><span class="step">2</span>{{ _('Game Length:') }}</div>
                 {{ length_tiles(lengths) }}
             </section>
 
             <section class="mb-5">
-                <div class="section-label"><span class="step">3</span>{{ t.difficulty }}</div>
+                <div class="section-label"><span class="step">3</span>{{ _('Difficulty / Age Group:') }}</div>
                 {{ difficulty_tiles(difficulties) }}
             </section>
 
             <section class="mb-5">
-                <div class="section-label"><span class="step">4</span>{{ t.language }}</div>
-                {{ language_select(languages) }}
+                <div class="section-label"><span class="step">4</span>{{ _('Quiz Language:') }}</div>
+                {{ language_select(languages, ui_language) }}
             </section>
 
             <div class="text-center">
                 <button type="submit" class="btn btn-primary btn-lg px-5">
-                    <i class="bi bi-play-fill me-1"></i>{{ t.start_game }}
+                    <i class="bi bi-play-fill me-1"></i>{{ _('Start Game') }}
                 </button>
             </div>
         </form>

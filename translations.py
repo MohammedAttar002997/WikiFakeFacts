@@ -1,138 +1,118 @@
-TRANSLATIONS = {
-    'en': {
-        'home': 'Home',
-        'leaderboard': 'Leaderboard',
-        'players': 'Players',
-        'progress': 'My Progress',
-        'welcome': 'Welcome to WikiFakeFact!',
-        'tagline': 'The ultimate AI-powered trivia game where you spot the lie among Wikipedia facts.',
-        'start_playing': 'Start Playing',
-        'setup_title': 'Game Setup',
-        'select_category': 'Select Category:',
-        'game_length': 'Game Length:',
-        'difficulty': 'Difficulty / Age Group:',
-        'language': 'Quiz Language:',
-        'start_game': 'Start Game',
-        'quiz_title': 'Spot the Fake Fact!',
-        'question': 'Question',
-        'of': 'of',
-        'topic': 'Topic:',
-        'submit_answer': 'Submit Answer',
-        'correct': 'Correct! You found the fake fact.',
-        'incorrect': 'Incorrect. The fake fact was:',
-        'results_title': 'Game Results',
-        'final_score': 'Final Score:',
-        'play_again': 'Play Again',
-        'view_leaderboard': 'View Leaderboard',
-        'analysis_title': 'Performance Analysis',
-        'strongest_topic': 'Strongest Topic',
-        'topic_to_improve': 'Topic to Improve',
-        'recommendations': 'Recommendations',
-        'topic_breakdown': 'Topic Breakdown',
-        'games_played': 'Games Played',
-        'avg_score': 'Average Score',
-        'performance': 'Performance'
-    },
-    'es': {
-        'home': 'Inicio',
-        'leaderboard': 'Clasificación',
-        'players': 'Jugadores',
-        'progress': 'Mi Progreso',
-        'welcome': '¡Bienvenido a WikiFakeFact!',
-        'tagline': 'El juego de trivia definitivo impulsado por IA donde encuentras la mentira entre los hechos de Wikipedia.',
-        'start_playing': 'Empezar a Jugar',
-        'setup_title': 'Configuración del Juego',
-        'select_category': 'Seleccionar Categoría:',
-        'game_length': 'Duración del Juego:',
-        'difficulty': 'Dificultad / Grupo de Edad:',
-        'language': 'Idioma del Cuestionario:',
-        'start_game': 'Empezar Juego',
-        'quiz_title': '¡Encuentra el Hecho Falso!',
-        'question': 'Pregunta',
-        'of': 'de',
-        'topic': 'Tema:',
-        'submit_answer': 'Enviar Respuesta',
-        'correct': '¡Correcto! Encontraste el hecho falso.',
-        'incorrect': 'Incorrecto. El hecho falso era:',
-        'results_title': 'Resultados del Juego',
-        'final_score': 'Puntuación Final:',
-        'play_again': 'Jugar de Nuevo',
-        'view_leaderboard': 'Ver Clasificación',
-        'analysis_title': 'Análisis de Rendimiento',
-        'strongest_topic': 'Tema más Fuerte',
-        'topic_to_improve': 'Tema a Mejorar',
-        'recommendations': 'Recomendaciones',
-        'topic_breakdown': 'Desglose por Tema',
-        'games_played': 'Partidas Jugadas',
-        'avg_score': 'Puntuación Media',
-        'performance': 'Rendimiento'
-    },
-    'fr': {
-        'home': 'Accueil',
-        'leaderboard': 'Classement',
-        'players': 'Joueurs',
-        'progress': 'Mon Progrès',
-        'welcome': 'Bienvenue sur WikiFakeFact !',
-        'tagline': 'Le jeu de quiz ultime propulsé par l\'IA où vous repérez le mensonge parmi les faits Wikipédia.',
-        'start_playing': 'Commencer à Jouer',
-        'setup_title': 'Configuration du Jeu',
-        'select_category': 'Choisir une Catégorie :',
-        'game_length': 'Durée du Jeu :',
-        'difficulty': 'Difficulté / Groupe d\'Âge :',
-        'language': 'Langue du Quiz :',
-        'start_game': 'Démarrer le Jeu',
-        'quiz_title': 'Repérez le Faux Fait !',
-        'question': 'Question',
-        'of': 'sur',
-        'topic': 'Sujet :',
-        'submit_answer': 'Valider la Réponse',
-        'correct': 'Correct ! Vous avez trouvé le faux fait.',
-        'incorrect': 'Incorrect. Le faux fait était :',
-        'results_title': 'Résultats du Jeu',
-        'final_score': 'Score Final :',
-        'play_again': 'Rejouer',
-        'view_leaderboard': 'Voir le Classement',
-        'analysis_title': 'Analyse de Performance',
-        'strongest_topic': 'Sujet le plus Fort',
-        'topic_to_improve': 'Sujet à Améliorer',
-        'recommendations': 'Recommandations',
-        'topic_breakdown': 'Détail par Sujet',
-        'games_played': 'Parties Jouées',
-        'avg_score': 'Score Moyen',
-        'performance': 'Performance'
-    },
-    'de': {
-        'home': 'Startseite',
-        'leaderboard': 'Bestenliste',
-        'players': 'Spieler',
-        'progress': 'Mein Fortschritt',
-        'welcome': 'Willkommen bei WikiFakeFact!',
-        'tagline': 'Das ultimative KI-gestützte Quizspiel, bei dem du die Lüge unter Wikipedia-Fakten findest.',
-        'start_playing': 'Jetzt Spielen',
-        'setup_title': 'Spiel-Setup',
-        'select_category': 'Kategorie wählen:',
-        'game_length': 'Spiellänge:',
-        'difficulty': 'Schwierigkeit / Altersgruppe:',
-        'language': 'Quiz-Sprache:',
-        'start_game': 'Spiel Starten',
-        'quiz_title': 'Finde den falschen Fakt!',
-        'question': 'Frage',
-        'of': 'von',
-        'topic': 'Thema:',
-        'submit_answer': 'Antwort Absenden',
-        'correct': 'Richtig! Du hast den falschen Fakt gefunden.',
-        'incorrect': 'Falsch. Der falsche Fakt war:',
-        'results_title': 'Spielergebnisse',
-        'final_score': 'Endstand:',
-        'play_again': 'Nochmal Spielen',
-        'view_leaderboard': 'Bestenliste ansehen',
-        'analysis_title': 'Leistungsanalyse',
-        'strongest_topic': 'Stärkstes Thema',
-        'topic_to_improve': 'Thema zum Verbessern',
-        'recommendations': 'Empfehlungen',
-        'topic_breakdown': 'Themenübersicht',
-        'games_played': 'Gespielte Spiele',
-        'avg_score': 'Durchschnittliche Punktzahl',
-        'performance': 'Leistung'
+"""UI translations.
+
+Strings are written in English in the code and looked up in locales/<lang>.json, which map the English text to
+its translation. Anything missing falls back to English, so a new string shows up in English until translated.
+
+- Templates: {{ _('Play now') }}, {{ _('Ready, {name}?').format(name=user) }} (arguments are HTML-escaped),
+  {{ _n('{n} game', '{n} games', count) }} (only {n} is filled in, so keep other values in separate strings),
+  and the |date / |datetime filters.
+- Catalog text is inserted as-is, so it must not contain HTML: no ", <, > or &entities; (use typographic
+  quotes like “…” or «…»). tests/test_i18n.py checks this.
+- Python: translate(text) or translate_plural(...) for the current request's language.
+
+Run `python translations.py` to list strings that are missing from a catalog.
+"""
+import json
+import os
+import re
+
+from markupsafe import Markup
+
+LOCALES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'locales')
+UI_LANGUAGES = ['en', 'es', 'fr', 'de', 'it', 'pt']
+MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
+
+
+def _load_catalogs():
+    catalogs = {}
+    for lang in UI_LANGUAGES[1:]:
+        path = os.path.join(LOCALES_DIR, f'{lang}.json')
+        if os.path.exists(path):
+            with open(path, encoding='utf-8') as f:
+                catalogs[lang] = json.load(f)
+    return catalogs
+
+
+CATALOGS = _load_catalogs()
+
+
+def current_language():
+    from flask import has_request_context, session
+    lang = session.get('language', 'en') if has_request_context() else 'en'
+    return lang if lang in UI_LANGUAGES else 'en'
+
+
+def translate(text, lang=None):
+    lang = lang or current_language()
+    return CATALOGS.get(lang, {}).get(text) or text
+
+
+def translate_plural(singular, plural, n, lang=None):
+    """Translate and fill {n}; plural forms are picked by English rules (1 vs. everything else)."""
+    return translate(singular if n == 1 else plural, lang).format(n=n)
+
+
+def format_date(value, with_time=False, lang=None):
+    """'Oct 21, 2026' in English, '21 Oct 2026' style elsewhere, with translated month names."""
+    if not value:
+        return ''
+    lang = lang or current_language()
+    month = translate(MONTHS[value.month - 1], lang)
+    text = f'{month} {value.day:02d}, {value.year}' if lang == 'en' else f'{value.day} {month} {value.year}'
+    return f'{text} · {value:%H:%M}' if with_time else text
+
+
+def template_globals():
+    """_() and _n() for Jinja. They're globals (not context variables) so imported macros can use them too.
+    Catalog text is trusted, so it's returned as Markup; .format() on Markup escapes its arguments."""
+    return {
+        '_': lambda text: Markup(translate(text)),
+        '_n': lambda singular, plural, n: Markup(translate(singular if n == 1 else plural)).format(n=n),
     }
-}
+
+
+def template_context():
+    return {'ui_language': current_language(), 'ui_languages': UI_LANGUAGES}
+
+
+def dynamic_strings():
+    """Strings that reach _() through variables rather than literals."""
+    from default_text import CATEGORIES, DIFFICULTY_OPTIONS, GAME_LENGTH_OPTIONS, LEADERBOARD_PERIODS
+    from badges import BADGES
+    strings = set(MONTHS) | set(CATEGORIES.values()) | set(LEADERBOARD_PERIODS.values())
+    for label in list(DIFFICULTY_OPTIONS.values()) + list(GAME_LENGTH_OPTIONS.values()):
+        # "Easy (Ages 7-12)" is shown as "Easy" and "Ages 7-12"
+        name, _, detail = label.partition(' (')
+        strings |= {name, detail.rstrip(')')}
+    for badge in BADGES:
+        strings |= {badge['name'], badge['description']}
+    return strings
+
+
+# _('…'), _n('…', '…'), translate('…') and translate_plural('…', '…') with single- or double-quoted literals
+LITERAL = r"""(?P<q{i}>['"])(?P<s{i}>(?:\\.|(?!(?P=q{i})).)*)(?P=q{i})"""
+CALL_PATTERN = re.compile(r"\b(?:_n?|translate(?:_plural)?)\(\s*" + LITERAL.format(i=1) + r"(?:\s*,\s*" + LITERAL.format(i=2) + r")?")
+
+
+def find_missing():
+    """Strings used in the code (templates, .py, .js) that a catalog doesn't translate yet."""
+    root = os.path.dirname(os.path.abspath(__file__))
+    used = dynamic_strings()
+    for folder, ext in (('templates', '.html'), ('.', '.py'), ('static/js', '.js')):
+        for name in os.listdir(os.path.join(root, folder)):
+            if not name.endswith(ext) or name == 'translations.py':
+                continue
+            with open(os.path.join(root, folder, name), encoding='utf-8') as f:
+                source = f.read()
+            for m in CALL_PATTERN.finditer(source):
+                for group in ('s1', 's2'):
+                    if m.group(group):
+                        used.add(m.group(group).replace("\\'", "'").replace('\\"', '"'))
+    return {lang: sorted(used - set(CATALOGS.get(lang, {}))) for lang in UI_LANGUAGES[1:]}, sorted(used)
+
+
+if __name__ == '__main__':
+    missing, used = find_missing()
+    print(f'{len(used)} strings in use')
+    for lang, strings in missing.items():
+        print(f'{lang}: {len(strings)} missing')

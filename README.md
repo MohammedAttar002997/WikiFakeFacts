@@ -100,6 +100,14 @@ Databases created before migrations were added are detected on startup, brought 
 
 Set `DATABASE_URL` to use a different database (for example `sqlite:///other.sqlite`); it defaults to `quiz.sqlite` next to `app.py`.
 
+## Translations
+
+The interface is available in English, Spanish, French, German, Italian and Portuguese; players switch with the language menu in the navbar (it also sets the default quiz language).
+
+- Write UI text in English and wrap it: `{{ _('Play now') }}` in templates, `_("…")` in `app.py`. Use `{{ _n('{n} game', '{n} games', count) }}` for plurals and `.format(name=…)` for values.
+- Translations live in `locales/<lang>.json`, keyed by the English text. Missing strings fall back to English.
+- Run `python translations.py` to list strings that still need translating. Translations must not contain HTML or ASCII double quotes; `tests/test_i18n.py` checks this and that every string is translated.
+
 ## Usage
 
 Navigate to the application in your web browser, select a category, difficulty, and language to start playing. Explore the 'My Progress' dashboard for AI-powered insights into your quiz performance.
