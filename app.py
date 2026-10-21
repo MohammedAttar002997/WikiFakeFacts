@@ -1,6 +1,7 @@
 import os
 import json
 import random
+import secrets
 import time
 from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
@@ -280,6 +281,8 @@ def index():
 def logout():
     session.pop('username', None)
     session.pop('quiz_session_id', None)
+    # The next player on this browser starts a fresh help conversation
+    session.pop('chat_id', None)
     return redirect(url_for('index'))
 
 
@@ -876,8 +879,10 @@ def chatbot_api():
         if not user_message:
             return jsonify({'error': 'Message cannot be empty'}), 400
 
-        # Get or create chatbot session in database using Flask session ID
-        session_id = session.get('_id', 'default')
+        # Each browser gets its own random conversation ID (Flask has no built-in session ID)
+        if 'chat_id' not in session:
+            session['chat_id'] = secrets.token_urlsafe(16)
+        session_id = session['chat_id']
         chatbot_session = ChatbotSession.query.filter_by(session_id=session_id).first()
 
         if not chatbot_session:
