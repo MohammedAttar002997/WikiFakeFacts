@@ -298,6 +298,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     font-weight: 700;
 }
 .hero-form .form-control::placeholder { color: #8b84a3; }
+.hero-form .hero-pin { flex: 0 0 7rem; text-align: center; letter-spacing: .3em; }
 .hero-form .btn {
     background: #fff;
     color: #6d28d9;
@@ -306,7 +307,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     box-shadow: 0 4px 0 0 rgba(0, 0, 0, .2);
 }
 .hero-form .btn:hover { background: #fef3c7; color: #5b21b6; }
-@media (max-width: 576px) { .hero-form { flex-direction: column; } }
+@media (max-width: 576px) { .hero-form { flex-direction: column; } .hero-form .hero-pin { flex-basis: auto; } }
 
 .floating-chip {
     position: absolute;
