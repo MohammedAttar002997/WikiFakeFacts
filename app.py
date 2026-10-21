@@ -8,6 +8,9 @@ from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
+from flask_migrate import Migrate, stamp, upgrade
+from alembic.migration import MigrationContext
+from alembic.operations import Operations
 from models import db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS
@@ -33,10 +36,12 @@ app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///' + os.path.join(basedir, 'quiz.sqlite')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'quiz.sqlite'))
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
+# render_as_batch lets Alembic alter SQLite tables (it recreates them instead of using unsupported ALTERs)
+migrate = Migrate(app, db, directory=os.path.join(basedir, 'migrations'), render_as_batch=True)
 
 # Wrong-PIN throttling, keyed by lowercase username: {name: (failed_count, first_failure_time)}
 MAX_PIN_ATTEMPTS = 5
@@ -54,21 +59,46 @@ def inject_translations():
     return {'t': TRANSLATIONS.get(lang, TRANSLATIONS['en'])}
 
 
-def ensure_schema():
-    db.create_all()
-    # create_all() doesn't add columns to existing tables, so add newer columns to older databases
-    new_columns = [
-        ('user', 'pin_hash', 'VARCHAR(255)'),
-        ('quiz_session', 'explanations_json', 'TEXT'),
-        ('quiz_session', 'answers_json', 'TEXT'),
-        ('score', 'quiz_session_id', 'INTEGER'),
-        ('quiz_session', 'daily_challenge_id', 'INTEGER'),
-    ]
+# Schema of the first Alembic migration (migrations/versions/0001_baseline.py)
+BASELINE_REVISION = '0001_baseline'
+BASELINE_TABLES = ['user', 'score', 'quiz_session', 'custom_content', 'chatbot_session', 'player_analysis',
+                   'daily_challenge']
+# Columns added before migrations existed, by hand with ALTER TABLE
+PRE_MIGRATION_COLUMNS = [
+    ('user', 'pin_hash', 'VARCHAR(255)'),
+    ('quiz_session', 'explanations_json', 'TEXT'),
+    ('quiz_session', 'answers_json', 'TEXT'),
+    ('score', 'quiz_session_id', 'INTEGER'),
+    ('quiz_session', 'daily_challenge_id', 'INTEGER'),
+]
+PRE_MIGRATION_FOREIGN_KEYS = [
+    ('score', 'quiz_session_id', 'quiz_session'),
+    ('quiz_session', 'daily_challenge_id', 'daily_challenge'),
+]
+
+
+def init_database():
+    """Bring the database up to date with the Alembic migrations in migrations/."""
     inspector = inspect(db.engine)
-    with db.engine.begin() as conn:
-        for table, column, column_type in new_columns:
-            if column not in [c['name'] for c in inspector.get_columns(table)]:
-                conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {column_type}'))
+    tables = inspector.get_table_names()
+    if 'user' in tables and 'alembic_version' not in tables:
+        # Database from before migrations: bring it up to the baseline schema, then record that it's there
+        with db.engine.begin() as conn:
+            for table, column, column_type in PRE_MIGRATION_COLUMNS:
+                if table in tables and column not in [c['name'] for c in inspector.get_columns(table)]:
+                    conn.execute(text(f'ALTER TABLE {table} ADD COLUMN {column} {column_type}'))
+        for table in BASELINE_TABLES:
+            if table not in tables:
+                db.metadata.tables[table].create(db.engine)
+        # ALTER TABLE ADD COLUMN didn't add foreign keys; SQLite can only add them by rebuilding the table
+        with db.engine.begin() as conn:
+            ops = Operations(MigrationContext.configure(conn))
+            for table, column, target in PRE_MIGRATION_FOREIGN_KEYS:
+                if column not in [c for fk in inspect(conn).get_foreign_keys(table) for c in fk['constrained_columns']]:
+                    with ops.batch_alter_table(table, recreate='always') as batch:
+                        batch.create_foreign_key(f'fk_{table}_{column}', target, [column], ['id'])
+        stamp(revision=BASELINE_REVISION)
+    upgrade()
 
 
 def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
@@ -849,5 +879,5 @@ def chatbot_api():
 
 if __name__ == '__main__':
     with app.app_context():
-        ensure_schema()
+        init_database()
     app.run(debug=True, port=5003)

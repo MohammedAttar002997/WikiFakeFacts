@@ -78,11 +78,27 @@ This will create a `chroma_db` directory inside `hackaton/` containing the index
 ### 6. Run the Flask Application
 
 ```bash
-export FLASK_APP=hackaton/app.py
-flask run
+python app.py
 ```
 
-The application should now be running at `http://127.0.0.1:5000/`.
+The application should now be running at `http://127.0.0.1:5003/`. On startup it creates `quiz.sqlite` if needed and applies any pending database migrations.
+
+## Database migrations
+
+The schema is managed with [Flask-Migrate](https://flask-migrate.readthedocs.io/) (Alembic); migration scripts live in `migrations/versions/`.
+
+- **Applying migrations** happens automatically when you start the app with `python app.py`. To apply them by hand: `flask --app app db upgrade`.
+- **Changing the schema:** edit the models in `models.py`, then generate a migration and review it before committing:
+
+  ```bash
+  flask --app app db migrate -m "describe the change"
+  ```
+
+- **Checking** that the database matches the models: `flask --app app db check`.
+
+Databases created before migrations were added are detected on startup, brought up to the baseline schema, and stamped, so existing data is kept.
+
+Set `DATABASE_URL` to use a different database (for example `sqlite:///other.sqlite`); it defaults to `quiz.sqlite` next to `app.py`.
 
 ## Usage
 
