@@ -29,6 +29,9 @@
     --wf-opt-3: #f59e0b;
     --wf-opt-4: #10b981;
 
+    /* Chart line (validated against each theme's surface) */
+    --wf-chart-line: #6d28d9;
+
     --bs-primary: var(--wf-brand);
     --bs-primary-rgb: var(--wf-brand-rgb);
     --bs-link-color-rgb: var(--wf-brand-rgb);
@@ -44,6 +47,7 @@
 
 [data-bs-theme="dark"] {
     --wf-brand: #a78bfa;
+    --wf-chart-line: #9a7af5;
     --wf-brand-rgb: 167, 139, 250;
     --wf-brand-hover: #c4b5fd;
     --wf-brand-soft: rgba(167, 139, 250, 0.14);
@@ -964,3 +968,38 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Quiz history ------------------------------------------------------ */
+.history-chart { position: relative; height: 220px; outline: none; touch-action: pan-y; }
+.history-chart:focus-visible { box-shadow: 0 0 0 3px rgba(var(--wf-brand-rgb), .35); border-radius: .75rem; }
+.chart-grid { stroke: var(--wf-border); stroke-width: 1; }
+.chart-tick { fill: var(--wf-muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+.chart-line { fill: none; stroke: var(--wf-chart-line); stroke-width: 2; stroke-linejoin: round; stroke-linecap: round; }
+.chart-area { fill: var(--wf-chart-line); opacity: .1; }
+.chart-dot { fill: var(--wf-chart-line); stroke: var(--wf-surface); stroke-width: 2; }
+.chart-dot-active { stroke-width: 3; }
+.chart-crosshair { stroke: var(--wf-muted); stroke-width: 1; }
+.chart-end-label { fill: var(--wf-text); font-size: 13px; font-weight: 800; }
+.chart-tooltip {
+    position: absolute;
+    z-index: 2;
+    pointer-events: none;
+    display: flex;
+    flex-direction: column;
+    min-width: 9rem;
+    max-width: 16rem;
+    padding: .5rem .7rem;
+    border-radius: .7rem;
+    background: var(--wf-surface);
+    border: 1px solid var(--wf-border);
+    box-shadow: var(--wf-shadow);
+    font-size: .8rem;
+    color: var(--wf-muted);
+}
+.chart-tooltip .tt-value { color: var(--wf-text); font-size: .95rem; }
+.chart-tooltip .tt-topic { color: var(--wf-text); font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.history-row { gap: 1rem; }
+.history-meter { width: 7rem; flex-shrink: 0; }
+.history-row .score { min-width: 3.5rem; }
+.history-action { width: 2.5rem; flex-shrink: 0; text-align: right; }
+@media (min-width: 768px) { .history-action { width: 6rem; } }

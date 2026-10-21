@@ -19,6 +19,7 @@ class Score(db.Model):
     total_questions = db.Column(db.Integer, nullable=False)
     percentage = db.Column(db.Float, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    quiz_session_id = db.Column(db.Integer, db.ForeignKey('quiz_session.id'), nullable=True)  # For the answer review
 
 class QuizSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)

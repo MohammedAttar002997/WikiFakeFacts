@@ -60,6 +60,7 @@ def ensure_schema():
         ('user', 'pin_hash', 'VARCHAR(255)'),
         ('quiz_session', 'explanations_json', 'TEXT'),
         ('quiz_session', 'answers_json', 'TEXT'),
+        ('score', 'quiz_session_id', 'INTEGER'),
     ]
     inspector = inspect(db.engine)
     with db.engine.begin() as conn:
@@ -95,6 +96,26 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
     session['quiz_session_id'] = quiz_session.id
     session['quiz_source'] = source
     return quiz_session
+
+
+def current_user():
+    """The logged-in player, or None."""
+    if 'username' not in session:
+        return None
+    return User.query.filter_by(username=session['username']).first()
+
+
+def build_answer_review(quiz_session):
+    """Round-by-round answer review: which statement was fake, what the player picked, and why."""
+    questions = json.loads(quiz_session.questions_json)
+    answers = json.loads(quiz_session.answers_json or '[]')
+    explanations = json.loads(quiz_session.explanations_json or '[]')
+    return [{
+        'facts': list(facts.items()),
+        'picked': answers[i] if i < len(answers) else None,
+        'correct': i < len(answers) and facts.get(answers[i]) is False,
+        'explanation': explanations[i] if i < len(explanations) else None,
+    } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
 
 
 def get_topic_stats(user_scores):
@@ -402,7 +423,8 @@ def quiz():
                     difficulty=quiz_session.difficulty,
                     score=quiz_session.score,
                     total_questions=quiz_session.total_questions,
-                    percentage=percentage
+                    percentage=percentage,
+                    quiz_session_id=quiz_session.id
                 )
                 db.session.add(final_score)
                 db.session.commit()
@@ -436,23 +458,47 @@ def results():
     
     percentage = (quiz_session.score / quiz_session.total_questions) * 100
 
-    # Round-by-round answer review: which statement was fake, what the player picked, and why
-    questions = json.loads(quiz_session.questions_json)
-    answers = json.loads(quiz_session.answers_json or '[]')
-    explanations = json.loads(quiz_session.explanations_json or '[]')
-    review = [{
-        'facts': list(facts.items()),
-        'picked': answers[i] if i < len(answers) else None,
-        'correct': i < len(answers) and facts.get(answers[i]) is False,
-        'explanation': explanations[i] if i < len(explanations) else None,
-    } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
-
     return render_template('results.html',
                            score=quiz_session.score,
                            total=quiz_session.total_questions,
                            percentage=round(percentage, 2),
                            topic=quiz_session.topic,
-                           review=review)
+                           review=build_answer_review(quiz_session))
+
+
+@app.route('/history')
+def history():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    scores = Score.query.filter_by(user_id=user.id).order_by(Score.timestamp).all()
+    chart_points = [{
+        'n': i + 1,
+        'date': s.timestamp.strftime('%b %d, %H:%M'),
+        'topic': s.topic,
+        'pct': round(s.percentage),
+        'score': s.score,
+        'total': s.total_questions,
+    } for i, s in enumerate(scores)]
+    return render_template('history.html', scores=list(reversed(scores)), chart_points=chart_points)
+
+
+@app.route('/review/<int:quiz_session_id>')
+def review(quiz_session_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    quiz_session = db.session.get(QuizSession, quiz_session_id)
+    # Reviews are private like the analysis; only finished quizzes can be reviewed
+    if not quiz_session or quiz_session.user_id != user.id or not quiz_session.is_completed:
+        flash("That quiz review isn't available.", "warning")
+        return redirect(url_for('history'))
+
+    score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
+    return render_template('review.html', quiz_session=quiz_session, score=score,
+                           review=build_answer_review(quiz_session))
 
 
 @app.route('/leaderboard')

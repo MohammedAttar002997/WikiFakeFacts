@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-search"></i> Quiz review</span>
+            <h1 class="text-truncate">{{ quiz_session.topic }}</h1>
+            <p>
+                {% if score %}{{ score.timestamp.strftime('%b %d, %Y at %H:%M') }} &middot; {% endif %}
+                {{ quiz_session.difficulty.split(' (')[0] }} &middot;
+                <strong>{{ quiz_session.score }} / {{ quiz_session.total_questions }}</strong> correct
+            </p>
+        </div>
+
+        {% if review %}
+        {% include "_answer_review.html" %}
+        {% endif %}
+
+        <div class="text-center mt-4">
+            <a href="{{ url_for('history') }}" class="btn btn-outline-primary btn-lg">
+                <i class="bi bi-arrow-left me-1"></i>Back to history
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}
