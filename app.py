@@ -289,9 +289,19 @@ def custom_quiz():
 
             content = None
             source_info = None
+            content_type = None
+            saved_content = None
 
-            # Check if file upload or URL paste
-            if 'file' in request.files and request.files['file'].filename:
+            # Check for a saved upload, a file upload, or a URL paste
+            saved_id = request.form.get('saved_content_id', type=int)
+            if saved_id:
+                saved_content = CustomContent.query.filter_by(id=saved_id, user_id=user.id).first()
+                if not saved_content:
+                    flash("That upload isn't available anymore.", "danger")
+                    return redirect(url_for('custom_quiz'))
+                content = saved_content.content
+
+            elif 'file' in request.files and request.files['file'].filename:
                 file = request.files['file']
 
                 if not allowed_file(file.filename):
@@ -305,6 +315,7 @@ def custom_quiz():
                 try:
                     content = extract_text_from_file(filepath)
                     source_info = filename
+                    content_type = 'file'
                     os.remove(filepath)  # Clean up after extraction
                 except Exception as e:
                     flash(f"Error extracting file content: {str(e)}", "danger")
@@ -320,6 +331,7 @@ def custom_quiz():
                 try:
                     content = extract_text_from_url(url)
                     source_info = url
+                    content_type = 'url'
                 except Exception as e:
                     flash(f"Error extracting webpage content: {str(e)}", "danger")
                     return redirect(url_for('custom_quiz'))
@@ -335,16 +347,19 @@ def custom_quiz():
                 flash(f"Content validation failed: {str(e)}", "danger")
                 return redirect(url_for('custom_quiz'))
 
-            # Store custom content in database
-            custom_content_obj = CustomContent(
-                user_id=user.id,
-                title=request.form.get('title', 'Untitled'),
-                content=content,
-                content_type='file' if 'file' in request.files else 'url',
-                source=source_info
-            )
-            db.session.add(custom_content_obj)
-            db.session.commit()
+            # Store custom content in database, reusing the saved copy when the same content comes in again
+            custom_content_obj = saved_content or CustomContent.query.filter_by(
+                user_id=user.id, source=source_info, content=content).first()
+            if not custom_content_obj:
+                custom_content_obj = CustomContent(
+                    user_id=user.id,
+                    title=request.form.get('title', 'Untitled'),
+                    content=content,
+                    content_type=content_type,
+                    source=source_info
+                )
+                db.session.add(custom_content_obj)
+                db.session.commit()
 
             # Store only ID in session (content is already in database)
             session['custom_content_id'] = custom_content_obj.id
@@ -366,9 +381,11 @@ def custom_quiz():
             try:
                 # Generate quiz from custom content
                 language_name = LANGUAGE_OPTIONS.get(language_code, "English")
+                # A replayed upload keeps its topic unless the player typed a new title
+                custom_title = request.form.get('title') or (saved_content.title if saved_content else None)
                 quiz_session = create_quiz_session(user, "Custom Content", difficulty_text, questions_count,
                                                    language_name, custom_content=content,
-                                                   custom_title=request.form.get('title'))
+                                                   custom_title=custom_title)
 
                 # Save the content under the quiz topic so "Practice my weak spots" can reuse it
                 custom_content_obj.title = quiz_session.topic
@@ -383,8 +400,25 @@ def custom_quiz():
             flash(f"An unexpected error occurred: {str(e)}", "danger")
             return redirect(url_for('custom_quiz'))
 
+    user = current_user()
+    uploads = (CustomContent.query.filter_by(user_id=user.id).order_by(CustomContent.created_at.desc()).all()
+               if user else [])
     return render_template('custom_quiz.html', lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS,
-                           languages=LANGUAGE_OPTIONS)
+                           languages=LANGUAGE_OPTIONS, uploads=uploads)
+
+
+@app.route('/uploads/<int:content_id>/delete', methods=['POST'])
+def delete_upload(content_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    upload = CustomContent.query.filter_by(id=content_id, user_id=user.id).first()
+    if upload:
+        db.session.delete(upload)
+        db.session.commit()
+        flash(f"Deleted \"{upload.title}\" from your uploads. Your past scores are kept.", "success")
+    return redirect(url_for('custom_quiz', tab='uploads'))
 
 
 @app.route('/start_quiz', methods=['POST'])

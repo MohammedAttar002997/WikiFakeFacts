@@ -77,7 +77,7 @@
         form.addEventListener('submit', e => {
             // Defer so page-specific validators that call preventDefault() run first
             setTimeout(() => {
-                if (e.defaultPrevented) return;
+                if (e.defaultPrevented || (e.submitter && e.submitter.hasAttribute('data-no-loading'))) return;
                 const btn = form.querySelector('[type="submit"]');
                 if (btn) btn.disabled = true;
                 showLoading(form.dataset.loading, form.dataset.loadingTips);
