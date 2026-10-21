@@ -57,6 +57,11 @@
             <a href="{{ url_for('history') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
                 <i class="bi bi-clock-history me-1"></i>Quiz history
             </a>
+            {% if is_daily %}
+            <a href="{{ url_for('daily') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
+                <i class="bi bi-calendar-check me-1"></i>Today's daily leaderboard
+            </a>
+            {% endif %}
         </div>
 
         {% if review %}

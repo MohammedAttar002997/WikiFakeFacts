@@ -926,7 +926,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 
 /* ---------- Practice card / answer review --------------------------------- */
 .practice-card { display: flex; align-items: center; gap: 1.25rem; border-left: 5px solid #f59e0b; }
-.practice-card .min-w-0 { min-width: 0; }
+.practice-card .min-w-0, .daily-card .min-w-0 { min-width: 0; }
 .practice-icon {
     flex-shrink: 0;
     display: grid;
@@ -939,8 +939,8 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     background: rgba(245, 158, 11, .15);
 }
 @media (max-width: 576px) {
-    .practice-card { flex-wrap: wrap; }
-    .practice-card .btn { width: 100%; }
+    .practice-card, .daily-card { flex-wrap: wrap; }
+    .practice-card .btn, .daily-action, .daily-action .btn:not(.btn-sm) { width: 100%; }
 }
 
 .review-round + .review-round { border-top: 1px solid var(--wf-border); padding-top: 1.5rem; }
@@ -1003,3 +1003,39 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .history-row .score { min-width: 3.5rem; }
 .history-action { width: 2.5rem; flex-shrink: 0; text-align: right; }
 @media (min-width: 768px) { .history-action { width: 6rem; } }
+
+/* ---------- Daily challenge --------------------------------------------------- */
+.daily-card { display: flex; align-items: center; gap: 1.25rem; border-left: 5px solid var(--wf-brand); }
+.daily-icon {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 3.75rem;
+    height: 3.75rem;
+    border-radius: 1rem;
+    font-size: 1.8rem;
+    color: #fff;
+    background: linear-gradient(135deg, var(--wf-hero-from), var(--wf-hero-to));
+}
+.rank-row-me { border-color: rgba(var(--wf-brand-rgb), .55); }
+.daily-banner {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: .9rem 1.2rem;
+    text-decoration: none;
+    color: inherit;
+    transition: transform .2s ease, border-color .2s ease;
+}
+.daily-banner:hover { transform: translateY(-2px); border-color: rgba(var(--wf-brand-rgb), .5); color: inherit; }
+.daily-banner .min-w-0 { min-width: 0; }
+.daily-banner-icon {
+    flex-shrink: 0;
+    display: grid;
+    place-items: center;
+    width: 2.6rem;
+    height: 2.6rem;
+    border-radius: .8rem;
+    color: #fff;
+    background: linear-gradient(135deg, var(--wf-hero-from), var(--wf-hero-to));
+}
