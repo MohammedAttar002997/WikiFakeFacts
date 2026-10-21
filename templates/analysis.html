@@ -114,8 +114,9 @@
             </div>
         </div>
 
-        <div class="text-center mt-4">
+        <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mt-4">
             <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-arrow-repeat me-1"></i>{{ t.play_again }}</a>
+            <a href="{{ url_for('history') }}" class="btn btn-outline-primary btn-lg"><i class="bi bi-clock-history me-1"></i>Quiz history</a>
         </div>
     </div>
 </div>

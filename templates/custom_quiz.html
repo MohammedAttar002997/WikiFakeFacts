@@ -2,6 +2,7 @@
 {% from "_macros.html" import length_tiles, difficulty_tiles, language_select %}
 
 {% block content %}
+{% set open_uploads = uploads and request.args.get('tab') == 'uploads' %}
 <div class="row justify-content-center">
     <div class="col-lg-9">
         <div class="page-head">
@@ -21,7 +22,7 @@
                 <div class="section-label"><span class="step">2</span>Upload Content</div>
                 <ul class="nav seg mb-3" id="contentTabs" role="tablist">
                     <li class="nav-item" role="presentation">
-                        <button class="nav-link active" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-content" type="button" role="tab" aria-controls="file-content" aria-selected="true">
+                        <button class="nav-link{% if not open_uploads %} active{% endif %}" id="file-tab" data-bs-toggle="tab" data-bs-target="#file-content" type="button" role="tab" aria-controls="file-content" aria-selected="{{ 'false' if open_uploads else 'true' }}">
                             <i class="bi bi-file-earmark-arrow-up me-1"></i>Upload File
                         </button>
                     </li>
@@ -30,10 +31,17 @@
                             <i class="bi bi-link-45deg me-1"></i>Paste URL
                         </button>
                     </li>
+                    {% if uploads %}
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link{% if open_uploads %} active{% endif %}" id="uploads-tab" data-bs-toggle="tab" data-bs-target="#uploads-content" type="button" role="tab" aria-controls="uploads-content" aria-selected="{{ 'true' if open_uploads else 'false' }}">
+                            <i class="bi bi-folder2-open me-1"></i>Your uploads <span class="badge rounded-pill text-bg-light ms-1">{{ uploads|length }}</span>
+                        </button>
+                    </li>
+                    {% endif %}
                 </ul>
 
                 <div class="tab-content" id="contentTabsContent">
-                    <div class="tab-pane fade show active" id="file-content" role="tabpanel" aria-labelledby="file-tab">
+                    <div class="tab-pane fade{% if not open_uploads %} show active{% endif %}" id="file-content" role="tabpanel" aria-labelledby="file-tab">
                         <label class="dropzone" id="dropzone" for="file">
                             <input type="file" id="file" name="file" accept=".pdf,.txt,.docx">
                             <i class="bi bi-cloud-arrow-up-fill dz-icon"></i>
@@ -48,8 +56,34 @@
                         </div>
                         <small class="text-muted d-block mt-2">Enter the full URL of the webpage you want to create a quiz from.</small>
                     </div>
+                    {% if uploads %}
+                    <div class="tab-pane fade{% if open_uploads %} show active{% endif %}" id="uploads-content" role="tabpanel" aria-labelledby="uploads-tab">
+                        <p class="small text-muted mb-2">Pick something you've uploaded before to make a fresh quiz from it.</p>
+                        <div class="d-flex flex-column gap-2" role="radiogroup" aria-label="Your uploads">
+                            {% for upload in uploads %}
+                            {% set is_url = upload.content_type == 'url' or (upload.source or '').startswith('http') %}
+                            <div class="upload-option">
+                                <input class="upload-input visually-hidden" type="radio" name="saved_content_id" id="upload{{ upload.id }}" value="{{ upload.id }}">
+                                <label class="upload-label" for="upload{{ upload.id }}">
+                                    <i class="bi {{ 'bi-globe2' if is_url else 'bi-file-earmark-text' }} upload-icon" aria-hidden="true"></i>
+                                    <span class="flex-grow-1 min-w-0">
+                                        <span class="d-block fw-bold text-truncate">{{ upload.title }}</span>
+                                        <span class="d-block small text-muted text-truncate">{{ upload.source or 'Uploaded content' }} &middot; {{ upload.created_at.strftime('%b %d, %Y') }}</span>
+                                    </span>
+                                    <i class="bi bi-check-circle-fill upload-check" aria-hidden="true"></i>
+                                </label>
+                                <button type="submit" class="btn btn-sm btn-outline-danger upload-delete" formaction="{{ url_for('delete_upload', content_id=upload.id) }}"
+                                        formmethod="post" formnovalidate data-no-loading data-confirm="Delete &quot;{{ upload.title }}&quot; from your uploads?"
+                                        aria-label="Delete {{ upload.title }}" title="Delete">
+                                    <i class="bi bi-trash3"></i>
+                                </button>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                    {% endif %}
                 </div>
-                <div class="invalid-feedback fw-bold" id="contentError">Please either upload a file or enter a URL.</div>
+                <div class="invalid-feedback fw-bold" id="contentError">Please upload a file, enter a URL, or pick one of your uploads.</div>
             </section>
 
             <section class="mb-5">
@@ -84,6 +118,8 @@
         const dropzone = document.getElementById('dropzone');
         const dzLabel = document.getElementById('dzLabel');
         const contentError = document.getElementById('contentError');
+        const savedInputs = Array.from(document.querySelectorAll('input[name="saved_content_id"]'));
+        const clearSaved = () => savedInputs.forEach(r => { r.checked = false; });
         const defaultLabel = dzLabel.textContent;
 
         function showFileName() {
@@ -96,6 +132,7 @@
         fileInput.addEventListener('change', function () {
             if (this.files.length > 0) {
                 urlInput.value = '';
+                clearSaved();
                 contentError.style.display = '';
             }
             showFileName();
@@ -104,17 +141,30 @@
         urlInput.addEventListener('input', function () {
             if (this.value.trim()) {
                 fileInput.value = '';
+                clearSaved();
                 contentError.style.display = '';
                 showFileName();
             }
         });
+
+        savedInputs.forEach(r => r.addEventListener('change', () => {
+            fileInput.value = '';
+            urlInput.value = '';
+            contentError.style.display = '';
+            showFileName();
+        }));
+
+        document.querySelectorAll('[data-confirm]').forEach(btn => btn.addEventListener('click', e => {
+            if (!confirm(btn.dataset.confirm)) e.preventDefault();
+        }));
 
         ['dragenter', 'dragover'].forEach(evt => dropzone.addEventListener(evt, () => dropzone.classList.add('dragover')));
         ['dragleave', 'drop'].forEach(evt => dropzone.addEventListener(evt, () => dropzone.classList.remove('dragover')));
 
         // Form validation
         document.getElementById('customQuizForm').addEventListener('submit', function (e) {
-            if (!fileInput.files.length && !urlInput.value.trim()) {
+            if (e.submitter && e.submitter.hasAttribute('data-no-loading')) return;  // Delete buttons
+            if (!fileInput.files.length && !urlInput.value.trim() && !savedInputs.some(r => r.checked)) {
                 e.preventDefault();
                 contentError.style.display = 'block';
                 contentError.scrollIntoView({ behavior: 'smooth', block: 'center' });

@@ -9,6 +9,42 @@
             <p>The sharpest fake-fact detectors so far, ranked by total correct answers.</p>
         </div>
 
+        <form method="get" action="{{ url_for('leaderboard') }}" class="wf-card leaderboard-filters mb-4" id="leaderboardFilters">
+            <div class="filter-field">
+                <label for="fPeriod" class="filter-label">Time</label>
+                <select id="fPeriod" name="period" class="form-select">
+                    {% for value, label in periods.items() %}
+                    <option value="{{ value }}"{% if filters.period == value %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="fCategory" class="filter-label">Category</label>
+                <select id="fCategory" name="category" class="form-select">
+                    <option value="all">All categories</option>
+                    {% for value, label in categories.items() %}
+                    <option value="{{ value }}"{% if filters.category == value %} selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                    <option value="custom"{% if filters.category == 'custom' %} selected{% endif %}>Custom quizzes</option>
+                </select>
+            </div>
+            <div class="filter-field">
+                <label for="fDifficulty" class="filter-label">Difficulty</label>
+                <select id="fDifficulty" name="difficulty" class="form-select">
+                    <option value="all">All difficulties</option>
+                    {% for value, label in difficulties.items() %}
+                    <option value="{{ value }}"{% if filters.difficulty == value %} selected{% endif %}>{{ label.split(' (')[0] }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="filter-actions">
+                <noscript><button type="submit" class="btn btn-primary">Apply</button></noscript>
+                {% if filtered %}
+                <a href="{{ url_for('leaderboard') }}" class="btn btn-link text-brand fw-bold text-decoration-none px-1">Reset</a>
+                {% endif %}
+            </div>
+        </form>
+
         {% if standings %}
         <div class="podium">
             {% for row in standings[:3] %}
@@ -48,6 +84,13 @@
                 {% endfor %}
             </div>
         </div>
+        {% elif filtered %}
+        <div class="wf-card wf-card-pad text-center">
+            <div class="display-4 mb-3">🔍</div>
+            <h2 class="h4 fw-black">No scores match these filters</h2>
+            <p class="text-muted">Try a longer time range or another category.</p>
+            <a href="{{ url_for('leaderboard') }}" class="btn btn-outline-primary btn-lg">Show all scores</a>
+        </div>
         {% else %}
         <div class="wf-card wf-card-pad text-center">
             <div class="display-4 mb-3">🏁</div>
@@ -58,4 +101,13 @@
         {% endif %}
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Apply each filter as soon as it changes
+    document.querySelectorAll('#leaderboardFilters select').forEach(select => {
+        select.addEventListener('change', () => select.form.submit());
+    });
+</script>
 {% endblock %}

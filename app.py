@@ -2,12 +2,13 @@ import os
 import json
 import random
 import time
-from datetime import datetime
+from datetime import datetime, timedelta
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis
+from sqlalchemy.exc import IntegrityError
+from models import db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS
 from wikipedia import DisambiguationError
@@ -60,6 +61,8 @@ def ensure_schema():
         ('user', 'pin_hash', 'VARCHAR(255)'),
         ('quiz_session', 'explanations_json', 'TEXT'),
         ('quiz_session', 'answers_json', 'TEXT'),
+        ('score', 'quiz_session_id', 'INTEGER'),
+        ('quiz_session', 'daily_challenge_id', 'INTEGER'),
     ]
     inspector = inspect(db.engine)
     with db.engine.begin() as conn:
@@ -78,6 +81,11 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
         # the user's own title wins, then the AI-detected topic
         topic = (custom_title or '').strip() or ai_topic or "Custom Content"
 
+    return save_quiz_session(user, topic, difficulty, quiz_data, explanations, source)
+
+
+def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None):
+    """Save already-generated questions as the player's current quiz."""
     quiz_session = QuizSession(
         user_id=user.id,
         topic=topic[:100],
@@ -85,9 +93,10 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
         questions_json=json.dumps(quiz_data),
         explanations_json=json.dumps(explanations),
         answers_json='[]',
-        total_questions=questions_count,
+        total_questions=len(quiz_data),
         current_question_index=0,
-        score=0
+        score=0,
+        daily_challenge_id=daily_challenge_id
     )
     db.session.add(quiz_session)
     db.session.commit()
@@ -95,6 +104,68 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
     session['quiz_session_id'] = quiz_session.id
     session['quiz_source'] = source
     return quiz_session
+
+
+LEADERBOARD_PERIODS = {'all': 'All time', 'week': 'Last 7 days', 'today': 'Today (UTC)'}
+
+DAILY_DIFFICULTY = DIFFICULTY_OPTIONS["2"]  # Medium
+DAILY_ROUNDS = 5
+
+
+def today_utc():
+    return datetime.utcnow().strftime('%Y-%m-%d')
+
+
+def daily_topic(date):
+    """Same topic for everyone on a given date, picked from the built-in categories."""
+    topics = sorted(topic for topics in MENU.values() for topic in topics)
+    return random.Random(date).choice(topics)
+
+
+def get_daily_challenge(date, language_name):
+    """Today's shared quiz in this language, generating it for the first player who starts it."""
+    challenge = DailyChallenge.query.filter_by(date=date, language=language_name).first()
+    if challenge:
+        return challenge
+
+    topic = daily_topic(date)
+    quiz_data, source, _, explanations = get_ai_response(DAILY_ROUNDS, topic, DAILY_DIFFICULTY, language_name)
+    challenge = DailyChallenge(date=date, language=language_name, topic=topic, source=source,
+                               questions_json=json.dumps(quiz_data), explanations_json=json.dumps(explanations))
+    db.session.add(challenge)
+    try:
+        db.session.commit()
+    except IntegrityError:
+        # Another player generated it at the same moment; use theirs so everyone shares one quiz
+        db.session.rollback()
+        challenge = DailyChallenge.query.filter_by(date=date, language=language_name).first()
+    return challenge
+
+
+def daily_attempt(user, date):
+    """The player's quiz for the given day's challenge (any language), or None."""
+    return (QuizSession.query.join(DailyChallenge, QuizSession.daily_challenge_id == DailyChallenge.id)
+            .filter(QuizSession.user_id == user.id, DailyChallenge.date == date).first())
+
+
+def current_user():
+    """The logged-in player, or None."""
+    if 'username' not in session:
+        return None
+    return User.query.filter_by(username=session['username']).first()
+
+
+def build_answer_review(quiz_session):
+    """Round-by-round answer review: which statement was fake, what the player picked, and why."""
+    questions = json.loads(quiz_session.questions_json)
+    answers = json.loads(quiz_session.answers_json or '[]')
+    explanations = json.loads(quiz_session.explanations_json or '[]')
+    return [{
+        'facts': list(facts.items()),
+        'picked': answers[i] if i < len(answers) else None,
+        'correct': i < len(answers) and facts.get(answers[i]) is False,
+        'explanation': explanations[i] if i < len(explanations) else None,
+    } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
 
 
 def get_topic_stats(user_scores):
@@ -193,12 +264,14 @@ def setup():
         FAILED_PINS.pop(key, None)
         session['username'] = user.username
 
-        return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS)
+        return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
+                           daily_topic=daily_topic(today_utc()))
     
     if 'username' not in session:
         return redirect(url_for('index'))
     
-    return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS)
+    return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
+                           daily_topic=daily_topic(today_utc()))
 
 
 @app.route('/custom_quiz', methods=['GET', 'POST'])
@@ -218,9 +291,19 @@ def custom_quiz():
 
             content = None
             source_info = None
+            content_type = None
+            saved_content = None
 
-            # Check if file upload or URL paste
-            if 'file' in request.files and request.files['file'].filename:
+            # Check for a saved upload, a file upload, or a URL paste
+            saved_id = request.form.get('saved_content_id', type=int)
+            if saved_id:
+                saved_content = CustomContent.query.filter_by(id=saved_id, user_id=user.id).first()
+                if not saved_content:
+                    flash("That upload isn't available anymore.", "danger")
+                    return redirect(url_for('custom_quiz'))
+                content = saved_content.content
+
+            elif 'file' in request.files and request.files['file'].filename:
                 file = request.files['file']
 
                 if not allowed_file(file.filename):
@@ -234,6 +317,7 @@ def custom_quiz():
                 try:
                     content = extract_text_from_file(filepath)
                     source_info = filename
+                    content_type = 'file'
                     os.remove(filepath)  # Clean up after extraction
                 except Exception as e:
                     flash(f"Error extracting file content: {str(e)}", "danger")
@@ -249,6 +333,7 @@ def custom_quiz():
                 try:
                     content = extract_text_from_url(url)
                     source_info = url
+                    content_type = 'url'
                 except Exception as e:
                     flash(f"Error extracting webpage content: {str(e)}", "danger")
                     return redirect(url_for('custom_quiz'))
@@ -264,16 +349,19 @@ def custom_quiz():
                 flash(f"Content validation failed: {str(e)}", "danger")
                 return redirect(url_for('custom_quiz'))
 
-            # Store custom content in database
-            custom_content_obj = CustomContent(
-                user_id=user.id,
-                title=request.form.get('title', 'Untitled'),
-                content=content,
-                content_type='file' if 'file' in request.files else 'url',
-                source=source_info
-            )
-            db.session.add(custom_content_obj)
-            db.session.commit()
+            # Store custom content in database, reusing the saved copy when the same content comes in again
+            custom_content_obj = saved_content or CustomContent.query.filter_by(
+                user_id=user.id, source=source_info, content=content).first()
+            if not custom_content_obj:
+                custom_content_obj = CustomContent(
+                    user_id=user.id,
+                    title=request.form.get('title', 'Untitled'),
+                    content=content,
+                    content_type=content_type,
+                    source=source_info
+                )
+                db.session.add(custom_content_obj)
+                db.session.commit()
 
             # Store only ID in session (content is already in database)
             session['custom_content_id'] = custom_content_obj.id
@@ -295,9 +383,11 @@ def custom_quiz():
             try:
                 # Generate quiz from custom content
                 language_name = LANGUAGE_OPTIONS.get(language_code, "English")
+                # A replayed upload keeps its topic unless the player typed a new title
+                custom_title = request.form.get('title') or (saved_content.title if saved_content else None)
                 quiz_session = create_quiz_session(user, "Custom Content", difficulty_text, questions_count,
                                                    language_name, custom_content=content,
-                                                   custom_title=request.form.get('title'))
+                                                   custom_title=custom_title)
 
                 # Save the content under the quiz topic so "Practice my weak spots" can reuse it
                 custom_content_obj.title = quiz_session.topic
@@ -312,8 +402,25 @@ def custom_quiz():
             flash(f"An unexpected error occurred: {str(e)}", "danger")
             return redirect(url_for('custom_quiz'))
 
+    user = current_user()
+    uploads = (CustomContent.query.filter_by(user_id=user.id).order_by(CustomContent.created_at.desc()).all()
+               if user else [])
     return render_template('custom_quiz.html', lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS,
-                           languages=LANGUAGE_OPTIONS)
+                           languages=LANGUAGE_OPTIONS, uploads=uploads)
+
+
+@app.route('/uploads/<int:content_id>/delete', methods=['POST'])
+def delete_upload(content_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    upload = CustomContent.query.filter_by(id=content_id, user_id=user.id).first()
+    if upload:
+        db.session.delete(upload)
+        db.session.commit()
+        flash(f"Deleted \"{upload.title}\" from your uploads. Your past scores are kept.", "success")
+    return redirect(url_for('custom_quiz', tab='uploads'))
 
 
 @app.route('/start_quiz', methods=['POST'])
@@ -402,7 +509,8 @@ def quiz():
                     difficulty=quiz_session.difficulty,
                     score=quiz_session.score,
                     total_questions=quiz_session.total_questions,
-                    percentage=percentage
+                    percentage=percentage,
+                    quiz_session_id=quiz_session.id
                 )
                 db.session.add(final_score)
                 db.session.commit()
@@ -436,32 +544,127 @@ def results():
     
     percentage = (quiz_session.score / quiz_session.total_questions) * 100
 
-    # Round-by-round answer review: which statement was fake, what the player picked, and why
-    questions = json.loads(quiz_session.questions_json)
-    answers = json.loads(quiz_session.answers_json or '[]')
-    explanations = json.loads(quiz_session.explanations_json or '[]')
-    review = [{
-        'facts': list(facts.items()),
-        'picked': answers[i] if i < len(answers) else None,
-        'correct': i < len(answers) and facts.get(answers[i]) is False,
-        'explanation': explanations[i] if i < len(explanations) else None,
-    } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
-
     return render_template('results.html',
                            score=quiz_session.score,
                            total=quiz_session.total_questions,
                            percentage=round(percentage, 2),
                            topic=quiz_session.topic,
-                           review=review)
+                           is_daily=quiz_session.daily_challenge_id is not None,
+                           review=build_answer_review(quiz_session))
+
+
+@app.route('/daily')
+def daily():
+    date = today_utc()
+    user = current_user()
+    attempt = daily_attempt(user, date) if user else None
+    attempt_score = Score.query.filter_by(quiz_session_id=attempt.id).first() if attempt else None
+
+    # Today's standings across every language: most correct first, earliest finish breaks ties
+    standings = (db.session.query(Score, User)
+                 .join(User, Score.user_id == User.id)
+                 .join(QuizSession, Score.quiz_session_id == QuizSession.id)
+                 .join(DailyChallenge, QuizSession.daily_challenge_id == DailyChallenge.id)
+                 .filter(DailyChallenge.date == date)
+                 .order_by(Score.score.desc(), Score.timestamp)
+                 .all())
+    return render_template('daily.html', topic=daily_topic(date), date=date, attempt=attempt,
+                           attempt_score=attempt_score, standings=standings, rounds=DAILY_ROUNDS,
+                           difficulty=DAILY_DIFFICULTY)
+
+
+@app.route('/daily/start', methods=['POST'])
+def daily_start():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    date = today_utc()
+    attempt = daily_attempt(user, date)
+    if attempt and attempt.is_completed:
+        flash("You've already played today's challenge. Come back tomorrow for a new one!", "info")
+        return redirect(url_for('daily'))
+    if attempt:
+        # Resume an unfinished attempt instead of starting over
+        session['quiz_session_id'] = attempt.id
+        return redirect(url_for('quiz'))
+
+    try:
+        language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
+        challenge = get_daily_challenge(date, language_name)
+        save_quiz_session(user, challenge.topic, DAILY_DIFFICULTY, json.loads(challenge.questions_json),
+                          json.loads(challenge.explanations_json), challenge.source,
+                          daily_challenge_id=challenge.id)
+        return redirect(url_for('quiz'))
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('daily'))
+
+
+@app.route('/history')
+def history():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    scores = Score.query.filter_by(user_id=user.id).order_by(Score.timestamp).all()
+    chart_points = [{
+        'n': i + 1,
+        'date': s.timestamp.strftime('%b %d, %H:%M'),
+        'topic': s.topic,
+        'pct': round(s.percentage),
+        'score': s.score,
+        'total': s.total_questions,
+    } for i, s in enumerate(scores)]
+    return render_template('history.html', scores=list(reversed(scores)), chart_points=chart_points)
+
+
+@app.route('/review/<int:quiz_session_id>')
+def review(quiz_session_id):
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    quiz_session = db.session.get(QuizSession, quiz_session_id)
+    # Reviews are private like the analysis; only finished quizzes can be reviewed
+    if not quiz_session or quiz_session.user_id != user.id or not quiz_session.is_completed:
+        flash("That quiz review isn't available.", "warning")
+        return redirect(url_for('history'))
+
+    score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
+    return render_template('review.html', quiz_session=quiz_session, score=score,
+                           review=build_answer_review(quiz_session))
 
 
 @app.route('/leaderboard')
 def leaderboard():
+    # Filters: unknown values fall back to "all"
+    period = request.args.get('period', 'all')
+    category = request.args.get('category', 'all')
+    difficulty = request.args.get('difficulty', 'all')
+    period = period if period in LEADERBOARD_PERIODS else 'all'
+    category = category if category in CATEGORIES or category == 'custom' else 'all'
+    difficulty = difficulty if difficulty in DIFFICULTY_OPTIONS else 'all'
+
+    conditions = []
+    if period == 'today':
+        conditions.append(Score.timestamp >= datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0))
+    elif period == 'week':
+        conditions.append(Score.timestamp >= datetime.utcnow() - timedelta(days=7))
+    if category == 'custom':
+        # Anything that isn't a built-in topic came from a custom quiz
+        conditions.append(Score.topic.notin_([t for topics in MENU.values() for t in topics]))
+    elif category != 'all':
+        conditions.append(Score.topic.in_(MENU[CATEGORIES[category]]))
+    if difficulty != 'all':
+        conditions.append(Score.difficulty == DIFFICULTY_OPTIONS[difficulty])
+
     # One row per player: total correct answers across all their quizzes, ties broken by accuracy
     total_points = func.sum(Score.score)
     total_questions = func.sum(Score.total_questions)
     rows = (db.session.query(User, total_points, total_questions, func.count(Score.id))
             .join(Score, Score.user_id == User.id)
+            .filter(*conditions)
             .group_by(User.id)
             .order_by(total_points.desc(), (total_points * 1.0 / total_questions).desc())
             .limit(10)
@@ -473,7 +676,10 @@ def leaderboard():
         'quizzes': quizzes,
         'percentage': points / questions * 100 if questions else 0,
     } for user, points, questions, quizzes in rows]
-    return render_template('leaderboard.html', standings=standings)
+    filters = {'period': period, 'category': category, 'difficulty': difficulty}
+    return render_template('leaderboard.html', standings=standings, filters=filters,
+                           filtered=any(v != 'all' for v in filters.values()),
+                           periods=LEADERBOARD_PERIODS, categories=CATEGORIES, difficulties=DIFFICULTY_OPTIONS)
 
 
 @app.route('/players')

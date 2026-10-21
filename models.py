@@ -19,6 +19,7 @@ class Score(db.Model):
     total_questions = db.Column(db.Integer, nullable=False)
     percentage = db.Column(db.Float, nullable=False)
     timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+    quiz_session_id = db.Column(db.Integer, db.ForeignKey('quiz_session.id'), nullable=True)  # For the answer review
 
 class QuizSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,6 +33,19 @@ class QuizSession(db.Model):
     score = db.Column(db.Integer, default=0)
     total_questions = db.Column(db.Integer, nullable=False)
     is_completed = db.Column(db.Boolean, default=False)
+    daily_challenge_id = db.Column(db.Integer, db.ForeignKey('daily_challenge.id'), nullable=True)
+
+class DailyChallenge(db.Model):
+    """One shared quiz per day and language; every player gets the same questions."""
+    __table_args__ = (db.UniqueConstraint('date', 'language'),)
+    id = db.Column(db.Integer, primary_key=True)
+    date = db.Column(db.String(10), nullable=False)  # UTC date, YYYY-MM-DD
+    language = db.Column(db.String(50), nullable=False)
+    topic = db.Column(db.String(100), nullable=False)
+    questions_json = db.Column(db.Text, nullable=False)
+    explanations_json = db.Column(db.Text, nullable=False)
+    source = db.Column(db.String(50), nullable=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
 
 class CustomContent(db.Model):
     id = db.Column(db.Integer, primary_key=True)
