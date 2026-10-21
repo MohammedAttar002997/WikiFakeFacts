@@ -32,6 +32,7 @@
                 {{ _('New name? Pick any 4-digit PIN. Returning? Enter your PIN to get back to your results.') }}
                 {% if session.get('username') %}
                     <br>{{ _('Not {name}?').format(name=session['username']) }} <a href="{{ url_for('logout') }}" class="text-reset fw-bold">{{ _('Switch player') }}</a>
+                    &middot; <a href="{{ url_for('account') }}" class="text-reset fw-bold">{{ _('Account') }}</a>
                 {% endif %}
             </p>
         </section>

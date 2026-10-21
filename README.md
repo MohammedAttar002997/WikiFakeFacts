@@ -100,6 +100,18 @@ Databases created before migrations were added are detected on startup, brought 
 
 Set `DATABASE_URL` to use a different database (for example `sqlite:///other.sqlite`); it defaults to `quiz.sqlite` next to `app.py`.
 
+## Player accounts
+
+Players sign in with a name and a 4-digit PIN. On the **Account** page (linked from the home page and My Progress) they can change their PIN or delete their account, which removes their scores, quizzes, uploads, badges, saved analysis and help chat.
+
+For whoever runs the game:
+
+```bash
+flask --app app reset-pin "Phoenix"              # sets and prints a random new PIN
+flask --app app reset-pin "Phoenix" --pin 1234   # or a PIN you choose
+flask --app app delete-player "Phoenix"          # removes the player and all their data
+```
+
 ## Running the tests
 
 ```bash

@@ -4,6 +4,8 @@ import random
 import secrets
 import time
 from datetime import datetime, timedelta
+
+import click
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -304,6 +306,108 @@ def logout():
     # The next player on this browser starts a fresh help conversation
     session.pop('chat_id', None)
     return redirect(url_for('index'))
+
+
+def delete_player_data(user, chat_id=None):
+    """Remove a player and everything stored about them (shared daily-challenge quizzes stay)."""
+    for model in (UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
+        model.query.filter_by(user_id=user.id).delete()
+    if chat_id:
+        ChatbotSession.query.filter_by(session_id=chat_id).delete()
+    db.session.delete(user)
+    db.session.commit()
+
+
+def check_account_pin(user, pin):
+    """Verify a PIN for an account action, counting wrong guesses toward the sign-in lockout."""
+    key = user.username.lower()
+    if is_locked_out(key):
+        flash(_("Too many wrong PINs for this name. Please wait a few minutes and try again."), "danger")
+        return False
+    if not user.pin_hash or not check_password_hash(user.pin_hash, pin):
+        record_failed_pin(key)
+        flash(_("That PIN isn't right."), "danger")
+        return False
+    FAILED_PINS.pop(key, None)
+    return True
+
+
+@app.route('/account')
+def account():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    counts = {
+        'scores': Score.query.filter_by(user_id=user.id).count(),
+        'uploads': CustomContent.query.filter_by(user_id=user.id).count(),
+        'badges': UserBadge.query.filter_by(user_id=user.id).count(),
+    }
+    return render_template('account.html', user=user, counts=counts)
+
+
+@app.route('/account/pin', methods=['POST'])
+def change_pin():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    new_pin = (request.form.get('new_pin') or '').strip()
+    if check_account_pin(user, (request.form.get('current_pin') or '').strip()):
+        if not (len(new_pin) == 4 and new_pin.isdigit()):
+            flash(_("Please enter a 4-digit PIN."), "danger")
+        else:
+            user.pin_hash = generate_password_hash(new_pin)
+            db.session.commit()
+            flash(_("Your PIN has been changed."), "success")
+    return redirect(url_for('account'))
+
+
+@app.route('/account/delete', methods=['POST'])
+def delete_account():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    if not request.form.get('confirm'):
+        flash(_("Tick the box to confirm you want to delete your account."), "warning")
+        return redirect(url_for('account'))
+    if not check_account_pin(user, (request.form.get('pin') or '').strip()):
+        return redirect(url_for('account'))
+
+    name = user.username
+    delete_player_data(user, chat_id=session.get('chat_id'))
+    session.clear()
+    flash(_("The account “{name}” and all its data have been deleted.").format(name=name), "success")
+    return redirect(url_for('index'))
+
+
+@app.cli.command('reset-pin')
+@click.argument('username')
+@click.option('--pin', help='New 4-digit PIN (random if omitted).')
+def reset_pin_command(username, pin):
+    """Set a new PIN for a player who forgot theirs, and print it."""
+    user = User.query.filter(func.lower(User.username) == username.strip().lower()).first()
+    if not user:
+        raise click.ClickException(f'No player called "{username}".')
+    if pin is None:
+        pin = f'{secrets.randbelow(10000):04d}'
+    elif not (len(pin) == 4 and pin.isdigit()):
+        raise click.ClickException('The PIN must be 4 digits.')
+    user.pin_hash = generate_password_hash(pin)
+    db.session.commit()
+    click.echo(f'New PIN for {user.username}: {pin}')
+
+
+@app.cli.command('delete-player')
+@click.argument('username')
+@click.option('--yes', is_flag=True, help="Don't ask for confirmation.")
+def delete_player_command(username, yes):
+    """Delete a player and all their data."""
+    user = User.query.filter(func.lower(User.username) == username.strip().lower()).first()
+    if not user:
+        raise click.ClickException(f'No player called "{username}".')
+    if not yes:
+        click.confirm(f'Delete {user.username} and all their scores, quizzes, uploads and badges?', abort=True)
+    delete_player_data(user)
+    click.echo(f'Deleted {username}.')
 
 
 @app.route('/setup', methods=['GET', 'POST'])
