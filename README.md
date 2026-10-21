@@ -15,18 +15,21 @@ WikiFakeFact is an AI-powered quiz game designed to test players' knowledge with
 ## Project Structure
 
 ```
-hackaton_project/
-├── hackaton/
-│   ├── app.py              # Main Flask application
-│   ├── data.py             # Core AI logic (quiz generation, RAG retrieval)
-│   ├── rag_indexer.py      # Script for indexing knowledge base into ChromaDB
-│   ├── knowledge_base.json # Local store of full-length articles
-│   ├── models.py           # SQLAlchemy models
-│   ├── templates/          # HTML templates
-│   ├── static/             # Static assets (CSS, JS)
-│   └── ...                 # Other supporting files
-├── README.md               # This file
-└── requirements.txt        # Python dependencies
+WikiFakeFacts/
+├── app.py                  # Flask application: routes, accounts, admin commands
+├── data.py                 # AI quiz generation and analysis, Wikipedia / knowledge-base lookup
+├── badges.py               # Badge rules and daily streaks
+├── translations.py         # UI translation helpers; catalogs in locales/
+├── models.py               # SQLAlchemy models
+├── migrations/             # Database migrations (Flask-Migrate / Alembic)
+├── templates/, static/     # HTML templates, CSS and JavaScript
+├── locales/                # Translations (es, fr, de, it, pt)
+├── tests/                  # pytest suite
+├── rag_indexer.py          # Optional: builds the local knowledge-base index (chroma_db/)
+├── knowledge_base.json     # Articles for the knowledge-base fallback
+├── requirements.txt        # Pinned app dependencies
+├── requirements-dev.txt    # + test tools
+└── requirements-rag.txt    # + optional knowledge-base fallback
 ```
 
 ## Setup and Installation
@@ -34,46 +37,48 @@ hackaton_project/
 ### 1. Clone the Repository
 
 ```bash
-git clone <repository_url>
-cd hackaton_project
+git clone https://github.com/MohammedAttar002997/WikiFakeFacts.git
+cd WikiFakeFacts
 ```
 
-### 2. Create a Virtual Environment (Recommended)
+### 2. Create a Virtual Environment
 
 ```bash
-python3 -m venv venv
-source venv/bin/activate
+python -m venv .venv
+.venv\Scripts\activate        # Windows
+source .venv/bin/activate     # macOS / Linux
 ```
 
 ### 3. Install Dependencies
 
+Versions are pinned so every install gets the same, tested set:
+
 ```bash
-pip install -r requirements.txt
+pip install -r requirements.txt       # to run the app
+pip install -r requirements-dev.txt   # to also run the tests
 ```
 
-### 4. Configure OpenAI API Key
+On Windows, if starting the app fails with *"An Application Control policy has blocked this file"*, see [Troubleshooting](#troubleshooting).
 
-Create a `.env` file in the `hackaton/` directory with your OpenAI API key:
+### 4. Configure the Environment
+
+Create a `.env` file next to `app.py`:
 
 ```
 OPENAI_API_KEY="your_openai_api_key_here"
-# Optional: If you are using a custom OpenAI base URL, uncomment and set it:
+SECRET_KEY="a long random string"   # signs login cookies; generate one with: python -c "import secrets; print(secrets.token_hex(32))"
+# Optional: a custom OpenAI base URL
 # OPENAI_BASE_URL="https://api.openai.com/v1"
 ```
 
-### 5. Generate the ChromaDB Vector Store
+### 5. Optional: Build the Local Knowledge Base
 
-This step is crucial for the RAG system to function. The `rag_indexer.py` script will process the `knowledge_base.json` and create the `chroma_db` directory.
-
-**Important**: Ensure you have direct access to the OpenAI API (i.e., no proxy issues) when running this script.
+When Wikipedia is unavailable, quizzes fall back to a local knowledge base, and if that isn't set up either, to the AI model's own knowledge. The knowledge base needs `chromadb`, which doesn't install on Python 3.15 yet; on Python 3.12 or 3.13:
 
 ```bash
-cd hackaton
-python rag_indexer.py
-cd ..
+pip install -r requirements-rag.txt
+python rag_indexer.py      # creates chroma_db/ from knowledge_base.json
 ```
-
-This will create a `chroma_db` directory inside `hackaton/` containing the indexed knowledge base.
 
 ### 6. Run the Flask Application
 
@@ -100,6 +105,18 @@ Databases created before migrations were added are detected on startup, brought 
 
 Set `DATABASE_URL` to use a different database (for example `sqlite:///other.sqlite`); it defaults to `quiz.sqlite` next to `app.py`.
 
+## Player accounts
+
+Players sign in with a name and a 4-digit PIN. On the **Account** page (linked from the home page and My Progress) they can change their PIN or delete their account, which removes their scores, quizzes, uploads, badges, saved analysis and help chat.
+
+For whoever runs the game:
+
+```bash
+flask --app app reset-pin "Phoenix"              # sets and prints a random new PIN
+flask --app app reset-pin "Phoenix" --pin 1234   # or a PIN you choose
+flask --app app delete-player "Phoenix"          # removes the player and all their data
+```
+
 ## Running the tests
 
 ```bash
@@ -116,6 +133,18 @@ The interface is available in English, Spanish, French, German, Italian and Port
 - Write UI text in English and wrap it: `{{ _('Play now') }}` in templates, `_("…")` in `app.py`. Use `{{ _n('{n} game', '{n} games', count) }}` for plurals and `.format(name=…)` for values.
 - Translations live in `locales/<lang>.json`, keyed by the English text. Missing strings fall back to English.
 - Run `python translations.py` to list strings that still need translating. Translations must not contain HTML or ASCII double quotes; `tests/test_i18n.py` checks this and that every string is translated.
+
+## Troubleshooting
+
+**Windows: "DLL load failed … An Application Control policy has blocked this file" when starting the app.**
+Smart App Control blocks SQLAlchemy's optional compiled speed-ups. Reinstall SQLAlchemy without them (it then uses its pure-Python code, which is plenty fast for this app). In PowerShell:
+
+```powershell
+$env:DISABLE_SQLALCHEMY_CEXT = "1"
+pip install --force-reinstall --no-deps --no-binary sqlalchemy sqlalchemy==2.1.5
+```
+
+Run this again after anything reinstalls or upgrades SQLAlchemy.
 
 ## Usage
 

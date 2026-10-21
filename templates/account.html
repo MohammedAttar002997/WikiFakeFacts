@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-7">
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-person-gear"></i> {{ user.username }}</span>
+            <h1>{{ _('Account') }}</h1>
+            <p>{{ _('Change your PIN or delete your account.') }}</p>
+        </div>
+
+        <form action="{{ url_for('change_pin') }}" method="POST" class="wf-card wf-card-pad mb-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="section-label"><i class="bi bi-key-fill text-brand fs-4"></i>{{ _('Change PIN') }}</div>
+            <div class="row g-3 mb-3">
+                <div class="col-sm-6">
+                    <label for="currentPin" class="form-label fw-bold">{{ _('Current PIN') }}</label>
+                    <input type="password" class="form-control form-control-lg" id="currentPin" name="current_pin" required
+                           minlength="4" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" autocomplete="current-password">
+                </div>
+                <div class="col-sm-6">
+                    <label for="newPin" class="form-label fw-bold">{{ _('New PIN') }}</label>
+                    <input type="password" class="form-control form-control-lg" id="newPin" name="new_pin" required
+                           minlength="4" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" autocomplete="new-password">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">{{ _('Change PIN') }}</button>
+        </form>
+
+        <form action="{{ url_for('delete_account') }}" method="POST" class="wf-card wf-card-pad danger-zone">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="section-label text-danger"><i class="bi bi-trash3-fill fs-4"></i>{{ _('Delete account') }}</div>
+            <p class="mb-2">{{ _('This permanently deletes your account and everything stored about you:') }}</p>
+            <ul class="mb-3">
+                <li>{{ _n('{n} quiz result', '{n} quiz results', counts.scores) }}</li>
+                <li>{{ _n('{n} uploaded document or page', '{n} uploaded documents or pages', counts.uploads) }}</li>
+                <li>{{ _n('{n} badge', '{n} badges', counts.badges) }}</li>
+                <li>{{ _('Your AI progress analysis and your help chat on this browser') }}</li>
+            </ul>
+            <p class="small text-muted">{{ _("This can't be undone. Your name becomes free for someone else to use.") }}</p>
+            <div class="mb-3" style="max-width: 14rem;">
+                <label for="deletePin" class="form-label fw-bold">{{ _('Your PIN') }}</label>
+                <input type="password" class="form-control" id="deletePin" name="pin" required
+                       minlength="4" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" autocomplete="current-password">
+            </div>
+            <div class="form-check mb-3">
+                <input class="form-check-input" type="checkbox" id="confirmDelete" name="confirm" value="1" required>
+                <label class="form-check-label" for="confirmDelete">{{ _('I understand that my account and data will be deleted for good.') }}</label>
+            </div>
+            <button type="submit" class="btn btn-danger">{{ _('Delete my account') }}</button>
+        </form>
+
+        <p class="small text-muted text-center mt-4">{{ _('Forgot your PIN? Ask the person who runs this game to reset it.') }}</p>
+    </div>
+</div>
+{% endblock %}

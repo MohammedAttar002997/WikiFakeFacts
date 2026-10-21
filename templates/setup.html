@@ -23,6 +23,7 @@
         </a>
 
         <form action="/start_quiz" method="POST" class="wf-card wf-card-pad" data-loading="{{ _('Generating your quiz…') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <section class="mb-5">
                 <div class="section-label"><span class="step">1</span>{{ _('Select Category:') }}</div>
                 <div class="row g-3">

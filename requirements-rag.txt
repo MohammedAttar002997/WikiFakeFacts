@@ -1,0 +1,5 @@
+# Optional: the local knowledge-base fallback (rag_indexer.py and the Chroma lookup in data.py).
+# chromadb does not install on Python 3.15 yet; use Python 3.12 or 3.13 if you need it. The app works without it:
+# when Wikipedia fails it uses the AI model's own knowledge instead.
+-r requirements.txt
+chromadb

@@ -29,6 +29,7 @@
                 </div>
                 {% else %}
                 <form action="{{ url_for('daily_start') }}" method="POST" data-loading="{{ _("Preparing today's challenge…") }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                     <button type="submit" class="btn btn-primary btn-lg">
                         {% if attempt %}<i class="bi bi-play-fill me-1"></i>{{ _('Continue') }}{% else %}<i class="bi bi-play-fill me-1"></i>{{ _("Play today's challenge") }}{% endif %}
                     </button>

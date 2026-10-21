@@ -18,7 +18,8 @@ from app import app as flask_app, db, init_database  # noqa: E402
 from data import AIAnalysis  # noqa: E402
 from models import User  # noqa: E402
 
-flask_app.config.update(TESTING=True)
+# Tests post forms directly, so CSRF checks are off here; test_csrf.py turns them back on
+flask_app.config.update(TESTING=True, WTF_CSRF_ENABLED=False)
 with flask_app.app_context():
     init_database()
 

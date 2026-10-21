@@ -13,6 +13,7 @@
 
         <form action="/custom_quiz" method="POST" enctype="multipart/form-data" id="customQuizForm"
               class="wf-card wf-card-pad" data-loading="{{ _('Building your custom quiz…') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <section class="mb-5">
                 <div class="section-label"><span class="step">1</span>{{ _('Quiz Title') }} <span class="text-muted fw-semibold small">{{ _('(optional)') }}</span></div>
                 <input type="text" class="form-control form-control-lg" id="title" name="title" placeholder="{{ _('e.g. My biology notes') }}">
