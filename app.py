@@ -101,18 +101,33 @@ def get_topic_stats(user_scores):
     """Per-topic accuracy for a player's scores, best topic first."""
     topic_stats = {}
     for s in user_scores:
-        stats = topic_stats.setdefault(s.topic, {'total_score': 0, 'total_q': 0, 'count': 0})
+        stats = topic_stats.setdefault(s.topic, {'total_score': 0, 'total_q': 0, 'count': 0, 'difficulty': s.difficulty})
         stats['total_score'] += s.score
         stats['total_q'] += s.total_questions
         stats['count'] += 1
+        stats['difficulty'] = s.difficulty  # Scores come oldest first, so this ends as the latest difficulty
 
     analysis_data = [{
         'topic': topic,
         'avg_percentage': round(stats['total_score'] / stats['total_q'] * 100, 2),
         'games_played': stats['count'],
+        'difficulty': stats['difficulty'],
     } for topic, stats in topic_stats.items()]
     analysis_data.sort(key=lambda x: x['avg_percentage'], reverse=True)
     return analysis_data
+
+
+def find_practice_topic(user, analysis_data):
+    """The player's weakest topic that a new quiz can be made for, with its saved custom content if any."""
+    menu_topics = {topic for topics in MENU.values() for topic in topics}
+    for data in reversed(analysis_data):
+        if data['topic'] in menu_topics:
+            return data, None
+        content = (CustomContent.query.filter_by(user_id=user.id, title=data['topic'])
+                   .order_by(CustomContent.created_at.desc()).first())
+        if content:
+            return data, content
+    return None, None
 
 
 def is_locked_out(key):
@@ -280,8 +295,13 @@ def custom_quiz():
             try:
                 # Generate quiz from custom content
                 language_name = LANGUAGE_OPTIONS.get(language_code, "English")
-                create_quiz_session(user, "Custom Content", difficulty_text, questions_count, language_name,
-                                    custom_content=content, custom_title=request.form.get('title'))
+                quiz_session = create_quiz_session(user, "Custom Content", difficulty_text, questions_count,
+                                                   language_name, custom_content=content,
+                                                   custom_title=request.form.get('title'))
+
+                # Save the content under the quiz topic so "Practice my weak spots" can reuse it
+                custom_content_obj.title = quiz_session.topic
+                db.session.commit()
                 return redirect(url_for('quiz'))
 
             except Exception as e:
@@ -497,6 +517,7 @@ def analysis(user_id=None):
         return redirect(url_for('setup'))
 
     analysis_data = get_topic_stats(user_scores)
+    practice_topic, _ = find_practice_topic(user, analysis_data)
 
     # Reuse the saved analysis unless there are new scores or the language changed
     language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
@@ -531,7 +552,38 @@ def analysis(user_id=None):
     return render_template('analysis.html',
                            analysis_data=analysis_data,
                            ai_analysis=ai_analysis,
+                           practice_topic=practice_topic,
                            profile_user=user)
+
+
+@app.route('/practice', methods=['POST'])
+def practice():
+    """Start a quiz on the player's weakest topic."""
+    if 'username' not in session:
+        return redirect(url_for('index'))
+    user = User.query.filter_by(username=session['username']).first()
+    if not user:
+        return redirect(url_for('index'))
+
+    user_scores = Score.query.filter_by(user_id=user.id).order_by(Score.id).all()
+    practice_topic, custom_content = find_practice_topic(user, get_topic_stats(user_scores))
+    if not practice_topic:
+        flash("Play a few quizzes first so we can find a topic to practice.", "info")
+        return redirect(url_for('setup'))
+
+    language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
+    questions_count = 5  # Medium length
+    try:
+        if custom_content:
+            create_quiz_session(user, "Custom Content", practice_topic['difficulty'], questions_count, language_name,
+                                custom_content=custom_content.content, custom_title=practice_topic['topic'])
+        else:
+            create_quiz_session(user, practice_topic['topic'], practice_topic['difficulty'], questions_count,
+                                language_name)
+        return redirect(url_for('quiz'))
+    except Exception as e:
+        flash(f"An error occurred: {str(e)}", "danger")
+        return redirect(url_for('analysis'))
 
 
 @app.route('/chatbot')
