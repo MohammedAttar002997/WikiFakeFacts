@@ -43,6 +43,15 @@ class CustomContent(db.Model):
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     user = db.relationship('User', backref='custom_contents')
 
+class PlayerAnalysis(db.Model):
+    """Last AI analysis per player, reused until they finish another quiz or switch language."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True, nullable=False)
+    language = db.Column(db.String(50), nullable=False)
+    last_score_id = db.Column(db.Integer, nullable=False)  # Newest score included in the analysis
+    analysis_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+
 class ChatbotSession(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     session_id = db.Column(db.String(100), unique=True, nullable=False)

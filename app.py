@@ -2,12 +2,13 @@ import os
 import json
 import random
 import time
+from datetime import datetime
 from flask import Flask, render_template, request, redirect, url_for, session, flash, jsonify
 from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from models import db, User, Score, QuizSession, CustomContent, ChatbotSession
-from data import get_ai_response, get_ai_analysis
+from models import db, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis
+from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS
 from wikipedia import DisambiguationError
 from translations import TRANSLATIONS
@@ -94,6 +95,24 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
     session['quiz_session_id'] = quiz_session.id
     session['quiz_source'] = source
     return quiz_session
+
+
+def get_topic_stats(user_scores):
+    """Per-topic accuracy for a player's scores, best topic first."""
+    topic_stats = {}
+    for s in user_scores:
+        stats = topic_stats.setdefault(s.topic, {'total_score': 0, 'total_q': 0, 'count': 0})
+        stats['total_score'] += s.score
+        stats['total_q'] += s.total_questions
+        stats['count'] += 1
+
+    analysis_data = [{
+        'topic': topic,
+        'avg_percentage': round(stats['total_score'] / stats['total_q'] * 100, 2),
+        'games_played': stats['count'],
+    } for topic, stats in topic_stats.items()]
+    analysis_data.sort(key=lambda x: x['avg_percentage'], reverse=True)
+    return analysis_data
 
 
 def is_locked_out(key):
@@ -471,53 +490,46 @@ def analysis(user_id=None):
         flash("Performance analysis is private. You can only view your own.", "warning")
         return redirect(url_for('analysis'))
 
-    user_scores = Score.query.filter_by(user_id=user.id).all()
-    
+    user_scores = Score.query.filter_by(user_id=user.id).order_by(Score.id).all()
+
     if not user_scores:
         flash("Play some games first to see your performance analysis!", "info")
         return redirect(url_for('setup'))
-    
-    # Prepare history for AI
-    history = []
-    topic_stats = {}
-    for s in user_scores:
-        history.append({
+
+    analysis_data = get_topic_stats(user_scores)
+
+    # Reuse the saved analysis unless there are new scores or the language changed
+    language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
+    latest_score_id = user_scores[-1].id
+    saved = PlayerAnalysis.query.filter_by(user_id=user.id).first()
+    if saved and saved.last_score_id == latest_score_id and saved.language == language_name:
+        ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json)
+    else:
+        history = [{
             'topic': s.topic,
             'score': s.score,
             'total': s.total_questions,
             'percentage': s.percentage,
             'difficulty': s.difficulty,
             'date': s.timestamp.strftime("%Y-%m-%d")
-        })
-        
-        if s.topic not in topic_stats:
-            topic_stats[s.topic] = {'total_score': 0, 'total_q': 0, 'count': 0}
-        topic_stats[s.topic]['total_score'] += s.score
-        topic_stats[s.topic]['total_q'] += s.total_questions
-        topic_stats[s.topic]['count'] += 1
-    
-    # Basic stats for the table
-    analysis_data = []
-    for topic, stats in topic_stats.items():
-        avg_percentage = (stats['total_score'] / stats['total_q']) * 100
-        analysis_data.append({
-            'topic': topic,
-            'avg_percentage': round(avg_percentage, 2),
-            'games_played': stats['count']
-        })
-    analysis_data.sort(key=lambda x: x['avg_percentage'], reverse=True)
+        } for s in user_scores]
+        try:
+            ai_analysis = get_ai_analysis(json.dumps(history), language_name)
+            if not saved:
+                saved = PlayerAnalysis(user_id=user.id)
+                db.session.add(saved)
+            saved.language = language_name
+            saved.last_score_id = latest_score_id
+            saved.analysis_json = ai_analysis.model_dump_json()
+            saved.created_at = datetime.utcnow()
+            db.session.commit()
+        except Exception as e:
+            print(f"AI Analysis Error: {e}")
+            # Fall back to the last saved analysis, even if it's missing the newest quizzes
+            ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json) if saved else None
 
-    # Get AI Analysis
-    try:
-        lang = session.get('language', 'en')
-        language_name = LANGUAGE_OPTIONS.get(lang, "English")
-        ai_analysis = get_ai_analysis(json.dumps(history), language_name)
-    except Exception as e:
-        print(f"AI Analysis Error: {e}")
-        ai_analysis = None
-
-    return render_template('analysis.html', 
-                           analysis_data=analysis_data, 
+    return render_template('analysis.html',
+                           analysis_data=analysis_data,
                            ai_analysis=ai_analysis,
                            profile_user=user)
 
