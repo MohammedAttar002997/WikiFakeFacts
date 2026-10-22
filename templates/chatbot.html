@@ -29,7 +29,7 @@
 
                     <form id="chatForm" class="chat-input">
                         <input type="text" id="messageInput" class="form-control form-control-lg"
-                               placeholder="{{ _('Ask me anything...') }}" autocomplete="off" aria-label="{{ _('Message') }}">
+                               placeholder="{{ _('Ask me anything...') }}" autocomplete="off" aria-label="{{ _('Message') }}" maxlength="500">
                         <button type="submit" class="btn btn-primary" id="sendButton" aria-label="{{ _('Send') }}">
                             <i class="bi bi-send-fill"></i>
                         </button>
@@ -88,15 +88,14 @@
                 body: JSON.stringify({ message: message })
             });
 
-            if (!response.ok) {
-                throw new Error('Failed to get response');
-            }
-
-            const data = await response.json();
-
-            // Add assistant message
+            const data = await response.json().catch(() => ({}));
             typing.remove();
-            addMessage(data.message, 'assistant', data.suggested_action, data.action_url);
+            if (response.ok) {
+                addMessage(data.message, 'assistant', data.suggested_action, data.action_url);
+            } else {
+                // The server explains in the player's language (too long, too many messages…)
+                addMessage(data.error || {{ _('Sorry, I encountered an error. Please try again.')|tojson }}, 'assistant');
+            }
         } catch (error) {
             console.error('Error:', error);
             typing.remove();

@@ -4,7 +4,6 @@ import os
 import json
 import random
 import secrets
-import tempfile
 from datetime import datetime, timedelta
 
 import click
@@ -22,13 +21,14 @@ from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
-                    UserBadge, PinAttempt)
+                    UserBadge, PinAttempt, RateLimit)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from wikipedia import DisambiguationError
 from translations import (UI_LANGUAGES, format_date, template_context, template_globals, translate as _,
                           translate_plural as _n)
-from content_extractor import extract_text_from_file, extract_text_from_url, validate_content_length
+from content_extractor import (ContentError, extract_text_from_upload, extract_text_from_url,
+                               validate_content_length)
 from chatbot import get_chatbot_response, get_quick_help_suggestions
 from badges import BADGES, award_badges, compute_streaks, player_streaks
 
@@ -44,9 +44,7 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 # Set SESSION_COOKIE_SECURE=1 when the site is served over HTTPS, so the cookie is never sent unencrypted
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
 
-# File upload configuration. Uploaded files are only kept while their text is extracted; on Vercel only the
-# temp folder is writable.
-UPLOAD_FOLDER = os.path.join(tempfile.gettempdir() if ON_VERCEL else os.path.dirname(__file__), 'uploads')
+# File upload configuration (uploads are read in memory, never saved)
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
@@ -55,9 +53,6 @@ AVATAR_SIZE = 256
 AVATAR_FORMATS = {'JPEG', 'PNG', 'WEBP', 'GIF'}
 AVATAR_MAX_PIXELS = 40_000_000  # Bigger pictures are refused before they're decoded
 
-os.makedirs(UPLOAD_FOLDER, exist_ok=True)
-
-app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Database configuration
@@ -89,6 +84,15 @@ migrate = Migrate(app, db, directory=os.path.join(basedir, 'migrations'), render
 
 # Wrong-PIN throttling per lowercase name (stored in pin_attempt): 5 wrong PINs lock the name for 5 minutes
 MAX_PIN_ATTEMPTS = 5
+# Requests per key and window, counted in the database so every server instance shares them. They cap what one
+# visitor can cost: AI calls (chat, quizzes) and rows (accounts, chats).
+RATE_LIMITS = {
+    'chat': (20, timedelta(minutes=10)),     # help-chat messages per address
+    'quiz': (20, timedelta(hours=1)),        # AI-generated quizzes per player
+    'quiz_ip': (40, timedelta(hours=1)),     # … and per address, across accounts
+    'signup': (10, timedelta(hours=1)),      # new accounts per address
+}
+MAX_CHAT_MESSAGE = 500  # Characters
 MAX_NAME_LENGTH = 30  # For new names; players who signed up before the limit keep theirs
 PIN_LOCKOUT = timedelta(minutes=5)
 
@@ -420,23 +424,77 @@ def find_practice_topic(user, analysis_data):
     return None, None
 
 
-def pin_attempt_allowed(key):
-    """Count a PIN attempt for `key` and say whether it may be checked: at most MAX_PIN_ATTEMPTS per PIN_LOCKOUT
-    window. The attempt is counted before the (deliberately slow) PIN check, in one atomic statement, so guesses
-    sent in parallel can't all get past the limit; a correct PIN clears the count."""
+def count_in_window(model, key, window, count_column, start_column):
+    """Add one to `model`'s count for `key` and return the new count, starting over once `window` has passed since
+    the window began. One atomic statement, so concurrent requests on any server instance are all counted."""
     now = utcnow()
-    expired = PinAttempt.first_failure < now - PIN_LOCKOUT
+    count, start = getattr(model, count_column), getattr(model, start_column)
+    expired = start < now - window
+    key_column = model.__table__.primary_key.columns[0].name
     insert = postgres_insert if db.engine.dialect.name == 'postgresql' else sqlite_insert
-    count = db.session.execute(
-        insert(PinAttempt).values(name=key, failures=1, first_failure=now)
-        .on_conflict_do_update(index_elements=['name'], set_={
-            'failures': case((expired, 1), else_=PinAttempt.failures + 1),
-            'first_failure': case((expired, now), else_=PinAttempt.first_failure),
+    result = db.session.execute(
+        insert(model).values({key_column: key, count_column: 1, start_column: now})
+        .on_conflict_do_update(index_elements=[key_column], set_={
+            count_column: case((expired, 1), else_=count + 1),
+            start_column: case((expired, now), else_=start),
         })
-        .returning(PinAttempt.failures)
+        .returning(count)
     ).scalar_one()
     db.session.commit()
-    return count <= MAX_PIN_ATTEMPTS
+    return result
+
+
+def pin_attempt_allowed(key):
+    """Count a PIN attempt for `key` and say whether it may be checked: at most MAX_PIN_ATTEMPTS per PIN_LOCKOUT
+    window. The attempt is counted before the (deliberately slow) PIN check, so guesses sent in parallel can't all
+    get past the limit; a correct PIN clears the count."""
+    return count_in_window(PinAttempt, key, PIN_LOCKOUT, 'failures', 'first_failure') <= MAX_PIN_ATTEMPTS
+
+
+def client_ip():
+    """The visitor's address. On Vercel it comes from X-Real-IP, which Vercel sets itself (a client can't)."""
+    return (request.headers.get('X-Real-IP') if ON_VERCEL else None) or request.remote_addr or 'unknown'
+
+
+def over_limit(kind, who):
+    """Count a request of `kind` (a RATE_LIMITS key) by `who` and say whether it goes over the limit."""
+    limit, window = RATE_LIMITS[kind]
+    if secrets.randbelow(200) == 0:
+        # Now and then, forget windows that ended long ago so the table doesn't keep every address forever
+        RateLimit.query.filter(RateLimit.window_start < utcnow() - timedelta(days=1)).delete()
+    return count_in_window(RateLimit, f'{kind}:{who}'[:120], window, 'hits', 'window_start') > limit
+
+
+def quiz_generation_allowed(user):
+    """Whether `user` may have another quiz made by the AI now; flashes why not."""
+    if over_limit('quiz', user.id) or over_limit('quiz_ip', client_ip()):
+        flash(_("You're going a bit fast. Please wait a few minutes and try again."), "warning")
+        return False
+    return True
+
+
+def report_failure(message, error):
+    """Tell the player what went wrong in their language. The details can name servers or SQL, so they only go to
+    the log."""
+    db.session.rollback()
+    app.logger.error('%s failed: %r', request.path, error, exc_info=error)
+    flash(message, "danger")
+
+
+def flash_content_error(error):
+    """A message for a ContentError, in the player's language."""
+    if error.reason == 'unsupported_file':
+        message = _("Invalid file type. Allowed types: PDF, TXT, DOCX")
+    elif error.reason == 'unreadable_file':
+        message = _("We couldn't read that file. Please check that it isn't damaged or password-protected.")
+    elif error.reason == 'blocked_url':
+        message = _("That link can't be used. Please link to a public web page.")
+    elif error.reason == 'too_short':
+        message = _("There isn't enough text there to make a quiz. Please use a longer document or page.")
+    else:
+        message = _("We couldn't load that page. Check the link, or upload the text as a file instead.")
+    app.logger.info('Custom content refused: %s', error)
+    flash(message, "danger")
 
 
 def clear_failed_pins(key):
@@ -686,6 +744,9 @@ def setup():
             if len(username) > MAX_NAME_LENGTH:
                 flash(new_name_problem(username), "danger")
                 return redirect(url_for('index'))
+            if over_limit('signup', client_ip()):
+                flash(_("You're going a bit fast. Please wait a few minutes and try again."), "warning")
+                return redirect(url_for('index'))
             user = User(username=username, pin_hash=generate_password_hash(pin))
             db.session.add(user)
             db.session.commit()
@@ -720,6 +781,8 @@ def custom_quiz():
         return redirect(url_for('index'))
 
     if request.method == 'POST':
+        if not quiz_generation_allowed(user):
+            return redirect(url_for('custom_quiz'))
         try:
             content = None
             source_info = None
@@ -742,17 +805,12 @@ def custom_quiz():
                     flash(_("Invalid file type. Allowed types: PDF, TXT, DOCX"), "danger")
                     return redirect(url_for('custom_quiz'))
 
-                filename = secure_filename(file.filename)
-                filepath = os.path.join(app.config['UPLOAD_FOLDER'], filename)
-                file.save(filepath)
-
                 try:
-                    content = extract_text_from_file(filepath)
-                    source_info = filename
+                    content = extract_text_from_upload(file.read(), file.filename)
+                    source_info = secure_filename(file.filename)[:500]
                     content_type = 'file'
-                    os.remove(filepath)  # Clean up after extraction
-                except Exception as e:
-                    flash(_("Error extracting file content: {error}").format(error=e), "danger")
+                except ContentError as e:
+                    flash_content_error(e)
                     return redirect(url_for('custom_quiz'))
 
             elif request.form.get('url'):
@@ -764,10 +822,10 @@ def custom_quiz():
 
                 try:
                     content = extract_text_from_url(url)
-                    source_info = url
+                    source_info = url[:500]
                     content_type = 'url'
-                except Exception as e:
-                    flash(_("Error extracting webpage content: {error}").format(error=e), "danger")
+                except ContentError as e:
+                    flash_content_error(e)
                     return redirect(url_for('custom_quiz'))
 
             else:
@@ -777,8 +835,8 @@ def custom_quiz():
             # Validate content length
             try:
                 validate_content_length(content)
-            except ValueError as e:
-                flash(_("Content validation failed: {error}").format(error=e), "danger")
+            except ContentError as e:
+                flash_content_error(e)
                 return redirect(url_for('custom_quiz'))
 
             # Store custom content in database, reusing the saved copy when the same content comes in again
@@ -787,7 +845,7 @@ def custom_quiz():
             if not custom_content_obj:
                 custom_content_obj = CustomContent(
                     user_id=user.id,
-                    title=request.form.get('title', 'Untitled'),
+                    title=(request.form.get('title') or 'Untitled').strip()[:200],
                     content=content,
                     content_type=content_type,
                     source=source_info
@@ -816,7 +874,8 @@ def custom_quiz():
                 # Generate quiz from custom content
                 language_name = LANGUAGE_OPTIONS.get(language_code, "English")
                 # A replayed upload keeps its topic unless the player typed a new title
-                custom_title = request.form.get('title') or (saved_content.title if saved_content else None)
+                custom_title = (request.form.get('title') or '').strip()[:100] or (
+                    saved_content.title if saved_content else None)
                 quiz_session = create_quiz_session(user, "Custom Content", difficulty_text, questions_count,
                                                    language_name, custom_content=content,
                                                    custom_title=custom_title)
@@ -827,11 +886,11 @@ def custom_quiz():
                 return redirect(url_for('quiz'))
 
             except Exception as e:
-                flash(_("Error generating quiz: {error}").format(error=e), "danger")
+                report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
                 return redirect(url_for('custom_quiz'))
 
         except Exception as e:
-            flash(_("An unexpected error occurred: {error}").format(error=e), "danger")
+            report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
             return redirect(url_for('custom_quiz'))
 
     user = current_user()
@@ -880,6 +939,8 @@ def start_quiz():
     questions_count = int(length_text.split("rounds")[0].split("(")[1].strip())
     
     difficulty_text = DIFFICULTY_OPTIONS.get(difficulty_id)
+    if not quiz_generation_allowed(user):
+        return redirect(url_for('setup'))
 
     try:
         # Fetch questions from AI
@@ -892,7 +953,7 @@ def start_quiz():
         flash(_("Wikipedia found multiple topics for this category. Trying again..."), "info")
         return redirect(url_for('setup'))
     except Exception as e:
-        flash(_("An error occurred: {error}").format(error=e), "danger")
+        report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
         return redirect(url_for('setup'))
 
 
@@ -1102,7 +1163,7 @@ def daily_start():
                           daily_challenge_id=challenge.id)
         return redirect(url_for('quiz'))
     except Exception as e:
-        flash(_("An error occurred: {error}").format(error=e), "danger")
+        report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
         return redirect(url_for('daily'))
 
 
@@ -1287,7 +1348,7 @@ def analysis(user_id=None):
             saved.created_at = utcnow()
             db.session.commit()
         except Exception as e:
-            print(f"AI Analysis Error: {e}")
+            app.logger.error('AI analysis failed: %r', e, exc_info=e)
             # Fall back to the last saved analysis, even if it's missing the newest quizzes
             ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json) if saved else None
 
@@ -1321,6 +1382,8 @@ def practice():
 
     language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
     questions_count = 5  # Medium length
+    if not quiz_generation_allowed(user):
+        return redirect(url_for('analysis'))
     try:
         if custom_content:
             create_quiz_session(user, "Custom Content", practice_topic['difficulty'], questions_count, language_name,
@@ -1330,7 +1393,7 @@ def practice():
                                 language_name)
         return redirect(url_for('quiz'))
     except Exception as e:
-        flash(_("An error occurred: {error}").format(error=e), "danger")
+        report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
         return redirect(url_for('analysis'))
 
 
@@ -1345,11 +1408,17 @@ def chatbot_page():
 def chatbot_api():
     """API endpoint for chatbot messages."""
     try:
-        data = request.get_json()
-        user_message = data.get('message', '').strip()
+        data = request.get_json(silent=True) or {}
+        user_message = str(data.get('message') or '').strip()
 
         if not user_message:
-            return jsonify({'error': 'Message cannot be empty'}), 400
+            return jsonify({'error': _("Please type a question.")}), 400
+        if len(user_message) > MAX_CHAT_MESSAGE:
+            return jsonify({'error': _("Please keep your message under {n} characters.").format(
+                n=MAX_CHAT_MESSAGE)}), 400
+        # Every message costs an AI call and is stored, so each address gets a limited number
+        if over_limit('chat', client_ip()):
+            return jsonify({'error': _("You're going a bit fast. Please wait a few minutes and try again.")}), 429
 
         # Each browser gets its own random conversation ID (Flask has no built-in session ID)
         if 'chat_id' not in session:
@@ -1387,8 +1456,9 @@ def chatbot_api():
         })
 
     except Exception as e:
-        print(f"Chatbot API Error: {str(e)}")
-        return jsonify({'error': str(e)}), 500
+        db.session.rollback()
+        app.logger.error('Help chat failed: %r', e, exc_info=e)
+        return jsonify({'error': _("Sorry, I encountered an error. Please try again.")}), 500
 
 
 if __name__ == '__main__':

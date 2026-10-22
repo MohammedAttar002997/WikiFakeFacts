@@ -100,3 +100,8 @@ class ChatbotSession(db.Model):
     conversation_json = db.Column(db.Text, nullable=False, default='[]')
     created_at = db.Column(db.DateTime, default=utcnow)
     updated_at = db.Column(db.DateTime, default=utcnow, onupdate=utcnow)
+class RateLimit(db.Model):
+    """Requests per key (like 'chat:203.0.113.9') in the current window, shared by every server instance."""
+    key = db.Column(db.String(120), primary_key=True)
+    hits = db.Column(db.Integer, nullable=False, default=0)
+    window_start = db.Column(db.DateTime, nullable=False, default=utcnow)
