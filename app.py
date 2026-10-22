@@ -1,11 +1,14 @@
+import io
 import os
 import json
 import random
 import secrets
+import tempfile
 from datetime import datetime, timedelta
 
 import click
-from flask import Flask, abort, render_template, request, redirect, url_for, session, flash, jsonify
+from flask import Flask, abort, render_template, request, redirect, url_for, session, flash, jsonify, send_file
+from PIL import Image, ImageOps, UnidentifiedImageError
 from sqlalchemy import func, inspect, text
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
@@ -30,25 +33,46 @@ from badges import BADGES, award_badges, compute_streaks, player_streaks
 app = Flask(__name__)
 DEV_SECRET_KEY = 'hackathon-secret-key'  # Only for local development; serve.py refuses to run with it
 app.secret_key = os.environ.get('SECRET_KEY') or DEV_SECRET_KEY
+ON_VERCEL = bool(os.environ.get('VERCEL'))  # Vercel sets VERCEL=1 for builds and functions
+if ON_VERCEL and app.secret_key == DEV_SECRET_KEY:
+    raise RuntimeError('SECRET_KEY is not set. Add a long random value in the Vercel project settings.')
 # Browsers don't send the session cookie on cross-site POSTs (a second layer next to CSRF tokens)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 # Set SESSION_COOKIE_SECURE=1 when the site is served over HTTPS, so the cookie is never sent unencrypted
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
 
-# File upload configuration
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+# File upload configuration. Uploaded files are only kept while their text is extracted; on Vercel only the
+# temp folder is writable.
+UPLOAD_FOLDER = os.path.join(tempfile.gettempdir() if ON_VERCEL else os.path.dirname(__file__), 'uploads')
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+# Profile photos: re-encoded as square WebP images of this size and stored in the database
+AVATAR_SIZE = 256
+AVATAR_FORMATS = {'JPEG', 'PNG', 'WEBP', 'GIF'}
+AVATAR_MAX_PIXELS = 40_000_000  # Bigger pictures are refused before they're decoded
+
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'quiz.sqlite'))
+
+
+def database_url():
+    """DATABASE_URL (SQLite by default), with Postgres URLs as Neon and Vercel give them pointed at psycopg 3."""
+    url = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'quiz.sqlite')
+    for prefix in ('postgres://', 'postgresql://'):
+        if url.startswith(prefix):
+            return 'postgresql+psycopg://' + url[len(prefix):]
+    return url
+
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url()
+# Serverless instances sit idle between requests, so check pooled connections before using them
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -62,11 +86,29 @@ migrate = Migrate(app, db, directory=os.path.join(basedir, 'migrations'), render
 
 # Wrong-PIN throttling per lowercase name (stored in pin_attempt): 5 wrong PINs lock the name for 5 minutes
 MAX_PIN_ATTEMPTS = 5
+MAX_NAME_LENGTH = 30  # For new names; players who signed up before the limit keep theirs
 PIN_LOCKOUT = timedelta(minutes=5)
 
 
 def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+def make_avatar(file):
+    """An uploaded picture cropped to a square AVATAR_SIZE WebP, or None if it isn't a usable image.
+    Re-encoding keeps only the pixels, so metadata (like a photo's GPS location) and anything else hidden in the
+    file is dropped."""
+    try:
+        with Image.open(file) as image:
+            if image.format not in AVATAR_FORMATS or image.width * image.height > AVATAR_MAX_PIXELS:
+                return None
+            image = ImageOps.exif_transpose(image)  # Phone photos are often stored sideways with a rotation tag
+            image = ImageOps.fit(image.convert('RGBA'), (AVATAR_SIZE, AVATAR_SIZE), Image.Resampling.LANCZOS)
+            output = io.BytesIO()
+            image.save(output, 'WEBP', quality=85)
+            return output.getvalue()
+    except (UnidentifiedImageError, Image.DecompressionBombError, OSError, ValueError):
+        return None
 
 
 @app.context_processor
@@ -234,6 +276,21 @@ def flash_new_badges(user):
               + _(badge['description']), "success")
 
 
+def new_name_problem(name, user=None):
+    """Why `name` can't be taken as a new player name (by `user`, when renaming), or None if it can."""
+    if len(name) <= 2:
+        return _("Please enter a valid name (at least 3 characters).")
+    if len(name) > MAX_NAME_LENGTH:
+        return _n("Please choose a name of at most {n} character.", "Please choose a name of at most {n} characters.",
+                  MAX_NAME_LENGTH)
+    taken = User.query.filter(func.lower(User.username) == name.lower())
+    if user:
+        taken = taken.filter(User.id != user.id)
+    if taken.first():
+        return _("The name “{name}” is already taken. Please choose a different one.").format(name=name)
+    return None
+
+
 def current_user():
     """The logged-in player, or None."""
     if 'username' not in session:
@@ -286,7 +343,7 @@ def build_answer_review(quiz_session):
 
 
 def get_topic_stats(user_scores):
-    """Per-topic accuracy for a player's scores, best topic first."""
+    """Per-topic accuracy for a player's scores,the best topic first."""
     topic_stats = {}
     for s in user_scores:
         stats = topic_stats.setdefault(s.topic, {'total_score': 0, 'total_q': 0, 'count': 0, 'difficulty': s.difficulty})
@@ -395,7 +452,75 @@ def account():
         'uploads': CustomContent.query.filter_by(user_id=user.id).count(),
         'badges': UserBadge.query.filter_by(user_id=user.id).count(),
     }
-    return render_template('account.html', user=user, counts=counts)
+    return render_template('account.html', user=user, counts=counts, categories=CATEGORIES,
+                           max_name_length=MAX_NAME_LENGTH)
+
+
+@app.route('/account/photo', methods=['POST'])
+def change_photo():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    if request.form.get('remove'):
+        user.avatar = user.avatar_updated_at = None
+        db.session.commit()
+        flash(_("Your photo has been removed."), "success")
+        return redirect(url_for('account'))
+
+    photo = request.files.get('photo')
+    if not photo or not photo.filename:
+        flash(_("Please choose a picture to upload."), "danger")
+        return redirect(url_for('account'))
+    image = make_avatar(photo.stream)
+    if not image:
+        flash(_("That file isn't a picture we can use. Please upload a JPEG, PNG, WebP or GIF image."), "danger")
+        return redirect(url_for('account'))
+    user.avatar = image
+    user.avatar_updated_at = utcnow()
+    db.session.commit()
+    flash(_("Your new photo is saved."), "success")
+    return redirect(url_for('account'))
+
+
+@app.route('/account/topic', methods=['POST'])
+def change_favorite_topic():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    topic = request.form.get('topic') or None
+    if topic is None or topic in CATEGORIES.values():
+        user.favorite_topic = topic
+        db.session.commit()
+        flash(_("Your favorite topic has been saved."), "success")
+    return redirect(url_for('account'))
+
+
+@app.route('/account/name', methods=['POST'])
+def change_name():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    new_name = (request.form.get('new_name') or '').strip()
+    if not check_account_pin(user, (request.form.get('pin') or '').strip()):
+        return redirect(url_for('account'))
+    problem = new_name_problem(new_name, user)
+    if problem:
+        flash(problem, "danger")
+        return redirect(url_for('account'))
+    if new_name != user.username:
+        user.username = new_name
+        try:
+            db.session.commit()
+        except IntegrityError:
+            # Someone else took the name since the check
+            db.session.rollback()
+            flash(_("The name “{name}” is already taken. Please choose a different one.").format(name=new_name),
+                  "danger")
+            return redirect(url_for('account'))
+        # Scores, quizzes and badges belong to the account, not the name, so only the sign-in needs updating
+        session['username'] = new_name
+        flash(_("Your name is now “{name}”.").format(name=new_name), "success")
+    return redirect(url_for('account'))
 
 
 @app.route('/account/pin', methods=['POST'])
@@ -515,6 +640,9 @@ def setup():
         # Names are matched case-insensitively so "phoenix" can't impersonate "Phoenix"
         user = User.query.filter(func.lower(User.username) == key).first()
         if not user:
+            if len(username) > MAX_NAME_LENGTH:
+                flash(new_name_problem(username), "danger")
+                return redirect(url_for('index'))
             user = User(username=username, pin_hash=generate_password_hash(pin))
             db.session.add(user)
             db.session.commit()
@@ -1034,7 +1162,7 @@ def players():
         if scores:
             avg_score = sum(s.percentage for s in scores) / len(scores)
             players_data.append({
-                'id': user.id,
+                'user': user,
                 'username': user.username,
                 'games_played': len(scores),
                 'avg_score': round(avg_score, 2),
@@ -1045,6 +1173,35 @@ def players():
     # Sort by games played or avg score
     players_data.sort(key=lambda x: x['games_played'], reverse=True)
     return render_template('players.html', players=players_data)
+
+
+@app.route('/players/<int:user_id>')
+def player_profile(user_id):
+    """A player's public profile: photo, favorite topic, stats and badges (their AI analysis stays private)."""
+    player = db.get_or_404(User, user_id)
+    scores = Score.query.filter_by(user_id=player.id).all()
+    topic_stats = get_topic_stats(scores)
+    current_streak, best_streak = compute_streaks([s.timestamp.date() for s in scores if s.timestamp])
+    earned = {b.badge: b.earned_at for b in UserBadge.query.filter_by(user_id=player.id)}
+    return render_template('profile.html', player=player,
+                           games_played=len(scores),
+                           avg_score=sum(s.percentage for s in scores) / len(scores) if scores else None,
+                           best_topic=topic_stats[0] if topic_stats else None,
+                           current_streak=current_streak, best_streak=best_streak,
+                           earned_badges=[(badge, earned[badge['key']]) for badge in BADGES if badge['key'] in earned],
+                           total_badges=len(BADGES),
+                           is_me=player.username == session.get('username'))
+
+
+@app.route('/players/<int:user_id>/avatar')
+def player_avatar(user_id):
+    player = db.get_or_404(User, user_id)
+    if not player.avatar_updated_at:
+        abort(404)
+    # Links to the photo carry ?v=<when it was uploaded>, so browsers can keep it until it changes
+    response = send_file(io.BytesIO(player.avatar), mimetype='image/webp', max_age=365 * 24 * 3600)
+    response.headers['X-Content-Type-Options'] = 'nosniff'
+    return response
 
 
 @app.route('/analysis')

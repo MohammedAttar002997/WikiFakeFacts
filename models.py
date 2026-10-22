@@ -14,6 +14,10 @@ class User(db.Model):
     username = db.Column(db.String(80), unique=True, nullable=False)
     pin_hash = db.Column(db.String(255), nullable=True)  # Null for players created before PINs existed
     created_at = db.Column(db.DateTime, default=utcnow)
+    favorite_topic = db.Column(db.String(100), nullable=True)  # One of CATEGORIES' names, shown on the profile
+    # Profile photo as a 256×256 WebP; deferred so looking up a player doesn't load the image
+    avatar = db.deferred(db.Column(db.LargeBinary, nullable=True))
+    avatar_updated_at = db.Column(db.DateTime, nullable=True)  # Set while there's a photo; versions its URL
     scores = db.relationship('Score', backref='user', lazy=True)
 
 class Score(db.Model):

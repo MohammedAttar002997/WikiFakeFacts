@@ -33,7 +33,7 @@ def scores(app_ctx):
 
 def standings(client, query=''):
     html = client.get('/leaderboard' + query).get_data(as_text=True)
-    rows = re.findall(r'class="rank-row">.*?(?:<span class="fw-bold">|<a href="/analysis"[^>]*>)(\w+)<.*?<div class="pct">(\d+)',
+    rows = re.findall(r'class="rank-row">.*?(?:<a href="/players/\d+">|<a href="/analysis"[^>]*>)(\w+)<.*?<div class="pct">(\d+)',
                       html, re.S)
     return [(name, int(points)) for name, points in rows], html
 

@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar, CATEGORY_EMOJI with context %}
+
+{% block title %}{{ player.username }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="d-flex flex-column flex-md-row align-items-center gap-4">
+                {{ avatar(player, 'xl') }}
+                <div class="text-center text-md-start flex-grow-1 min-w-0">
+                    <h1 class="fw-black mb-2 text-break">{{ player.username }}{% if is_me %} <span class="text-brand h5 fw-bold">{{ _('(you)') }}</span>{% endif %}</h1>
+                    <div class="d-flex flex-wrap justify-content-center justify-content-md-start gap-2">
+                        {% if player.favorite_topic %}
+                        <span class="chip chip-brand">{{ CATEGORY_EMOJI.get(player.favorite_topic, '⭐') }} {{ _('Favorite topic: {topic}').format(topic=_(player.favorite_topic)) }}</span>
+                        {% endif %}
+                        {% if player.created_at %}
+                        <span class="chip"><i class="bi bi-calendar-heart"></i>{{ _('Playing since {date}').format(date=player.created_at|date) }}</span>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+            <div class="col-6 col-md-3"><div class="stat-tile"><div class="value">{{ games_played }}</div><div class="label">{{ _('Games') }}</div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-tile"><div class="value text-brand">{{ avg_score|round|int ~ '%' if avg_score is not none else '–' }}</div><div class="label">{{ _('Avg score') }}</div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-tile"><div class="value">🔥 {{ current_streak }}</div><div class="label">{{ _('Current streak') }}</div></div></div>
+            <div class="col-6 col-md-3"><div class="stat-tile"><div class="value">{{ best_streak }}</div><div class="label">{{ _('Best streak') }}</div></div></div>
+        </div>
+
+        {% if best_topic %}
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="section-label"><i class="bi bi-star-fill text-brand fs-4"></i>{{ _('Best topic') }}</div>
+            <div class="d-flex justify-content-between align-items-center gap-3">
+                <span class="h5 fw-black mb-0 text-truncate">{{ best_topic.topic }}</span>
+                <span class="text-muted small text-nowrap">{{ best_topic.avg_percentage|round|int }}% &middot; {{ _n('{n} game played', '{n} games played', best_topic.games_played) }}</span>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-3">
+                <div class="section-label mb-0"><i class="bi bi-award-fill text-brand fs-4"></i>{{ _('Badges') }}</div>
+                <span class="chip">{{ _('{earned} / {total} badges').format(earned=earned_badges|length, total=total_badges) }}</span>
+            </div>
+            {% if earned_badges %}
+            <div class="badge-grid">
+                {% for badge, earned_at in earned_badges %}
+                <div class="badge-tile">
+                    <div class="badge-icon" aria-hidden="true">{{ badge.icon }}</div>
+                    <div class="fw-black small">{{ _(badge.name) }}</div>
+                    <div class="badge-desc">{{ _(badge.description) }}</div>
+                    <div class="badge-date">{{ _('Earned {date}').format(date=earned_at|date) }}</div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted mb-0">{{ _('No badges yet.') }}</p>
+            {% endif %}
+        </div>
+
+        <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+            {% if is_me %}
+            <a href="{{ url_for('account') }}" class="btn btn-primary btn-lg"><i class="bi bi-pencil-fill me-1"></i>{{ _('Edit profile') }}</a>
+            {% if games_played %}
+            <a href="{{ url_for('analysis') }}" class="btn btn-outline-primary btn-lg" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis"><i class="bi bi-cpu me-1"></i>{{ _('View My AI Analysis') }}</a>
+            {% endif %}
+            {% endif %}
+            <a href="{{ url_for('players') }}" class="btn btn-outline-secondary btn-lg"><i class="bi bi-people-fill me-1"></i>{{ _('All players') }}</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -13,3 +13,6 @@ chroma_db/
 
 # Sensitive Info
 .env
+# Vercel
+.vercel/
+.env*.local

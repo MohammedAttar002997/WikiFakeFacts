@@ -1,0 +1,10 @@
+# Never upload local data or development files to Vercel
+.venv/
+__pycache__/
+*.sqlite
+uploads/
+chroma_db/
+tests/
+.idea/
+.env
+.env.*

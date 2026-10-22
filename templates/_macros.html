@@ -7,6 +7,16 @@
 {% set LENGTH_ICONS = {'1': 'bi-lightning-charge-fill', '2': 'bi-hourglass-split', '3': 'bi-fire'} %}
 {% set DIFFICULTY_EMOJI = {'1': '🧒', '2': '🧑‍🎓', '3': '🧠'} %}
 
+{# A player's photo, or the first letter of their name on a colored circle. size: '', 'sm', 'lg' or 'xl' #}
+{% macro avatar(user, size='', class='') %}
+{% set classes = ['avatar', 'avatar-' ~ size if size, class]|select|join(' ') %}
+{% if user.avatar_updated_at %}
+<img class="{{ classes }} avatar-photo" src="{{ url_for('player_avatar', user_id=user.id, v=user.avatar_updated_at.timestamp()|int) }}" alt="" loading="lazy">
+{% else %}
+<div class="{{ classes }} avatar-c{{ (user.username|length % 5) + 1 }}" aria-hidden="true">{{ user.username[:1] }}</div>
+{% endif %}
+{% endmacro %}
+
 {% macro length_tiles(lengths) %}
 <div class="row g-3">
     {% for id, text in lengths.items() %}
