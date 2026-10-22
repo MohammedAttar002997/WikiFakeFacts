@@ -157,18 +157,20 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
 
         print(f"Generating quiz using source: {source}")
 
+    # One spare round, so a round that comes back unplayable (or missing) doesn't cost the whole quiz
+    sets_requested = questions_count + 1
     messages = [
         {"role": "system",
          "content": f"You are a quiz generator for a {difficulty} audience. Adjust the complexity, vocabulary, and trickiness of the facts accordingly. The entire quiz MUST be in {language}."},
         {"role": "user", "content": (
             f"Analyze the following content: {article_content}\n\n"
-            f"Task: Generate exactly {questions_count} quiz sets for a {difficulty} level in {language}. Each set must have 3 real facts and 1 fake fact.\n"
+            f"Task: Generate exactly {sets_requested} quiz sets for a {difficulty} level in {language}. Each set must have 3 real facts and 1 fake fact.\n"
             f"For each set, set 'explanation' to one short sentence in {language} saying why the fake fact is false and what is actually true.\n"
             f"Also set 'topic' to a short English name (1-4 words, Title Case) for the main subject of the content, e.g. 'Photosynthesis' or 'French Revolution'.\n"
         )}
     ]
-    # The model doesn't always follow the format (a round with two fakes, a repeated statement, a refusal), so
-    # only playable rounds are kept, with one more try if too few are left
+    # The model doesn't always follow the format (a round with two fakes, a repeated statement, a set too few, a
+    # refusal), so only playable rounds are kept, with one more try if too few are left
     for attempt in range(QUIZ_ATTEMPTS):
         # Using Structured Outputs with beta.chat.completions.parse
         response = client.beta.chat.completions.parse(model=QUIZ_MODEL, messages=messages, response_format=QuizData)

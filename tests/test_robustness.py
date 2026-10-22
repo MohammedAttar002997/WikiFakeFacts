@@ -121,6 +121,16 @@ def test_a_bad_quiz_is_asked_for_again(openai_replies):
     assert len(calls) == 2 and len(rounds) == 2 and len(explanations) == 2  # Extra rounds are left out
 
 
+def test_one_spare_round_absorbs_a_bad_one(openai_replies):
+    """Seen on the live preview: a five-round quiz came back with one unplayable round, twice in a row."""
+    replies, calls = openai_replies
+    bad = [('A', True), ('B', False), ('C', True), ('D', False)]
+    replies.append(data.QuizData(topic='Cats', quiz_sets=[quiz_set(GOOD)] * 4 + [quiz_set(bad)] + [quiz_set(GOOD)]))
+    rounds, *_ = data.get_ai_response(5, 'Cat')
+    assert len(rounds) == 5 and len(calls) == 1
+    assert 'exactly 6 quiz sets' in calls[0]['messages'][1]['content']
+
+
 @pytest.mark.parametrize('reply', [None, data.QuizData(topic='Cats', quiz_sets=[])])
 def test_unusable_output_fails_cleanly(openai_replies, reply):
     replies, calls = openai_replies
