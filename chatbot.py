@@ -33,7 +33,7 @@ Here's what users can do in the app:
 4. **View Players Directory**: Browse all registered players and their stats
 5. **Check My Progress**: View AI-powered analysis of quiz performance
 6. **Adjust Difficulty**: Choose from various difficulty levels (Ages 7-99)
-7. **Choose Language**: Play in English, Spanish, French, German, Italian, or Portuguese
+7. **Choose Language**: Play in English, Spanish, French, German, Italian, Portuguese, or Arabic
 
 When users ask for help:
 - Be friendly and encouraging

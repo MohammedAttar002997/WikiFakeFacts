@@ -19,7 +19,8 @@ import re
 from markupsafe import Markup
 
 LOCALES_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'locales')
-UI_LANGUAGES = ['en', 'es', 'fr', 'de', 'it', 'pt']
+UI_LANGUAGES = ['en', 'es', 'fr', 'de', 'it', 'pt', 'ar']
+RTL_LANGUAGES = {'ar'}  # Written right to left: pages get dir="rtl" and Bootstrap's RTL stylesheet
 MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
 
 
@@ -72,7 +73,9 @@ def template_globals():
 
 
 def template_context():
-    return {'ui_language': current_language(), 'ui_languages': UI_LANGUAGES}
+    lang = current_language()
+    return {'ui_language': lang, 'ui_languages': UI_LANGUAGES,
+            'ui_direction': 'rtl' if lang in RTL_LANGUAGES else 'ltr'}
 
 
 def dynamic_strings():

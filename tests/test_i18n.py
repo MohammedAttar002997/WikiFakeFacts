@@ -30,6 +30,24 @@ def test_unknown_language_is_ignored(app):
         assert 'language' not in sess
 
 
+def test_arabic_pages_are_right_to_left(login):
+    html = login('Player', language='ar').get('/leaderboard').get_data(as_text=True)
+    assert '<html lang="ar" dir="rtl"' in html
+    assert 'bootstrap.rtl.min.css' in html and 'family=Cairo' in html
+    assert f'>{translate("Leaderboard", "ar")}<' in html
+
+
+def test_other_languages_stay_left_to_right(login):
+    html = login('Player', language='de').get('/leaderboard').get_data(as_text=True)
+    assert '<html lang="de" dir="ltr"' in html
+    assert 'bootstrap.min.css' in html and 'bootstrap.rtl' not in html and 'family=Cairo' not in html
+
+
+def test_arabic_is_offered_for_quizzes(login):
+    html = login('Player', language='ar').get('/setup').get_data(as_text=True)
+    assert '<option value="ar" selected>' in html
+
+
 def test_pages_render_in_chosen_language(login):
     html = login('Player', language='de').get('/leaderboard').get_data(as_text=True)
     assert '<html lang="de"' in html

@@ -30,7 +30,7 @@
                  role="img" aria-label="{{ quiz_session.score }} / {{ quiz_session.total_questions }}">
                 <div class="inner">
                     <div class="pct">{{ percentage }}%</div>
-                    <div class="frac">{{ quiz_session.score }} / {{ quiz_session.total_questions }}</div>
+                    <div class="frac"><span dir="ltr">{{ quiz_session.score }} / {{ quiz_session.total_questions }}</span></div>
                 </div>
             </div>
             {% if is_owner %}
@@ -62,7 +62,7 @@
                     {{ avatar(challenger, 'sm') }}
                     <div class="who"><span class="fw-bold">{{ challenger.username }}</span></div>
                     <div class="score">
-                        <div class="pct">{{ attempt.score }} / {{ attempt.total_questions }}</div>
+                        <div class="pct"><span dir="ltr">{{ attempt.score }} / {{ attempt.total_questions }}</span></div>
                         <div class="meta">
                             {% if attempt.score > quiz_session.score %}{{ _('Beat {name}').format(name=player.username) }}
                             {% elif attempt.score == quiz_session.score %}{{ _('Tied') }}

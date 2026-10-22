@@ -6,7 +6,7 @@ WikiFakeFact is an AI-powered quiz game designed to test players' knowledge with
 
 *   **AI-Powered Quiz Generation**: Utilizes OpenAI's GPT models to generate quizzes with structured outputs.
 *   **Robust RAG System**: Integrates LangChain with OpenAI's `text-embedding-3-small` for a Retrieval-Augmented Generation (RAG) system, providing high-quality fallback content when Wikipedia is unavailable.
-*   **Multilingual Support**: Quizzes available in English, Spanish, French, German, Italian, and Portuguese.
+*   **Multilingual Support**: Quizzes available in English, Spanish, French, German, Italian, Portuguese and Arabic (with a right-to-left layout).
 *   **Difficulty Levels**: Caters to audiences from Ages 7-99.
 *   **My Progress Dashboard**: Provides AI-powered insights into player performance.
 *   **Players Directory**: Public profiles for players with their photo, favorite topic, stats and badges. Players can upload a photo, pick a favorite topic and change their name from the Profile and account page.
@@ -24,7 +24,7 @@ WikiFakeFacts/
 ├── models.py               # SQLAlchemy models
 ├── migrations/             # Database migrations (Flask-Migrate / Alembic)
 ├── templates/, static/     # HTML templates, CSS and JavaScript
-├── locales/                # Translations (es, fr, de, it, pt)
+├── locales/                # Translations (es, fr, de, it, pt, ar)
 ├── tests/                  # pytest suite
 ├── rag_indexer.py          # Optional: builds the local knowledge-base index (chroma_db/)
 ├── knowledge_base.json     # Articles for the knowledge-base fallback
@@ -168,7 +168,7 @@ GitHub Actions runs the suite on every push and pull request (`.github/workflows
 
 ## Translations
 
-The interface is available in English, Spanish, French, German, Italian and Portuguese; players switch with the language menu in the navbar (it also sets the default quiz language).
+The interface is available in English, Spanish, French, German, Italian, Portuguese and Arabic (shown right to left); players switch with the language menu in the navbar (it also sets the default quiz language).
 
 - Write UI text in English and wrap it: `{{ _('Play now') }}` in templates, `_("…")` in `app.py`. Use `{{ _n('{n} game', '{n} games', count) }}` for plurals and `.format(name=…)` for values.
 - Translations live in `locales/<lang>.json`, keyed by the English text. Missing strings fall back to English.

@@ -22,7 +22,7 @@
                 <a href="/" class="btn btn-primary btn-lg"><i class="bi bi-person-fill me-1"></i>{{ _('Sign in to play') }}</a>
                 {% elif attempt_score %}
                 <div class="text-center">
-                    <div class="h2 fw-black text-brand mb-0">{{ attempt_score.score }} / {{ attempt_score.total_questions }}</div>
+                    <div class="h2 fw-black text-brand mb-0"><span dir="ltr">{{ attempt_score.score }} / {{ attempt_score.total_questions }}</span></div>
                     <div class="small text-muted mb-2">{{ _('Your score today') }}</div>
                     <a href="{{ url_for('review', quiz_session_id=attempt.id) }}" class="btn btn-sm btn-outline-primary">
                         <i class="bi bi-search me-1"></i>{{ _('Review answers') }}
@@ -53,7 +53,7 @@
                         <div class="meta">{{ _('Finished {time} UTC').format(time=score.timestamp.strftime('%H:%M')) }}</div>
                     </div>
                     <div class="score">
-                        <div class="pct">{{ score.score }} / {{ score.total_questions }}</div>
+                        <div class="pct"><span dir="ltr">{{ score.score }} / {{ score.total_questions }}</span></div>
                         <div class="meta">{{ score.percentage|round|int }}%</div>
                     </div>
                 </div>
