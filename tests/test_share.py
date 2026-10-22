@@ -57,5 +57,7 @@ def test_shared_link_dies_with_the_account(login, app, app_ctx):
     url = share_url(play_quiz(client, answers(1, 3)))
     User.query.one().pin_hash = generate_password_hash('1234')
     db.session.commit()
+    from conftest import sign_in_as
+    sign_in_as(client, 'Phoenix')
     client.post('/account/delete', data={'pin': '1234', 'confirm': '1'})
     assert app.test_client().get(url.split('localhost')[-1]).status_code == 404

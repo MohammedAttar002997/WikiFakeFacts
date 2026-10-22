@@ -106,11 +106,21 @@ def login(make_user):
                 if not User.query.filter_by(username=name).first():
                     make_user(name)
         client = flask_app.test_client()
+        sign_in_as(client, name)
         with client.session_transaction() as sess:
-            sess['username'] = name
             sess['language'] = language
         return client
     return make
+
+
+def sign_in_as(client, name):
+    """Sign `client` in as the player called `name`, the way /setup does (needed again after their PIN changes)."""
+    with flask_app.app_context():
+        user = User.query.filter_by(username=name).one()
+        user_id, token = user.id, app_module.pin_token(user)
+    with client.session_transaction() as sess:
+        sess['user_id'] = user_id
+        sess['pin_token'] = token
 
 
 def play_quiz(client, picks, category='1', length='1', difficulty='2'):
@@ -125,3 +135,14 @@ def play_quiz(client, picks, category='1', length='1', difficulty='2'):
 def answers(right, total):
     """Picks that get the first `right` of `total` rounds correct."""
     return [f'R{i} FAKE' if i < right else f'R{i} true A' for i in range(total)]
+
+
+def signed_in_name(client):
+    """Name of the player `client` is signed in as, or None (resolving the session the way the app does)."""
+    with client.session_transaction() as sess:
+        user_id, token = sess.get('user_id'), sess.get('pin_token')
+    if user_id is None:
+        return None
+    with flask_app.app_context():
+        user = db.session.get(User, user_id)
+        return user.username if user and app_module.pin_token(user) == token else None

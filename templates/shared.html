@@ -58,7 +58,7 @@
             <div class="section-label px-1"><i class="bi bi-people-fill text-brand fs-4"></i>{{ _('Who took the challenge') }}</div>
             <div class="d-flex flex-column gap-2">
                 {% for attempt, challenger in challengers %}
-                <div class="rank-row{% if challenger.username == session.get('username') %} rank-row-me{% endif %}">
+                <div class="rank-row{% if me and challenger.id == me.id %} rank-row-me{% endif %}">
                     {{ avatar(challenger, 'sm') }}
                     <div class="who"><span class="fw-bold">{{ challenger.username }}</span></div>
                     <div class="score">

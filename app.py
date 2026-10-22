@@ -1,3 +1,4 @@
+import hmac
 import io
 import os
 import json
@@ -7,9 +8,11 @@ import tempfile
 from datetime import datetime, timedelta
 
 import click
-from flask import Flask, abort, render_template, request, redirect, url_for, session, flash, jsonify, send_file
+from flask import Flask, abort, g, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import func, inspect, text
+from sqlalchemy import case, func, inspect, text
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
@@ -116,6 +119,17 @@ def inject_translations():
     return template_context()
 
 
+@app.before_request
+def forget_cached_player():
+    # current_user() caches the player on g, which can outlive a request (e.g. inside an app context in tests)
+    g.pop('me', None)
+
+
+@app.context_processor
+def inject_player():
+    return {'me': current_user()}
+
+
 app.jinja_env.globals.update(template_globals())
 app.add_template_filter(format_date, 'date')
 app.add_template_filter(lambda value: format_date(value, with_time=True), 'datetime')
@@ -139,11 +153,8 @@ def set_language(code):
     """Switch the interface (and default quiz) language, then go back to the page the player was on."""
     if code in UI_LANGUAGES:
         session['language'] = code
-    target = request.args.get('next', '/')
     # Only follow local paths, never another site
-    if not target.startswith('/') or target.startswith('//'):
-        target = '/'
-    return redirect(target)
+    return redirect(local_path(request.args.get('next')) or '/')
 
 
 # Schema of the first Alembic migration (migrations/versions/0001_baseline.py)
@@ -291,11 +302,45 @@ def new_name_problem(name, user=None):
     return None
 
 
+def pin_token(user):
+    """Fingerprint of the account's PIN hash, kept in the session: changing the PIN ends the other sessions."""
+    return hmac.new(app.secret_key.encode(), (user.pin_hash or '').encode(), 'sha256').hexdigest()[:16]
+
+
+def sign_in(user):
+    session['user_id'] = user.id
+    session['pin_token'] = pin_token(user)
+    session.pop('username', None)  # Sessions from before user_id named the player instead
+    g.me = user
+
+
+def sign_out():
+    for key in ('user_id', 'pin_token', 'username', 'quiz_session_id', 'chat_id', 'next_url'):
+        session.pop(key, None)
+    g.me = None
+
+
 def current_user():
-    """The logged-in player, or None."""
-    if 'username' not in session:
+    """The signed-in player, or None. The session names the account by id along with a fingerprint of its PIN, so
+    it ends when the account is deleted or its PIN changes, and someone who later takes a freed name can't inherit
+    it."""
+    if 'me' not in g:
+        user = db.session.get(User, session['user_id']) if 'user_id' in session else None
+        if user and not hmac.compare_digest(session.get('pin_token', ''), pin_token(user)):
+            user = None
+        if not user and ('user_id' in session or 'username' in session):
+            sign_out()
+        g.me = user
+    return g.me
+
+
+def local_path(target):
+    """`target` if it's a path on this site, else None. Browsers drop tabs and newlines from URLs and read
+    backslashes as slashes, so '/<tab>/evil.example' or '/\\evil.example' would lead to another site."""
+    if (not target or not target.startswith('/') or target.startswith('//')
+            or any(c == '\\' or ord(c) < 0x21 or ord(c) == 0x7f for c in target)):
         return None
-    return User.query.filter_by(username=session['username']).first()
+    return target
 
 
 def share_details(quiz_session):
@@ -375,23 +420,23 @@ def find_practice_topic(user, analysis_data):
     return None, None
 
 
-def is_locked_out(key):
-    attempt = db.session.get(PinAttempt, key)
-    if not attempt:
-        return False
-    if utcnow() - attempt.first_failure > PIN_LOCKOUT:
-        clear_failed_pins(key)
-        return False
-    return attempt.failures >= MAX_PIN_ATTEMPTS
-
-
-def record_failed_pin(key):
-    attempt = db.session.get(PinAttempt, key)
-    if attempt:
-        attempt.failures += 1
-    else:
-        db.session.add(PinAttempt(name=key, failures=1, first_failure=utcnow()))
+def pin_attempt_allowed(key):
+    """Count a PIN attempt for `key` and say whether it may be checked: at most MAX_PIN_ATTEMPTS per PIN_LOCKOUT
+    window. The attempt is counted before the (deliberately slow) PIN check, in one atomic statement, so guesses
+    sent in parallel can't all get past the limit; a correct PIN clears the count."""
+    now = utcnow()
+    expired = PinAttempt.first_failure < now - PIN_LOCKOUT
+    insert = postgres_insert if db.engine.dialect.name == 'postgresql' else sqlite_insert
+    count = db.session.execute(
+        insert(PinAttempt).values(name=key, failures=1, first_failure=now)
+        .on_conflict_do_update(index_elements=['name'], set_={
+            'failures': case((expired, 1), else_=PinAttempt.failures + 1),
+            'first_failure': case((expired, now), else_=PinAttempt.first_failure),
+        })
+        .returning(PinAttempt.failures)
+    ).scalar_one()
     db.session.commit()
+    return count <= MAX_PIN_ATTEMPTS
 
 
 def clear_failed_pins(key):
@@ -406,10 +451,8 @@ def index():
 
 @app.route('/logout')
 def logout():
-    session.pop('username', None)
-    session.pop('quiz_session_id', None)
-    # The next player on this browser starts a fresh help conversation
-    session.pop('chat_id', None)
+    # Also forgets the current quiz and help chat, so the next player on this browser starts fresh
+    sign_out()
     return redirect(url_for('index'))
 
 
@@ -431,11 +474,10 @@ def delete_player_data(user, chat_id=None):
 def check_account_pin(user, pin):
     """Verify a PIN for an account action, counting wrong guesses toward the sign-in lockout."""
     key = user.username.lower()
-    if is_locked_out(key):
+    if not pin_attempt_allowed(key):
         flash(_("Too many wrong PINs for this name. Please wait a few minutes and try again."), "danger")
         return False
     if not user.pin_hash or not check_password_hash(user.pin_hash, pin):
-        record_failed_pin(key)
         flash(_("That PIN isn't right."), "danger")
         return False
     clear_failed_pins(key)
@@ -517,8 +559,7 @@ def change_name():
             flash(_("The name “{name}” is already taken. Please choose a different one.").format(name=new_name),
                   "danger")
             return redirect(url_for('account'))
-        # Scores, quizzes and badges belong to the account, not the name, so only the sign-in needs updating
-        session['username'] = new_name
+        # Scores, quizzes, badges and sign-ins belong to the account, not the name, so nothing else changes
         flash(_("Your name is now “{name}”.").format(name=new_name), "success")
     return redirect(url_for('account'))
 
@@ -535,6 +576,7 @@ def change_pin():
         else:
             user.pin_hash = generate_password_hash(new_pin)
             db.session.commit()
+            sign_in(user)  # This browser stays signed in; other devices are signed out
             flash(_("Your PIN has been changed."), "success")
     return redirect(url_for('account'))
 
@@ -632,13 +674,14 @@ def setup():
             flash(_("Please enter a 4-digit PIN."), "danger")
             return redirect(url_for('index'))
 
-        key = username.lower()
-        if is_locked_out(key):
+        # Names are matched case-insensitively so "phoenix" can't impersonate "Phoenix"
+        user = User.query.filter(func.lower(User.username) == username.lower()).first()
+        # The lockout follows the account a name leads to, so differently written forms of it share one count
+        key = (user.username if user else username).lower()
+        if not pin_attempt_allowed(key):
             flash(_("Too many wrong PINs for this name. Please wait a few minutes and try again."), "danger")
             return redirect(url_for('index'))
 
-        # Names are matched case-insensitively so "phoenix" can't impersonate "Phoenix"
-        user = User.query.filter(func.lower(User.username) == key).first()
         if not user:
             if len(username) > MAX_NAME_LENGTH:
                 flash(new_name_problem(username), "danger")
@@ -651,21 +694,20 @@ def setup():
             user.pin_hash = generate_password_hash(pin)
             db.session.commit()
         elif not check_password_hash(user.pin_hash, pin):
-            record_failed_pin(key)
             flash(_('The name “{name}” is already taken. Enter its PIN, or choose a different name.').format(
                 name=user.username), "danger")
             return redirect(url_for('index'))
 
         clear_failed_pins(key)
-        session['username'] = user.username
+        next_url = local_path(session.pop('next_url', None))
+        sign_in(user)
 
-        # Back to the challenge (or other page) that asked the player to sign in; only paths on this site
-        next_url = session.pop('next_url', None)
-        if next_url and next_url.startswith('/') and not next_url.startswith('//'):
+        # Back to the challenge (or other page) that asked the player to sign in
+        if next_url:
             return redirect(next_url)
         return render_setup()
-    
-    if 'username' not in session:
+
+    if not current_user():
         return redirect(url_for('index'))
     
     return render_setup()
@@ -673,19 +715,12 @@ def setup():
 
 @app.route('/custom_quiz', methods=['GET', 'POST'])
 def custom_quiz():
-    if 'username' not in session:
+    user = current_user()
+    if not user:
         return redirect(url_for('index'))
 
     if request.method == 'POST':
         try:
-            user = User.query.filter_by(username=session['username']).first()
-
-            # Ensure user exists in database
-            if not user:
-                user = User(username=session['username'])
-                db.session.add(user)
-                db.session.commit()
-
             content = None
             source_info = None
             content_type = None
@@ -823,7 +858,8 @@ def delete_upload(content_id):
 
 @app.route('/start_quiz', methods=['POST'])
 def start_quiz():
-    if 'username' not in session:
+    user = current_user()
+    if not user:
         return redirect(url_for('index'))
     
     category_id = request.form.get('category')
@@ -844,9 +880,7 @@ def start_quiz():
     questions_count = int(length_text.split("rounds")[0].split("(")[1].strip())
     
     difficulty_text = DIFFICULTY_OPTIONS.get(difficulty_id)
-    
-    user = User.query.filter_by(username=session['username']).first()
-    
+
     try:
         # Fetch questions from AI
         language_name = LANGUAGE_OPTIONS.get(language_code, "English")
@@ -1190,7 +1224,7 @@ def player_profile(user_id):
                            current_streak=current_streak, best_streak=best_streak,
                            earned_badges=[(badge, earned[badge['key']]) for badge in BADGES if badge['key'] in earned],
                            total_badges=len(BADGES),
-                           is_me=player.username == session.get('username'))
+                           is_me=current_user() is not None and current_user().id == player.id)
 
 
 @app.route('/players/<int:user_id>/avatar')
@@ -1209,9 +1243,7 @@ def player_avatar(user_id):
 @app.route('/analysis')
 @app.route('/analysis/<int:user_id>')
 def analysis(user_id=None):
-    if 'username' not in session:
-        return redirect(url_for('index'))
-    user = User.query.filter_by(username=session['username']).first()
+    user = current_user()
     if not user:
         return redirect(url_for('index'))
 
@@ -1277,9 +1309,7 @@ def analysis(user_id=None):
 @app.route('/practice', methods=['POST'])
 def practice():
     """Start a quiz on the player's weakest topic."""
-    if 'username' not in session:
-        return redirect(url_for('index'))
-    user = User.query.filter_by(username=session['username']).first()
+    user = current_user()
     if not user:
         return redirect(url_for('index'))
 

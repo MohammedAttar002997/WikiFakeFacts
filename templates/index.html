@@ -19,7 +19,7 @@
                 <label for="username" class="visually-hidden">{{ _('What is your name?') }}</label>
                 <input type="text" class="form-control form-control-lg" id="username" name="username"
                        placeholder="{{ _('Enter your name') }}" required minlength="3" autocomplete="nickname"
-                       value="{{ session.get('username', '') }}">
+                       value="{{ me.username if me else '' }}">
                 <label for="pin" class="visually-hidden">{{ _('4-digit PIN') }}</label>
                 <input type="password" class="form-control form-control-lg hero-pin" id="pin" name="pin"
                        placeholder="{{ _('PIN') }}" required minlength="4" maxlength="4" pattern="[0-9]{4}"
@@ -30,8 +30,8 @@
             </form>
             <p class="small mt-3 mb-0 opacity-75">
                 {{ _('New name? Pick any 4-digit PIN. Returning? Enter your PIN to get back to your results.') }}
-                {% if session.get('username') %}
-                    <br>{{ _('Not {name}?').format(name=session['username']) }} <a href="{{ url_for('logout') }}" class="text-reset fw-bold">{{ _('Switch player') }}</a>
+                {% if me %}
+                    <br>{{ _('Not {name}?').format(name=me.username) }} <a href="{{ url_for('logout') }}" class="text-reset fw-bold">{{ _('Switch player') }}</a>
                     &middot; <a href="{{ url_for('account') }}" class="text-reset fw-bold">{{ _('Profile and account') }}</a>
                 {% endif %}
             </p>

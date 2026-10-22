@@ -1,13 +1,13 @@
 """Player names are protected by a 4-digit PIN."""
 from app import db
+from conftest import signed_in_name
 from models import User
 
 
 def sign_in(app, name, pin):
     client = app.test_client()
     response = client.post('/setup', data={'username': name, 'pin': pin})
-    with client.session_transaction() as sess:
-        return response, sess.get('username')
+    return response, signed_in_name(client)
 
 
 def test_new_player_picks_a_pin(app, app_ctx):
@@ -52,8 +52,9 @@ def test_too_many_wrong_pins_lock_the_name(app):
 def test_logout_switches_player(login):
     client = login('Phoenix')
     client.get('/logout')
+    assert signed_in_name(client) is None
     with client.session_transaction() as sess:
-        assert 'username' not in sess
+        assert 'user_id' not in sess and 'pin_token' not in sess
 
 
 def test_lockout_is_stored_in_the_database(app, app_ctx):
