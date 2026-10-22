@@ -1,166 +1,152 @@
 """
 Content Extractor Module
-Handles extraction of text content from files (PDF, TXT, DOCX) and webpages.
+Handles extraction of text content from uploaded files (PDF, TXT, DOCX) and webpages.
+
+Everything here deals with content from strangers, so it is bounded: uploads are read in memory (never written to
+disk), text is cut at MAX_CONTENT_CHARS, and pages are only fetched from public addresses, with size, redirect and
+time limits.
 """
 
-import os
+import io
+import ipaddress
+import socket
+import time
+import zipfile
+from urllib.parse import urljoin, urlparse
+
 import requests
 from bs4 import BeautifulSoup
-from PyPDF2 import PdfReader
 from docx import Document
-from urllib.parse import urlparse
+from pypdf import PdfReader
+
+MIN_CONTENT_CHARS = 100
+MAX_CONTENT_CHARS = 50_000  # Plenty for a quiz; more only adds storage and AI cost
+MAX_DOCX_UNPACKED_BYTES = 50 * 1024 * 1024  # A .docx is a zip; refuse ones that expand to more than this
+MAX_PAGE_BYTES = 2 * 1024 * 1024
+MAX_REDIRECTS = 3
+FETCH_DEADLINE = 15  # Seconds for a whole page download, however slowly the server sends it
 
 
-def extract_text_from_pdf(file_path):
-    """
-    Extract text from a PDF file.
+class ContentError(Exception):
+    """The upload or page can't be used; `reason` says why, for a message in the player's language."""
 
-    Args:
-        file_path (str): Path to the PDF file
+    def __init__(self, reason, detail=''):
+        super().__init__(f'{reason}: {detail}' if detail else reason)
+        self.reason = reason  # 'unreadable_file', 'unsupported_file', 'blocked_url', 'fetch_failed', 'too_short'
 
-    Returns:
-        str: Extracted text content
-    """
+
+def extract_text_from_pdf(stream):
+    text = []
+    length = 0
+    for page in PdfReader(stream).pages:
+        page_text = page.extract_text() or ''
+        text.append(page_text)
+        length += len(page_text)
+        if length >= MAX_CONTENT_CHARS:
+            break
+    return '\n'.join(text)
+
+
+def extract_text_from_docx(stream):
+    # Check the unpacked size first: a small "zip bomb" could otherwise expand to gigabytes
+    with zipfile.ZipFile(stream) as archive:
+        if sum(member.file_size for member in archive.infolist()) > MAX_DOCX_UNPACKED_BYTES:
+            raise ContentError('unreadable_file', 'DOCX unpacks to more than the limit')
+    stream.seek(0)
+    return '\n'.join(paragraph.text for paragraph in Document(stream).paragraphs)
+
+
+def extract_text_from_txt(stream):
+    return stream.read().decode('utf-8', errors='replace')
+
+
+EXTRACTORS = {'pdf': extract_text_from_pdf, 'docx': extract_text_from_docx, 'txt': extract_text_from_txt}
+
+
+def extract_text_from_upload(data, filename):
+    """Text of an uploaded file (its bytes and name), cut at MAX_CONTENT_CHARS."""
+    extension = filename.rsplit('.', 1)[-1].lower() if '.' in filename else ''
+    if extension not in EXTRACTORS:
+        raise ContentError('unsupported_file', extension)
     try:
-        text = ""
-        with open(file_path, 'rb') as file:
-            pdf_reader = PdfReader(file)
-            for page in pdf_reader.pages:
-                text += page.extract_text()
-        return text.strip()
-    except Exception as e:
-        raise Exception(f"Error extracting text from PDF: {str(e)}")
+        text = EXTRACTORS[extension](io.BytesIO(data))
+    except ContentError:
+        raise
+    except Exception as e:  # Damaged, encrypted or disguised files fail in many different ways
+        raise ContentError('unreadable_file', f'{type(e).__name__}: {e}') from e
+    return text.strip()[:MAX_CONTENT_CHARS]
 
 
-def extract_text_from_docx(file_path):
-    """
-    Extract text from a DOCX file.
-
-    Args:
-        file_path (str): Path to the DOCX file
-
-    Returns:
-        str: Extracted text content
-    """
+def check_public_address(url):
+    """Refuse URLs that aren't http(s) or whose host resolves to a non-public address (this server, the local
+    network, cloud metadata services…), so a player can't make the server fetch internal pages."""
+    parsed = urlparse(url)
+    if parsed.scheme not in ('http', 'https') or not parsed.hostname:
+        raise ContentError('blocked_url', url)
     try:
-        doc = Document(file_path)
-        text = "\n".join([para.text for para in doc.paragraphs])
-        return text.strip()
-    except Exception as e:
-        raise Exception(f"Error extracting text from DOCX: {str(e)}")
+        port = parsed.port or (443 if parsed.scheme == 'https' else 80)
+        addresses = {info[4][0] for info in socket.getaddrinfo(parsed.hostname, port, proto=socket.IPPROTO_TCP)}
+    except (socket.gaierror, ValueError) as e:
+        raise ContentError('fetch_failed', f'{parsed.hostname}: {e}') from e
+    for address in addresses:
+        ip = ipaddress.ip_address(address.split('%')[0])  # Drop an IPv6 zone like "%eth0"
+        if ip.version == 6 and ip.ipv4_mapped:
+            ip = ip.ipv4_mapped
+        if not ip.is_global:
+            raise ContentError('blocked_url', f'{parsed.hostname} -> {ip}')
 
 
-def extract_text_from_txt(file_path):
-    """
-    Extract text from a TXT file.
-
-    Args:
-        file_path (str): Path to the TXT file
-
-    Returns:
-        str: Extracted text content
-    """
-    try:
-        with open(file_path, 'r', encoding='utf-8') as file:
-            text = file.read()
-        return text.strip()
-    except Exception as e:
-        raise Exception(f"Error extracting text from TXT: {str(e)}")
-
-
-def extract_text_from_file(file_path):
-    """
-    Automatically detect file type and extract text.
-
-    Args:
-        file_path (str): Path to the file
-
-    Returns:
-        str: Extracted text content
-    """
-    _, file_extension = os.path.splitext(file_path)
-    file_extension = file_extension.lower()
-
-    if file_extension == '.pdf':
-        return extract_text_from_pdf(file_path)
-    elif file_extension == '.docx':
-        return extract_text_from_docx(file_path)
-    elif file_extension == '.txt':
-        return extract_text_from_txt(file_path)
+def fetch_page(url):
+    """The page's bytes, following at most MAX_REDIRECTS redirects and checking every address on the way."""
+    headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'}
+    for _ in range(MAX_REDIRECTS + 1):
+        check_public_address(url)
+        response = requests.get(url, headers=headers, timeout=(5, 10), stream=True, allow_redirects=False)
+        if not response.is_redirect:
+            break
+        response.close()
+        url = urljoin(url, response.headers['Location'])
     else:
-        raise ValueError(f"Unsupported file type: {file_extension}")
+        raise ContentError('fetch_failed', 'too many redirects')
+
+    with response:
+        response.raise_for_status()
+        content_type = response.headers.get('Content-Type', '')
+        if content_type and not content_type.startswith(('text/', 'application/xhtml')):
+            raise ContentError('fetch_failed', f'not a web page ({content_type})')
+        body = bytearray()
+        deadline = time.monotonic() + FETCH_DEADLINE
+        for chunk in response.iter_content(64 * 1024):
+            body += chunk
+            if len(body) >= MAX_PAGE_BYTES:
+                break  # Long enough for a quiz; the rest is ignored
+            if time.monotonic() > deadline:
+                raise ContentError('fetch_failed', 'download took too long')
+    return bytes(body)
 
 
 def extract_text_from_url(url):
-    """
-    Extract and clean text content from a webpage.
-
-    Args:
-        url (str): URL of the webpage
-
-    Returns:
-        str: Extracted and cleaned text content
-    """
+    """Readable text of a public webpage, cut at MAX_CONTENT_CHARS."""
+    if not urlparse(url).scheme:
+        url = 'https://' + url
     try:
-        # Validate URL
-        parsed_url = urlparse(url)
-        if not parsed_url.scheme:
-            url = 'https://' + url
-
-        # Fetch the webpage
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
-        }
-        response = requests.get(url, headers=headers, timeout=10)
-        response.raise_for_status()
-
-        # Parse HTML and extract text
-        soup = BeautifulSoup(response.content, 'html.parser')
-
-        # Remove script and style elements
-        for script in soup(["script", "style"]):
-            script.decompose()
-
-        # Remove navigation and footer elements
-        for element in soup(["nav", "footer", "header"]):
-            element.decompose()
-
-        # Get text
-        text = soup.get_text()
-
-        # Clean up whitespace
-        lines = (line.strip() for line in text.splitlines())
-        chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
-        text = '\n'.join(chunk for chunk in chunks if chunk)
-
-        return text.strip()
+        html = fetch_page(url)
     except requests.exceptions.RequestException as e:
-        raise Exception(f"Error fetching URL: {str(e)}")
-    except Exception as e:
-        raise Exception(f"Error extracting text from webpage: {str(e)}")
+        raise ContentError('fetch_failed', f'{type(e).__name__}: {e}') from e
+
+    soup = BeautifulSoup(html, 'html.parser')
+    # Drop scripts, styles and page furniture
+    for element in soup(["script", "style", "nav", "footer", "header"]):
+        element.decompose()
+
+    # Clean up whitespace
+    lines = (line.strip() for line in soup.get_text().splitlines())
+    chunks = (phrase.strip() for line in lines for phrase in line.split("  "))
+    text = '\n'.join(chunk for chunk in chunks if chunk)
+    return text.strip()[:MAX_CONTENT_CHARS]
 
 
-def validate_content_length(content, min_length=100, max_length=1000000):
-    """
-    Validate that the extracted content meets length requirements.
-
-    Args:
-        content (str): The content to validate
-        min_length (int): Minimum required length
-        max_length (int): Maximum allowed length
-
-    Returns:
-        bool: True if content is valid
-
-    Raises:
-        ValueError: If content doesn't meet requirements
-    """
-    content_length = len(content)
-
-    if content_length < min_length:
-        raise ValueError(f"Content is too short ({content_length} chars). Minimum required: {min_length} chars.")
-
-    if content_length > max_length:
-        raise ValueError(f"Content is too long ({content_length} chars). Maximum allowed: {max_length} chars.")
-
-    return True
+def validate_content_length(content, min_length=MIN_CONTENT_CHARS):
+    """Refuse content too short to make a quiz from (longer content is already cut to MAX_CONTENT_CHARS)."""
+    if len(content) < min_length:
+        raise ContentError('too_short', f'{len(content)} chars')
