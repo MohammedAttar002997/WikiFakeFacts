@@ -113,15 +113,18 @@ Vercel runs `app.py` as a serverless function. Its disk isn't kept between reque
 
 1. Add Neon Postgres to the project from the Vercel Marketplace (Storage tab); it sets `DATABASE_URL`.
 2. In the project's environment variables, set `SECRET_KEY` (the app refuses to start on Vercel without it), `OPENAI_API_KEY` and `SESSION_COOKIE_SECURE=1`.
-3. Apply the migrations from your machine. Migrations don't run on Vercel, so repeat this after each deploy that adds one:
+3. Apply the migrations from your machine (with `requirements-dev.txt` installed). Migrations don't run on Vercel:
 
    ```bash
    vercel env pull .env.production.local --environment=production
-   # Put DATABASE_URL from that file in your shell, then:
-   flask --app app db upgrade
+   python migrate_production.py
    ```
 
-4. Deploy with `vercel --prod`. `.vercelignore` keeps your local database, uploads and `.env` out of the upload.
+   It never prints the database password. On Windows, if Smart App Control blocks psycopg, it uses the pure-Python pg8000 driver instead.
+
+4. The project is connected to GitHub, so every merge to `main` deploys to production and every pushed branch gets a preview. `.vercelignore` keeps your local database, uploads and `.env` out of deployments.
+
+When a pull request adds a migration, run `python migrate_production.py` from that branch **before** merging it, so the database is ready when the new code goes live. Keep migrations additive (new tables or nullable columns), so the code that's live in the meantime keeps working.
 
 ## Database migrations
 
