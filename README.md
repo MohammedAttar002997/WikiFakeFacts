@@ -126,6 +126,8 @@ Vercel runs `app.py` as a serverless function. Its disk isn't kept between reque
 
 When a pull request adds a migration, run `python migrate_production.py` from that branch **before** merging it, so the database is ready when the new code goes live. Keep migrations additive (new tables or nullable columns), so the code that's live in the meantime keeps working.
 
+**Preview deployments and the database.** Out of the box, the Neon integration gives preview deployments the production database, so testing a pull request reads and writes real players' data. To give each preview its own copy, open the project's **Storage** tab in Vercel, select the Neon database, and in the connection's **Advanced Options → Deployments Configuration** turn on a database branch for **Preview** (keep "Resource must be active before deployment" on). Each branch is copied from production when the preview is created, so migrations already applied there are included. Branches are removed with their deployments under Vercel's retention policy, so delete old ones in the Neon console if you reach the free plan's branch limit.
+
 ## Database migrations
 
 The schema is managed with [Flask-Migrate](https://flask-migrate.readthedocs.io/) (Alembic); migration scripts live in `migrations/versions/`.

@@ -69,7 +69,7 @@ def test_delete_upload_needs_token(login, app_ctx):
 def test_chatbot_api_needs_token_header(app, monkeypatch):
     from types import SimpleNamespace
     monkeypatch.setattr(app_module, 'get_chatbot_response',
-                        lambda message, history: SimpleNamespace(message='hi', suggested_action=None, action_url=None))
+                        lambda message, history, language: SimpleNamespace(message='hi', suggested_action=None, action_url=None))
     client = app.test_client()
     rejected = client.post('/api/chatbot', json={'message': 'hello'})
     assert rejected.status_code == 400 and 'error' in rejected.get_json()

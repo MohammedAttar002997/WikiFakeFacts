@@ -1,30 +1,3 @@
-
-
-GAME_RULES_TEXT = """In this game, 
-you will be given a question on a specific topic and four different facts. 
-One of these facts is fake. 
-Your task is to identify the fake one in each round.
-Let’s go!
-"""
-
-CONST_PROMPT_TEXT = """f"Each object must contain exactly 4 entries:\n
-            - 3 real facts from the article (max 100 chars each).\n
-            - 1 fake fact that sounds highly plausible (max 100 chars each).\n\n
-            Format: Return a list of dictionaries where the key is the string statement 
-            and the value is a boolean (true for real, false for fake).\n
-            Constraint: Provide ONLY the JSON array. No conversational text."""
-
-ERROR_MESSAGE_TEXT = "Invalid input. Please choose an option between 1 and "
-
-WELCOME_TEXT = r"""
- ██     ██  ██  ██   ██  ██    ███████  █████  ██   ██ ███████    ███████  █████   ██████ ████████
- ██     ██  ██  ██  ▄██  ██    ██      ██   ██ ██  ▄██ ██         ██      ██   ██ ██         ██
- ██  █  ██  ██  █████    ██    █████   ███████ █████   █████      █████   ███████ ██         ██
- ██ ███ ██  ██  ██  ██   ██    ██      ██   ██ ██  ██  ██         ██      ██   ██ ██         ██
-  ███ ███   ██  ██   ██  ██    ██      ██   ██ ██   ██ ███████    ██      ██   ██  ██████    ██
-"""
-
-
 CATEGORIES = {
     "1": "Sports",
     "2": "Animals",
@@ -103,6 +76,4 @@ LANGUAGE_OPTIONS = {
 }
 
 
-def show_available_options(option_number, option_value):
-    return option_number + ": " + option_value
 LEADERBOARD_PERIODS = {'all': 'All time', 'week': 'Last 7 days', 'today': 'Today (UTC)'}

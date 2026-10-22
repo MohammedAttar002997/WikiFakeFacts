@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+
+{% block title %}{{ _('Profile and account') }} · WikiFakeFact{% endblock %}
 {% from "_macros.html" import avatar, CATEGORY_EMOJI with context %}
 
 {% block content %}
@@ -19,7 +21,13 @@
                 {{ avatar(user, 'xl') }}
                 <div class="flex-grow-1 w-100">
                     <label for="photo" class="form-label fw-bold">{{ _('Photo') }}</label>
-                    <input type="file" class="form-control" id="photo" name="photo" accept="image/jpeg,image/png,image/webp,image/gif">
+                    {# A styled button instead of the browser's own file picker, whose text follows the browser's language #}
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <label for="photo" class="btn btn-outline-secondary mb-0"><i class="bi bi-image me-1"></i>{{ _('Choose a picture') }}</label>
+                        <span class="small text-muted text-truncate" id="photoName"></span>
+                    </div>
+                    <input type="file" class="visually-hidden" id="photo" name="photo" accept="image/jpeg,image/png,image/webp,image/gif"
+                           onchange="document.getElementById('photoName').textContent = this.files[0] ? this.files[0].name : ''">
                     <div class="form-text mb-2">{{ _('JPEG, PNG, WebP or GIF. It’s cropped to a square and shown to everyone.') }}</div>
                     <button type="submit" class="btn btn-primary">{{ _('Upload photo') }}</button>
                     {% if user.avatar_updated_at %}

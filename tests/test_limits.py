@@ -223,7 +223,7 @@ def test_long_titles_are_cut_to_fit(login, app_ctx):
 def chatbot(monkeypatch):
     calls = []
 
-    def respond(message, history):
+    def respond(message, history, language="English"):
         calls.append(message)
         return SimpleNamespace(message='Hi', suggested_action=None, action_url=None)
     monkeypatch.setattr(app_module, 'get_chatbot_response', respond)

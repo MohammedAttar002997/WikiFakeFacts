@@ -1,5 +1,5 @@
 """Badges and daily play streaks, worked out from a player's finished quizzes."""
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 from sqlalchemy.exc import IntegrityError
 
