@@ -107,6 +107,22 @@ python serve.py                # http://127.0.0.1:8000
 - It won't start without a real `SECRET_KEY` or with `FLASK_DEBUG=1`, since either would let people take over accounts or run code on the server.
 - If the site is served over HTTPS, also set `SESSION_COOKIE_SECURE=1`.
 
+### On Vercel
+
+Vercel runs `app.py` as a serverless function. Its disk isn't kept between requests, so the app needs a hosted Postgres database instead of `quiz.sqlite`.
+
+1. Add Neon Postgres to the project from the Vercel Marketplace (Storage tab); it sets `DATABASE_URL`.
+2. In the project's environment variables, set `SECRET_KEY` (the app refuses to start on Vercel without it), `OPENAI_API_KEY` and `SESSION_COOKIE_SECURE=1`.
+3. Apply the migrations from your machine. Migrations don't run on Vercel, so repeat this after each deploy that adds one:
+
+   ```bash
+   vercel env pull .env.production.local --environment=production
+   # Put DATABASE_URL from that file in your shell, then:
+   flask --app app db upgrade
+   ```
+
+4. Deploy with `vercel --prod`. `.vercelignore` keeps your local database, uploads and `.env` out of the upload.
+
 ## Database migrations
 
 The schema is managed with [Flask-Migrate](https://flask-migrate.readthedocs.io/) (Alembic); migration scripts live in `migrations/versions/`.

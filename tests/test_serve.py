@@ -1,6 +1,7 @@
-"""serve.py refuses unsafe settings before starting the production server."""
+"""Production settings: serve.py refuses unsafe ones, and hosted Postgres URLs get the right driver."""
 import pytest
 
+import app as app_module
 import serve
 
 
@@ -30,3 +31,14 @@ def test_starts_waitress_with_host_and_port(monkeypatch):
 
 def test_session_cookie_is_same_site_lax():
     assert serve.app.config['SESSION_COOKIE_SAMESITE'] == 'Lax'
+
+
+@pytest.mark.parametrize('url, expected', [
+    ('postgres://u:p@host/db', 'postgresql+psycopg://u:p@host/db'),
+    ('postgresql://u:p@host/db?sslmode=require', 'postgresql+psycopg://u:p@host/db?sslmode=require'),
+    ('postgresql+psycopg://u:p@host/db', 'postgresql+psycopg://u:p@host/db'),
+    ('sqlite:///other.sqlite', 'sqlite:///other.sqlite'),
+])
+def test_database_url_uses_psycopg_for_postgres(monkeypatch, url, expected):
+    monkeypatch.setenv('DATABASE_URL', url)
+    assert app_module.database_url() == expected

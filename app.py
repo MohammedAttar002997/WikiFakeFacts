@@ -3,6 +3,7 @@ import os
 import json
 import random
 import secrets
+import tempfile
 from datetime import datetime, timedelta
 
 import click
@@ -32,13 +33,17 @@ from badges import BADGES, award_badges, compute_streaks, player_streaks
 app = Flask(__name__)
 DEV_SECRET_KEY = 'hackathon-secret-key'  # Only for local development; serve.py refuses to run with it
 app.secret_key = os.environ.get('SECRET_KEY') or DEV_SECRET_KEY
+ON_VERCEL = bool(os.environ.get('VERCEL'))  # Vercel sets VERCEL=1 for builds and functions
+if ON_VERCEL and app.secret_key == DEV_SECRET_KEY:
+    raise RuntimeError('SECRET_KEY is not set. Add a long random value in the Vercel project settings.')
 # Browsers don't send the session cookie on cross-site POSTs (a second layer next to CSRF tokens)
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 # Set SESSION_COOKIE_SECURE=1 when the site is served over HTTPS, so the cookie is never sent unencrypted
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
 
-# File upload configuration
-UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), 'uploads')
+# File upload configuration. Uploaded files are only kept while their text is extracted; on Vercel only the
+# temp folder is writable.
+UPLOAD_FOLDER = os.path.join(tempfile.gettempdir() if ON_VERCEL else os.path.dirname(__file__), 'uploads')
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
@@ -47,15 +52,27 @@ AVATAR_SIZE = 256
 AVATAR_FORMATS = {'JPEG', 'PNG', 'WEBP', 'GIF'}
 AVATAR_MAX_PIXELS = 40_000_000  # Bigger pictures are refused before they're decoded
 
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
 
 app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
 # Database configuration
 basedir = os.path.abspath(os.path.dirname(__file__))
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'sqlite:///' + os.path.join(basedir, 'quiz.sqlite'))
+
+
+def database_url():
+    """DATABASE_URL (SQLite by default), with Postgres URLs as Neon and Vercel give them pointed at psycopg 3."""
+    url = os.environ.get('DATABASE_URL') or 'sqlite:///' + os.path.join(basedir, 'quiz.sqlite')
+    for prefix in ('postgres://', 'postgresql://'):
+        if url.startswith(prefix):
+            return 'postgresql+psycopg://' + url[len(prefix):]
+    return url
+
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url()
+# Serverless instances sit idle between requests, so check pooled connections before using them
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {'pool_pre_ping': True}
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db.init_app(app)
@@ -326,7 +343,7 @@ def build_answer_review(quiz_session):
 
 
 def get_topic_stats(user_scores):
-    """Per-topic accuracy for a player's scores, best topic first."""
+    """Per-topic accuracy for a player's scores,the best topic first."""
     topic_stats = {}
     for s in user_scores:
         stats = topic_stats.setdefault(s.topic, {'total_score': 0, 'total_q': 0, 'count': 0, 'difficulty': s.difficulty})
