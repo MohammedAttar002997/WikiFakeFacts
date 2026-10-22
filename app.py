@@ -1198,8 +1198,10 @@ def player_avatar(user_id):
     player = db.get_or_404(User, user_id)
     if not player.avatar_updated_at:
         abort(404)
-    # Links to the photo carry ?v=<when it was uploaded>, so browsers can keep it until it changes
-    response = send_file(io.BytesIO(player.avatar), mimetype='image/webp', max_age=365 * 24 * 3600)
+    # Links to the photo carry ?v=<when it was uploaded>, so browsers can keep it until it changes. Private, so
+    # a CDN (like Vercel's) doesn't keep serving a photo after it's removed or the account is deleted.
+    response = send_file(io.BytesIO(player.avatar), mimetype='image/webp')
+    response.headers['Cache-Control'] = f'private, max-age={365 * 24 * 3600}'
     response.headers['X-Content-Type-Options'] = 'nosniff'
     return response
 
