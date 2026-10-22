@@ -1,3 +1,4 @@
 # Everything needed to run the tests: python -m pytest
 -r requirements.txt
 pytest==9.1.1
+pg8000==1.31.5    # Fallback Postgres driver for migrate_production.py where Smart App Control blocks psycopg
