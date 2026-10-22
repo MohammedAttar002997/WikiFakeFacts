@@ -1079,7 +1079,6 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .filter-field { flex: 1 1 10rem; min-width: 0; }
 .filter-label { display: block; font-size: .75rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; color: var(--wf-muted); margin-bottom: .3rem; }
 .filter-actions { display: flex; align-items: center; gap: .5rem; min-height: calc(1.5em + .75rem + 4px); }
-.filter-actions:empty { display: none; }
 
 /* ---------- Badges & streaks -------------------------------------------------- */
 .streak-chip.is-active { background: rgba(245, 158, 11, .15); border-color: transparent; color: #b45309; }
@@ -1145,3 +1144,15 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 [dir="rtl"] .tile-badge, [dir="rtl"] .stat-tile .label, [dir="rtl"] .page-head .eyebrow { letter-spacing: 0; }
 /* The PIN field's wide letter spacing is for digits; it breaks up the Arabic placeholder */
 [dir="rtl"] .hero-form .hero-pin::placeholder { letter-spacing: 0; }
+
+/* ---------- Navbar profile link ------------------------------------------------------- */
+.nav-avatar { border-radius: 50%; text-decoration: none; }
+.nav-avatar .avatar { --size: 2.5rem; transition: box-shadow .2s ease; }
+.nav-avatar:hover .avatar, .nav-avatar:focus-visible .avatar { box-shadow: 0 0 0 3px var(--wf-brand-soft), 0 0 0 4px var(--wf-brand); }
+/* Small phones: a slightly smaller brand keeps it on one row with the language, theme and menu buttons */
+@media (max-width: 420px) {
+    .wf-brand { font-size: 1.1rem; gap: .4rem; }
+    .wf-brand-mark { width: 2rem; height: 2rem; }
+    .wf-navbar .theme-toggle { width: 2.25rem; height: 2.25rem; }
+    .wf-navbar .theme-toggle.lang-toggle { padding: 0 .5rem; }
+}

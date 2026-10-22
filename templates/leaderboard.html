@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+
+{% block title %}{{ _('Leaderboard') }} · WikiFakeFact{% endblock %}
 {% from "_macros.html" import avatar %}
 
 {% block content %}
@@ -38,12 +40,14 @@
                     {% endfor %}
                 </select>
             </div>
+            {# Without JavaScript the filters need a button; noscript stays out of .filter-actions, which only
+               exists when there's something to reset (an empty flex item would take a gap from the fields) #}
+            <noscript><button type="submit" class="btn btn-primary">{{ _('Apply') }}</button></noscript>
+            {% if filtered %}
             <div class="filter-actions">
-                <noscript><button type="submit" class="btn btn-primary">{{ _('Apply') }}</button></noscript>
-                {% if filtered %}
                 <a href="{{ url_for('leaderboard') }}" class="btn btn-link text-brand fw-bold text-decoration-none px-1">{{ _('Reset') }}</a>
-                {% endif %}
             </div>
+            {% endif %}
         </form>
 
         {% if standings %}

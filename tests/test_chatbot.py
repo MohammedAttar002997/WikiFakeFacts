@@ -12,7 +12,7 @@ from models import ChatbotSession
 def fake_chatbot(monkeypatch):
     seen = []
 
-    def respond(message, history):
+    def respond(message, history, language="English"):
         seen.append([m['content'] for m in history])
         return SimpleNamespace(message=f'Reply to {message}', suggested_action=None, action_url=None)
     monkeypatch.setattr(app_module, 'get_chatbot_response', respond)

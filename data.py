@@ -5,10 +5,7 @@ from pydantic import BaseModel
 from dotenv import load_dotenv
 import os
 from langchain_community.vectorstores import Chroma
-from langchain_core.embeddings import Embeddings
-import numpy as np
 import re
-import time
 
 from default_text import MENU
 
@@ -18,25 +15,13 @@ load_dotenv(override=True)
 # Wikimedia throttles generic clients; identify the app per their API etiquette
 wikipedia.set_user_agent("WikiFakeFact/1.0 (educational quiz game)")
 
-    # class SimpleMockEmbeddings(Embeddings):
-    #     def embed_documents(self, texts):
-    #         return [self.embed_query(text) for text in texts]
-    #
-    #     def embed_query(self, text):
-    #         np.random.seed(hash(text) % 2**32)
-    #         return np.random.rand(1536).tolist()
-
-
 OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
-GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
 
 # Models can be changed in .env without touching the code
 QUIZ_MODEL = os.getenv("OPENAI_QUIZ_MODEL", "gpt-4o-mini")
 ANALYSIS_MODEL = os.getenv("OPENAI_ANALYSIS_MODEL", "gpt-5-mini")
 EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
-
-# time.perf_counter()
 
 class QuizQuestion(BaseModel):
     statement: str
@@ -187,28 +172,7 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
     explanations = [explanation for _, explanation in rounds[:questions_count]]
     return formatted_quiz_data, source, quiz_data_obj.topic.strip(), explanations
 
- # google_response = google_client.models.generate_content(
-    #     model="gemini-2.5-flash",  # Use a generative model, not embedding
-    #     contents=[
-    #         {
-    #             "role": "user",
-    #             "parts": [{"text": (
-    #                 f"Analyze the following Wikipedia article: {article_content}\n\n"
-    #                 f"Task: Generate exactly {questions_count} quiz sets for a {difficulty} level in {language}. "
-    #                 f"Each set must have 3 real facts and 1 fake fact.\n"
-    #                 f"{CONST_PROMPT_TEXT}"
-    #             )}]
-    #         }
-    #     ],
-    #     config=types.GenerateContentConfig(
-    #         # This is the proper way to set the 'System' personality
-    #         system_instruction=f"You are a quiz generator for a {difficulty} audience. Adjust complexity and vocabulary. The entire quiz MUST be in {language}.",
-    #         temperature=0.7,
-    #         response_mime_type="application/json",
-    #         response_schema=QuizData,
-    #     ),
-    # )
-    # print(google_response)
+
 def get_ai_analysis(user_history_json, language="English"):
     if not OPEN_AI_KEY:
         raise RuntimeError("OpenAI API key is required.")
@@ -222,10 +186,6 @@ def get_ai_analysis(user_history_json, language="English"):
             {"role": "user", "content": f"Here is the user's quiz history in JSON format: {user_history_json}"}
         ],
         response_format=AIAnalysis,
-        # reasoning_effort="high",
-
     )
-    print("analytics response")
-    print(response)
     
     return response.choices[0].message.parsed

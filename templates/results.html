@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}{{ _('Game Results') }} · WikiFakeFact{% endblock %}
+
 {% block content %}
 {% if percentage >= 80 %}
     {% set verdict = ('🏆', _('Fact-checking legend!'), '#10b981') %}

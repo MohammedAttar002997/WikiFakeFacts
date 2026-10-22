@@ -56,13 +56,14 @@ Always be helpful and guide users to the right feature!
 """
 
 
-def get_chatbot_response(user_message, conversation_history=None):
+def get_chatbot_response(user_message, conversation_history=None, language="English"):
     """
     Generate a chatbot response to help users navigate the app.
 
     Args:
         user_message (str): The user's question or request
         conversation_history (list): Previous messages in the conversation
+        language (str): The player's interface language, for the reply
 
     Returns:
         ChatbotResponse: Structured response with message, suggested action, and URL
@@ -74,7 +75,9 @@ def get_chatbot_response(user_message, conversation_history=None):
 
     # Build conversation messages
     messages = [
-        {"role": "system", "content": NAVIGATION_CONTEXT}
+        {"role": "system", "content": NAVIGATION_CONTEXT + (
+            f"\nReply in {language}, the language of the player's screen, including the suggested action label, "
+            "unless they write to you in another language.")}
     ]
 
     # Add conversation history if provided
@@ -84,67 +87,54 @@ def get_chatbot_response(user_message, conversation_history=None):
     # Add current user message
     messages.append({"role": "user", "content": user_message})
 
-    try:
-        # Use structured outputs for consistent response format
-        response = client.beta.chat.completions.parse(
-            model=CHAT_MODEL,
-            messages=messages,
-            response_format=ChatbotResponse,
-        )
-
-        return response.choices[0].message.parsed
-
-    except Exception as e:
-        print(f"Error generating chatbot response: {str(e)}")
-        # Return a fallback response
-        return ChatbotResponse(
-            message="I'm having trouble understanding your question. Could you please rephrase it? I'm here to help you navigate WikiFakeFact!",
-            suggested_action="View Help",
-            action_url="/"
-        )
+    # Use structured outputs for consistent response format. Errors are left to the caller, which tells the
+    # player in their language
+    response = client.beta.chat.completions.parse(
+        model=CHAT_MODEL,
+        messages=messages,
+        response_format=ChatbotResponse,
+    )
+    parsed = response.choices[0].message.parsed
+    if parsed is None:
+        raise ValueError('The assistant gave no usable reply')
+    return parsed
 
 
-def get_quick_help_suggestions():
-    """
-    Return quick help suggestions for common user questions.
-
-    Returns:
-        list: List of common questions and their suggested actions
-    """
-    return [
-        {
-            "question": "How do I start playing?",
-            "action": "Start Quiz",
-            "url": "/setup"
-        },
-        {
-            "question": "How do I create a custom quiz?",
-            "action": "Create Custom Quiz",
-            "url": "/custom_quiz"
-        },
-        {
-            "question": "How can I see my progress?",
-            "action": "View My Progress",
-            "url": "/analysis"
-        },
-        {
-            "question": "Who are the top players?",
-            "action": "View Leaderboard",
-            "url": "/leaderboard"
-        },
-        {
-            "question": "Can I see other players?",
-            "action": "Browse Players",
-            "url": "/players"
-        },
-        {
-            "question": "What languages are supported?",
-            "action": "Start Quiz",
-            "url": "/setup"
-        },
-        {
-            "question": "What difficulty levels are available?",
-            "action": "Start Quiz",
-            "url": "/setup"
-        }
-    ]
+# Common questions shown on the help page; their text is translated when shown (translations.dynamic_strings)
+QUICK_HELP = [
+    {
+        "question": "How do I start playing?",
+        "action": "Start Quiz",
+        "url": "/setup"
+    },
+    {
+        "question": "How do I create a custom quiz?",
+        "action": "Create Custom Quiz",
+        "url": "/custom_quiz"
+    },
+    {
+        "question": "How can I see my progress?",
+        "action": "View My Progress",
+        "url": "/analysis"
+    },
+    {
+        "question": "Who are the top players?",
+        "action": "View Leaderboard",
+        "url": "/leaderboard"
+    },
+    {
+        "question": "Can I see other players?",
+        "action": "Browse Players",
+        "url": "/players"
+    },
+    {
+        "question": "What languages are supported?",
+        "action": "Start Quiz",
+        "url": "/setup"
+    },
+    {
+        "question": "What difficulty levels are available?",
+        "action": "Start Quiz",
+        "url": "/setup"
+    }
+]

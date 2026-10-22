@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}{{ _('Help') }} · WikiFakeFact{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
@@ -42,9 +44,9 @@
                 <div class="d-flex flex-column gap-2">
                     {% for suggestion in suggestions %}
                     <button type="button" class="suggestion-chip quick-suggestion"
-                            data-question="{{ suggestion.question }}" data-url="{{ suggestion.url }}">
+                            data-question="{{ _(suggestion.question) }}" data-url="{{ suggestion.url }}">
                         <i class="bi bi-chat-left-text-fill"></i>
-                        <span>{{ suggestion.question }}</span>
+                        <span>{{ _(suggestion.question) }}</span>
                     </button>
                     {% endfor %}
                 </div>

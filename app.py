@@ -4,7 +4,7 @@ import os
 import json
 import random
 import secrets
-from datetime import datetime, timedelta
+from datetime import timedelta
 
 import click
 from flask import Flask, abort, g, render_template, request, redirect, url_for, session, flash, jsonify, send_file
@@ -25,12 +25,11 @@ from models import (db, utcnow, User, Score, QuizSession, CustomContent, Chatbot
                     UserBadge, PinAttempt, RateLimit)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
-from wikipedia import DisambiguationError
 from translations import (UI_LANGUAGES, format_date, template_context, template_globals, translate as _,
                           translate_plural as _n)
 from content_extractor import (ContentError, extract_text_from_upload, extract_text_from_url,
                                validate_content_length)
-from chatbot import get_chatbot_response, get_quick_help_suggestions
+from chatbot import QUICK_HELP, get_chatbot_response
 from badges import BADGES, award_badges, compute_streaks, player_streaks
 
 
@@ -138,6 +137,39 @@ def inject_player():
 app.jinja_env.globals.update(template_globals())
 app.add_template_filter(format_date, 'date')
 app.add_template_filter(lambda value: format_date(value, with_time=True), 'datetime')
+
+
+@app.after_request
+def security_headers(response):
+    # No framing by other sites (clickjacking), no guessing content types, and only the origin in cross-site
+    # referrers so share codes and quiz pages don't leak to links people follow
+    response.headers.setdefault('X-Frame-Options', 'DENY')
+    response.headers.setdefault('Content-Security-Policy', "frame-ancestors 'none'")
+    response.headers.setdefault('X-Content-Type-Options', 'nosniff')
+    response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
+    return response
+
+
+@app.errorhandler(404)
+def page_not_found(error):
+    return render_template('errors.html', code=404, title=_("Page not found"),
+                           message=_("This page doesn't exist or is no longer available.")), 404
+
+
+@app.errorhandler(500)
+def server_error(error):
+    db.session.rollback()
+    return render_template('errors.html', code=500, title=_("Something went wrong"),
+                           message=_("Sorry, something went wrong on our side. Please try again in a moment.")), 500
+
+
+@app.errorhandler(413)
+def file_too_large(error):
+    """An upload over MAX_CONTENT_LENGTH: back to the form it came from, with a message."""
+    flash(_("That file is too big. The limit is 10 MB."), "danger")
+    referrer = urlparse(request.referrer or '')
+    same_site = referrer.netloc == request.host
+    return redirect((local_path(referrer.path) if same_site else None) or url_for('index'))
 
 
 @app.errorhandler(CSRFError)
@@ -950,9 +982,6 @@ def start_quiz():
         create_quiz_session(user, topic, difficulty_text, questions_count, language_name, time_limit=time_limit)
         return redirect(url_for('quiz'))
         
-    except DisambiguationError:
-        flash(_("Wikipedia found multiple topics for this category. Trying again..."), "info")
-        return redirect(url_for('setup'))
     except Exception as e:
         report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
         return redirect(url_for('setup'))
@@ -1280,20 +1309,22 @@ def leaderboard():
 
 @app.route('/players')
 def players():
-    all_users = User.query.all()
-    players_data = []
-    for user in all_users:
-        scores = Score.query.filter_by(user_id=user.id).all()
-        if scores:
-            avg_score = sum(s.percentage for s in scores) / len(scores)
-            players_data.append({
-                'user': user,
-                'username': user.username,
-                'games_played': len(scores),
-                'avg_score': round(avg_score, 2),
-                'streak': compute_streaks([s.timestamp.date() for s in scores if s.timestamp])[0],
-                'badges': UserBadge.query.filter_by(user_id=user.id).count(),
-            })
+    # Everyone who has played, with their totals, in a few queries however many players there are
+    rows = (db.session.query(User, func.count(Score.id), func.avg(Score.percentage))
+            .join(Score, Score.user_id == User.id).group_by(User.id).all())
+    badges = dict(db.session.query(UserBadge.user_id, func.count(UserBadge.id)).group_by(UserBadge.user_id).all())
+    play_days = {}
+    for user_id, timestamp in db.session.query(Score.user_id, Score.timestamp):
+        if timestamp:
+            play_days.setdefault(user_id, []).append(timestamp.date())
+    players_data = [{
+        'user': user,
+        'username': user.username,
+        'games_played': games,
+        'avg_score': round(average, 2),
+        'streak': compute_streaks(play_days.get(user.id, []))[0],
+        'badges': badges.get(user.id, 0),
+    } for user, games, average in rows]
     
     # Sort by games played or avg score
     players_data.sort(key=lambda x: x['games_played'], reverse=True)
@@ -1430,8 +1461,7 @@ def practice():
 @app.route('/chatbot')
 def chatbot_page():
     """Display the chatbot interface."""
-    suggestions = get_quick_help_suggestions()
-    return render_template('chatbot.html', suggestions=suggestions)
+    return render_template('chatbot.html', suggestions=QUICK_HELP)
 
 
 @app.route('/api/chatbot', methods=['POST'])
@@ -1465,7 +1495,8 @@ def chatbot_api():
         conversation_history = json.loads(chatbot_session.conversation_json)
 
         # Get chatbot response
-        response = get_chatbot_response(user_message, conversation_history)
+        language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
+        response = get_chatbot_response(user_message, conversation_history, language_name)
 
         # Update conversation history
         conversation_history.append({"role": "user", "content": user_message})
@@ -1482,7 +1513,8 @@ def chatbot_api():
         return jsonify({
             'message': response.message,
             'suggested_action': response.suggested_action,
-            'action_url': response.action_url
+            # The link comes from the AI, so only pages on this site (never javascript: or other sites)
+            'action_url': local_path(response.action_url),
         })
 
     except Exception as e:

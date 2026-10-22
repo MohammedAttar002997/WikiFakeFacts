@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="wf-card wf-card-pad text-center">
+            <div class="display-4 mb-3" aria-hidden="true">{{ '🧭' if code == 404 else '🛠️' }}</div>
+            <h1 class="h3 fw-black">{{ title }}</h1>
+            <p class="text-muted">{{ message }}</p>
+            <a href="{{ url_for('index') }}" class="btn btn-primary btn-lg"><i class="bi bi-house-door-fill me-1"></i>{{ _('Back to home') }}</a>
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,10 +1,11 @@
+{% from "_macros.html" import avatar %}
 <!DOCTYPE html>
 <html lang="{{ ui_language }}" dir="{{ ui_direction }}" data-bs-theme="light">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="csrf-token" content="{{ csrf_token() }}">
-    <title>{% block title %}WikiFakeFact - Quiz Game{% endblock %}</title>
+    <title>{% block title %}WikiFakeFact{% endblock %}</title>
     <script>
         // Apply the saved (or system) theme before first paint to avoid a flash
         (function () {
@@ -42,9 +43,16 @@
         <div class="container">
             <a class="navbar-brand wf-brand" href="/">
                 <span class="wf-brand-mark"><i class="bi bi-patch-question-fill"></i></span>
-                <span>Wiki<span class="accent">Fake</span>Fact</span>
+                <span class="wf-brand-text">Wiki<span class="accent">Fake</span>Fact</span>
             </a>
             <div class="d-flex align-items-center gap-2 order-xl-last ms-auto ms-xl-3">
+                {% if me %}
+                {# On wide screens the player's photo links to their profile settings; on phones it's in the menu #}
+                <a class="nav-avatar d-none d-xl-inline-flex" href="{{ url_for('account') }}"
+                   title="{{ _('Profile and account') }}" aria-label="{{ _('Profile and account') }}: {{ me.username }}">
+                    {{ avatar(me, 'sm') }}
+                </a>
+                {% endif %}
                 <div class="dropdown">
                     <button type="button" class="theme-toggle lang-toggle" data-bs-toggle="dropdown" aria-expanded="false"
                             aria-label="{{ _('Language') }}: {{ language_names[ui_language] }}" title="{{ _('Language') }}">
@@ -80,6 +88,14 @@
                         </a>
                     </li>
                     {% endfor %}
+                    {% if me %}
+                    {% set active = request.path.startswith('/account') %}
+                    <li class="nav-item d-xl-none">
+                        <a class="nav-link{% if active %} active{% endif %}" href="{{ url_for('account') }}"{% if active %} aria-current="page"{% endif %}>
+                            <i class="bi bi-person-circle"></i>{{ _('Profile and account') }}
+                        </a>
+                    </li>
+                    {% endif %}
                 </ul>
             </div>
         </div>

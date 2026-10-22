@@ -1,5 +1,7 @@
 {% extends "base.html" %}
 
+{% block title %}{{ _('Spot the Fake Fact!') }} · WikiFakeFact{% endblock %}
+
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
@@ -23,12 +25,14 @@
                 <i class="bi bi-stopwatch-fill"></i>
                 <div class="timer-track" aria-hidden="true"><div class="timer-bar" style="width: {{ (seconds_left / time_limit * 100)|round(1) }}%;"></div></div>
                 <span class="timer-count" role="timer" aria-live="off" aria-label="{{ _('Seconds left') }}">{{ seconds_left }}</span>
+                {# The count changes every second, so screen readers only hear a few warnings #}
+                <span class="visually-hidden" aria-live="assertive" id="timerAnnounce" data-label="{{ _('Seconds left') }}"></span>
             </div>
             {% endif %}
 
             <div class="quiz-question">
                 <div class="q-icon">🕵️</div>
-                <h2 class="mb-1">{{ _('Spot the Fake Fact!') }}</h2>
+                <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
                 <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
             </div>
 
@@ -82,11 +86,17 @@
             const deadline = Date.now() + Number(timer.dataset.secondsLeft) * 1000;
             const bar = timer.querySelector('.timer-bar');
             const count = timer.querySelector('.timer-count');
+            const announce = document.getElementById('timerAnnounce');
             const tick = () => {
                 const left = Math.max(0, (deadline - Date.now()) / 1000);
                 bar.style.width = (left / limit * 100) + '%';
                 count.textContent = Math.ceil(left);
                 timer.classList.toggle('is-low', left <= 5);
+                const whole = Math.ceil(left);
+                if ((whole === 10 || whole === 5) && announce.dataset.said !== String(whole)) {
+                    announce.dataset.said = whole;
+                    announce.textContent = announce.dataset.label + ': ' + whole;
+                }
                 if (left > 0) return;
                 clearInterval(interval);
                 if (sent) return;  // The player's answer is already on its way
