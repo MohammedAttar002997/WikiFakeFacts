@@ -21,6 +21,8 @@ class User(db.Model):
     scores = db.relationship('Score', backref='user', lazy=True)
 
 class Score(db.Model):
+    # One score per quiz, however many times its last answer is sent
+    __table_args__ = (db.UniqueConstraint('quiz_session_id', name='uq_score_quiz_session_id'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     topic = db.Column(db.String(100), nullable=False)
@@ -32,6 +34,8 @@ class Score(db.Model):
     quiz_session_id = db.Column(db.Integer, db.ForeignKey('quiz_session.id'), nullable=True)  # For the answer review
 
 class QuizSession(db.Model):
+    # One attempt per player at each daily challenge (rows outside the daily challenge have no challenge id)
+    __table_args__ = (db.UniqueConstraint('user_id', 'daily_challenge_id', name='uq_quiz_session_user_daily'),)
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     topic = db.Column(db.String(100), nullable=False)
