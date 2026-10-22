@@ -50,6 +50,7 @@ def test_photo_is_cropped_to_a_square_webp_and_served(player):
     assert response.status_code == 200 and response.mimetype == 'image/webp'
     assert response.headers['X-Content-Type-Options'] == 'nosniff'
     assert response.cache_control.max_age >= 24 * 3600
+    assert response.cache_control.private and not response.cache_control.public  # Never kept by a CDN
 
 
 def test_photo_metadata_is_dropped(player):
