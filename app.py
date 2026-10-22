@@ -9,12 +9,13 @@ from datetime import datetime, timedelta
 import click
 from flask import Flask, abort, g, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import case, func, inspect, text
+from sqlalchemy import case, func, inspect, text, update
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm.attributes import set_committed_value
 from flask_migrate import Migrate, stamp, upgrade
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from urllib.parse import urlparse
@@ -862,7 +863,7 @@ def custom_quiz():
             language_code = request.form.get('language', 'en')
             session['language'] = language_code
 
-            if not length_id or not difficulty_id:
+            if length_id not in GAME_LENGTH_OPTIONS or difficulty_id not in DIFFICULTY_OPTIONS:
                 flash(_("Please select game length and difficulty."), "warning")
                 return redirect(url_for('custom_quiz'))
 
@@ -927,7 +928,7 @@ def start_quiz():
     language_code = request.form.get('language', 'en')
     session['language'] = language_code
     
-    if not category_id or not length_id or not difficulty_id:
+    if category_id not in CATEGORIES or length_id not in GAME_LENGTH_OPTIONS or difficulty_id not in DIFFICULTY_OPTIONS:
         flash(_("Please select a category, game length, and difficulty."), "warning")
         return redirect(url_for('setup'))
     
@@ -957,6 +958,23 @@ def start_quiz():
         return redirect(url_for('setup'))
 
 
+def claim_round(quiz_session, round_index):
+    """Move the quiz past `round_index` if it's still on it, in one conditional update, and say whether this
+    request did. Of two answers sent for the same round at once, only one counts; the other changes nothing."""
+    moved = db.session.execute(
+        update(QuizSession)
+        .where(QuizSession.id == quiz_session.id, QuizSession.current_question_index == round_index)
+        .values(current_question_index=round_index + 1)
+        .execution_options(synchronize_session=False)
+    ).rowcount
+    if not moved:
+        db.session.rollback()
+        return False
+    # Keep the loaded quiz in step without writing the index a second time
+    set_committed_value(quiz_session, 'current_question_index', round_index + 1)
+    return True
+
+
 @app.route('/quiz', methods=['GET', 'POST'])
 def quiz():
     if 'quiz_session_id' not in session:
@@ -970,13 +988,17 @@ def quiz():
 
     if request.method == 'POST':
         selected_option = request.form.get('option')
-        current_q = questions[quiz_session.current_question_index]
+        round_index = quiz_session.current_question_index
+        current_q = questions[round_index]
         # Timed mode: the browser submits when the countdown ends; the server also checks the clock, so a late
         # answer (or one sent with JavaScript turned off) can't beat the timer
         timed_out = bool(quiz_session.time_limit) and (
             request.form.get('timeout') == '1' or seconds_left(quiz_session) <= -TIMER_GRACE_SECONDS)
         if not selected_option and not timed_out:
             flash(_("Please select an option."), "warning")
+        elif not claim_round(quiz_session, round_index):
+            # Another request (a double click, or the timer firing during a click) already answered this round
+            return redirect(url_for('quiz'))
         else:
             pick = None if timed_out else selected_option
             # The options were shuffled in the template, we need to check the value
@@ -997,7 +1019,6 @@ def quiz():
                 # Find the correct answer to show the user
                 flash(_("Incorrect. The fake fact was:") + " " + correct_answer, "danger")
 
-            quiz_session.current_question_index += 1
             quiz_session.round_started_at = None
 
             if quiz_session.current_question_index >= quiz_session.total_questions:
@@ -1051,7 +1072,9 @@ def results():
     quiz_session = db.session.get(QuizSession, session['quiz_session_id'])
     if not quiz_session:
         return redirect(url_for('setup'))
-    
+    if not quiz_session.is_completed:
+        return redirect(url_for('quiz'))
+
     percentage = (quiz_session.score / quiz_session.total_questions) * 100
 
     return render_template('results.html',
@@ -1161,6 +1184,13 @@ def daily_start():
         save_quiz_session(user, challenge.topic, DAILY_DIFFICULTY, json.loads(challenge.questions_json),
                           json.loads(challenge.explanations_json), challenge.source,
                           daily_challenge_id=challenge.id)
+        return redirect(url_for('quiz'))
+    except IntegrityError:
+        # A second click started the same attempt at the same moment; continue that one
+        db.session.rollback()
+        attempt = daily_attempt(user, date)
+        if attempt:
+            session['quiz_session_id'] = attempt.id
         return redirect(url_for('quiz'))
     except Exception as e:
         report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)

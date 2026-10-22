@@ -71,8 +71,9 @@
         const submit = document.getElementById('submitAnswer');
         const inputs = Array.from(form.querySelectorAll('input[name="option"]'));
 
+        let sent = false;
         inputs.forEach(input => input.addEventListener('change', () => { submit.disabled = false; }));
-        form.addEventListener('submit', () => { submit.disabled = true; });
+        form.addEventListener('submit', () => { sent = true; submit.disabled = true; });
 
         // Timed mode: count down, then submit the round as timed out
         const timer = document.getElementById('quizTimer');
@@ -88,6 +89,8 @@
                 timer.classList.toggle('is-low', left <= 5);
                 if (left > 0) return;
                 clearInterval(interval);
+                if (sent) return;  // The player's answer is already on its way
+                sent = true;
                 document.getElementById('timeoutField').value = '1';
                 inputs.forEach(input => { input.required = false; });
                 form.submit();
