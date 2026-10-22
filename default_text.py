@@ -99,6 +99,7 @@ LANGUAGE_OPTIONS = {
     "de": "Deutsch (German)",
     "it": "Italiano (Italian)",
     "pt": "Português (Portuguese)",
+    "ar": "العربية (Arabic)",
 }
 
 

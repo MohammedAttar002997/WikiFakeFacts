@@ -23,7 +23,7 @@
                  role="img" aria-label="{{ _('Final Score:') }} {{ score }} / {{ total }}">
                 <div class="inner">
                     <div class="pct">{{ percentage|round|int }}%</div>
-                    <div class="frac">{{ score }} / {{ total }}</div>
+                    <div class="frac"><span dir="ltr">{{ score }} / {{ total }}</span></div>
                 </div>
             </div>
 
@@ -74,9 +74,9 @@
                 {% else %}{{ _('{name} wins this one.').format(name=challenge.opponent) }}{% endif %}
             </h2>
             <div class="d-flex justify-content-center gap-4 mb-3">
-                <div><div class="h3 fw-black mb-0">{{ challenge.my_score }} / {{ challenge.total }}</div><div class="small text-muted">{{ _('You') }}</div></div>
+                <div><div class="h3 fw-black mb-0"><span dir="ltr">{{ challenge.my_score }} / {{ challenge.total }}</span></div><div class="small text-muted">{{ _('You') }}</div></div>
                 <div class="align-self-center text-muted fw-bold">{{ _('vs') }}</div>
-                <div><div class="h3 fw-black mb-0">{{ challenge.their_score }} / {{ challenge.total }}</div><div class="small text-muted">{{ challenge.opponent }}</div></div>
+                <div><div class="h3 fw-black mb-0"><span dir="ltr">{{ challenge.their_score }} / {{ challenge.total }}</span></div><div class="small text-muted">{{ challenge.opponent }}</div></div>
             </div>
             <a href="{{ url_for('shared_result', code=challenge.code) }}" class="fw-bold text-decoration-none">{{ _('See everyone who took this challenge') }}</a>
         </div>

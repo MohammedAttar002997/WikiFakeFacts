@@ -39,7 +39,7 @@
                     </div>
                     <div class="score">
                         <div class="pct">{{ s.percentage|round|int }}%</div>
-                        <div class="meta">{{ s.score }} / {{ s.total_questions }}</div>
+                        <div class="meta"><span dir="ltr">{{ s.score }} / {{ s.total_questions }}</span></div>
                     </div>
                     <div class="history-action">
                         {% if s.quiz_session_id %}

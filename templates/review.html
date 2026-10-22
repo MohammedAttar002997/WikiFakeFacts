@@ -9,7 +9,7 @@
             <p>
                 {% if score %}{{ score.timestamp|datetime }} &middot; {% endif %}
                 {{ _(quiz_session.difficulty.split(' (')[0]) }} &middot;
-                {% set result %}<strong>{{ quiz_session.score }} / {{ quiz_session.total_questions }}</strong>{% endset %}
+                {% set result %}<strong><span dir="ltr">{{ quiz_session.score }} / {{ quiz_session.total_questions }}</span></strong>{% endset %}
                 {{ _('{score} correct').format(score=result) }}
             </p>
         </div>
