@@ -1,13 +1,66 @@
 {% extends "base.html" %}
+{% from "_macros.html" import avatar, CATEGORY_EMOJI with context %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-7">
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-person-gear"></i> {{ user.username }}</span>
-            <h1>{{ _('Account') }}</h1>
-            <p>{{ _('Change your PIN or delete your account.') }}</p>
+            <h1>{{ _('Profile and account') }}</h1>
+            <p>{{ _('Choose how other players see you, change your PIN or delete your account.') }}</p>
+            <a href="{{ url_for('player_profile', user_id=user.id) }}" class="btn btn-outline-primary btn-sm mt-2"><i class="bi bi-person-badge me-1"></i>{{ _('View my public profile') }}</a>
         </div>
+
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="section-label"><i class="bi bi-person-circle text-brand fs-4"></i>{{ _('Profile') }}</div>
+            <form action="{{ url_for('change_photo') }}" method="POST" enctype="multipart/form-data"
+                  class="d-flex flex-column flex-sm-row align-items-center gap-4 mb-4">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                {{ avatar(user, 'xl') }}
+                <div class="flex-grow-1 w-100">
+                    <label for="photo" class="form-label fw-bold">{{ _('Photo') }}</label>
+                    <input type="file" class="form-control" id="photo" name="photo" accept="image/jpeg,image/png,image/webp,image/gif">
+                    <div class="form-text mb-2">{{ _('JPEG, PNG, WebP or GIF. It’s cropped to a square and shown to everyone.') }}</div>
+                    <button type="submit" class="btn btn-primary">{{ _('Upload photo') }}</button>
+                    {% if user.avatar_updated_at %}
+                    <button type="submit" class="btn btn-outline-secondary" name="remove" value="1" formnovalidate>{{ _('Remove photo') }}</button>
+                    {% endif %}
+                </div>
+            </form>
+
+            <form action="{{ url_for('change_favorite_topic') }}" method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="favoriteTopic" class="form-label fw-bold">{{ _('Favorite topic') }}</label>
+                <div class="d-flex flex-column flex-sm-row gap-2">
+                    <select class="form-select" id="favoriteTopic" name="topic">
+                        <option value="">{{ _('No favorite') }}</option>
+                        {% for topic in categories.values() %}
+                        <option value="{{ topic }}"{% if topic == user.favorite_topic %} selected{% endif %}>{{ CATEGORY_EMOJI.get(topic, '') }} {{ _(topic) }}</option>
+                        {% endfor %}
+                    </select>
+                    <button type="submit" class="btn btn-primary text-nowrap">{{ _('Save topic') }}</button>
+                </div>
+            </form>
+        </div>
+
+        <form action="{{ url_for('change_name') }}" method="POST" class="wf-card wf-card-pad mb-4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="section-label"><i class="bi bi-pencil-fill text-brand fs-4"></i>{{ _('Change name') }}</div>
+            <p class="small text-muted">{{ _('Your scores, badges and shared results move to the new name. Your old name becomes free for someone else to use.') }}</p>
+            <div class="row g-3 mb-3">
+                <div class="col-sm-7">
+                    <label for="newName" class="form-label fw-bold">{{ _('New name') }}</label>
+                    <input type="text" class="form-control form-control-lg" id="newName" name="new_name" required
+                           minlength="3" maxlength="{{ max_name_length }}" value="{{ user.username }}" autocomplete="nickname">
+                </div>
+                <div class="col-sm-5">
+                    <label for="namePin" class="form-label fw-bold">{{ _('Your PIN') }}</label>
+                    <input type="password" class="form-control form-control-lg" id="namePin" name="pin" required
+                           minlength="4" maxlength="4" pattern="[0-9]{4}" inputmode="numeric" autocomplete="current-password">
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">{{ _('Change name') }}</button>
+        </form>
 
         <form action="{{ url_for('change_pin') }}" method="POST" class="wf-card wf-card-pad mb-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">

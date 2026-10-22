@@ -9,7 +9,7 @@ WikiFakeFact is an AI-powered quiz game designed to test players' knowledge with
 *   **Multilingual Support**: Quizzes available in English, Spanish, French, German, Italian, and Portuguese.
 *   **Difficulty Levels**: Caters to audiences from Ages 7-99.
 *   **My Progress Dashboard**: Provides AI-powered insights into player performance.
-*   **Players Directory**: Public profiles for players.
+*   **Players Directory**: Public profiles for players with their photo, favorite topic, stats and badges. Players can upload a photo, pick a favorite topic and change their name from the Profile and account page.
 *   **Knowledge Base**: Contains full-length articles for seven categories: Sports, Animals, Countries, Fruits, Planets/Space, Technologies, Musical Instruments.
 
 ## Project Structure

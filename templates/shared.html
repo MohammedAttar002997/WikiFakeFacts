@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import avatar %}
 
 {% set headline = _('{name} spotted {score} of {total} fake facts').format(name=player.username, score=quiz_session.score, total=quiz_session.total_questions) %}
 
@@ -17,7 +18,7 @@
 <div class="row justify-content-center">
     <div class="col-lg-6">
         <div class="wf-card wf-card-pad text-center shared-card">
-            <div class="avatar avatar-lg avatar-c{{ (player.username|length % 5) + 1 }} mx-auto mb-3">{{ player.username[:1] }}</div>
+            {{ avatar(player, 'lg', 'mx-auto mb-3') }}
             <h1 class="h3 fw-black mb-2">{{ headline }}</h1>
             <div class="d-flex flex-wrap justify-content-center gap-2 mb-4">
                 <span class="chip chip-brand"><i class="bi bi-tag-fill"></i>{{ quiz_session.topic }}</span>
@@ -58,7 +59,7 @@
             <div class="d-flex flex-column gap-2">
                 {% for attempt, challenger in challengers %}
                 <div class="rank-row{% if challenger.username == session.get('username') %} rank-row-me{% endif %}">
-                    <div class="avatar avatar-sm avatar-c{{ (challenger.username|length % 5) + 1 }}">{{ challenger.username[:1] }}</div>
+                    {{ avatar(challenger, 'sm') }}
                     <div class="who"><span class="fw-bold">{{ challenger.username }}</span></div>
                     <div class="score">
                         <div class="pct">{{ attempt.score }} / {{ attempt.total_questions }}</div>
