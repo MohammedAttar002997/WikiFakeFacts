@@ -14,7 +14,7 @@
             <div class="display-3 mb-2">{{ verdict[0] }}</div>
             <h1 class="fw-black mb-1">{{ _('Game Results') }}</h1>
             <p class="lead text-muted mb-4">
-                {% set who %}<strong class="text-body">{{ session['username'] }}</strong>{% endset %}
+                {% set who %}<strong class="text-body">{{ me.username }}</strong>{% endset %}
                 {{ verdict[1] }}<br>
                 {{ _('Thank you for playing, {name}!').format(name=who) }}
             </p>

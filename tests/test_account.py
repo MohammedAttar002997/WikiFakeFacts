@@ -3,7 +3,7 @@ import pytest
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from app import db
-from conftest import answers, play_quiz
+from conftest import answers, play_quiz, sign_in_as, signed_in_name
 from models import (ChatbotSession, CustomContent, DailyChallenge, PlayerAnalysis, QuizSession, Score, User,
                     UserBadge)
 
@@ -16,6 +16,7 @@ def player(login, app_ctx):
     user.pin_hash = generate_password_hash('1234')
     db.session.add(CustomContent(user_id=user.id, title='Notes', content='x', content_type='url'))
     db.session.commit()
+    sign_in_as(client, 'Player')  # Setting the PIN ended the session, as changing it does in the app
     play_quiz(client, answers(3, 3))
     client.get('/analysis')
     return client
@@ -83,16 +84,14 @@ def test_delete_removes_only_this_players_data(player, login):
     assert ChatbotSession.query.filter_by(session_id='player-chat').count() == 0
     assert DailyChallenge.query.count() == 1                       # shared with other players
     assert Score.query.count() == 1 and User.query.count() == 1    # Other's data is untouched
-    with player.session_transaction() as sess:
-        assert 'username' not in sess
+    assert signed_in_name(player) is None
 
 
 def test_deleted_name_can_be_claimed_again(player, app):
     player.post('/account/delete', data={'pin': '1234', 'confirm': '1'})
     client = app.test_client()
     client.post('/setup', data={'username': 'Player', 'pin': '9999'})
-    with client.session_transaction() as sess:
-        assert sess['username'] == 'Player'
+    assert signed_in_name(client) == 'Player'
 
 
 def test_reset_pin_command(app, player):

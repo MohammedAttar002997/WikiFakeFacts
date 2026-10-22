@@ -18,7 +18,7 @@
                 <div class="small text-muted">{{ _n('{n} round', '{n} rounds', rounds) }} &middot; {{ _(difficulty.split(' (')[0]) }} &middot; {{ _('one attempt') }}</div>
             </div>
             <div class="flex-shrink-0 daily-action">
-                {% if not session.get('username') %}
+                {% if not me %}
                 <a href="/" class="btn btn-primary btn-lg"><i class="bi bi-person-fill me-1"></i>{{ _('Sign in to play') }}</a>
                 {% elif attempt_score %}
                 <div class="text-center">
@@ -44,7 +44,7 @@
             {% if standings %}
             <div class="d-flex flex-column gap-2">
                 {% for score, player in standings %}
-                {% set is_me = player.username == session.get('username') %}
+                {% set is_me = me and player.id == me.id %}
                 <div class="rank-row{% if is_me %} rank-row-me{% endif %}">
                     <div class="rank">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 else loop.index }}</div>
                     {{ avatar(player, 'sm') }}

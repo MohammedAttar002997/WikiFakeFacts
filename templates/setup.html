@@ -7,8 +7,8 @@
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-controller"></i> {{ _('New game') }}</span>
             <h1>{{ _('Game Setup') }}</h1>
-            {% if session.get('username') %}
-            {% set who %}<strong>{{ session['username'] }}</strong>{% endset %}
+            {% if me %}
+            {% set who %}<strong>{{ me.username }}</strong>{% endset %}
             <p>{{ _('Ready, {name}? Set up your round below.').format(name=who) }}</p>
             {% endif %}
         </div>

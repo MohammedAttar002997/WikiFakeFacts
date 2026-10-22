@@ -7,7 +7,7 @@ from werkzeug.security import generate_password_hash
 
 import app as app_module
 from app import db
-from conftest import answers, play_quiz
+from conftest import answers, play_quiz, sign_in_as, signed_in_name
 from models import Score, User
 
 
@@ -29,6 +29,7 @@ def player(login, app_ctx):
     user = User.query.filter_by(username='Player').one()
     user.pin_hash = generate_password_hash('1234')
     db.session.commit()
+    sign_in_as(client, 'Player')  # Setting the PIN ended the session, as changing it does in the app
     play_quiz(client, answers(3, 3))
     return client
 
@@ -120,8 +121,7 @@ def test_rename_keeps_scores_and_sign_in(player):
     assert get_player('Player') is None
     assert get_player('Phoenix').id == user_id
     assert Score.query.filter_by(user_id=user_id).count() == 1
-    with player.session_transaction() as sess:
-        assert sess['username'] == 'Phoenix'
+    assert signed_in_name(player) == 'Phoenix'
     assert player.get('/account').status_code == 200
 
 
@@ -161,8 +161,7 @@ def test_setup_refuses_long_new_names_but_not_existing_ones(app, make_user, app_
     assert User.query.count() == 0
     make_user('z' * 40)  # Signed up before the limit
     client.post('/setup', data={'username': 'z' * 40, 'pin': '1234'})
-    with client.session_transaction() as sess:
-        assert sess['username'] == 'z' * 40
+    assert signed_in_name(client) == 'z' * 40
 
 
 # ---------- Public profile -------------------------------------------------------------------------------------

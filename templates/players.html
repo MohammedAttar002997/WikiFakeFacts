@@ -13,7 +13,7 @@
         <div class="row g-4">
             {% for player in players %}
             {% set meter = 'meter-good' if player.avg_score >= 80 else ('meter-mid' if player.avg_score >= 50 else 'meter-low') %}
-            {% set is_me = player.username == session.get('username') %}
+            {% set is_me = me and player.user.id == me.id %}
             <div class="col-sm-6 col-lg-4">
                 <a class="player-card" href="{{ url_for('player_profile', user_id=player.user.id) }}">
                     {{ avatar(player.user, 'lg', 'mx-auto mb-3') }}

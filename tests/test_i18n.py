@@ -18,7 +18,8 @@ def test_language_switch_sets_session_and_returns_to_page(app):
         assert sess['language'] == 'de'
 
 
-@pytest.mark.parametrize('target', ['//evil.example', 'https://evil.example', 'evil'])
+@pytest.mark.parametrize('target', ['//evil.example', 'https://evil.example', 'evil', '/%09/evil.example', '/%5Cevil.example',
+                                    '/%0A/evil.example'])
 def test_language_switch_never_redirects_off_site(app, target):
     assert app.test_client().get(f'/language/de?next={target}').headers['Location'] == '/'
 

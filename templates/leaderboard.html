@@ -49,7 +49,7 @@
         {% if standings %}
         <div class="podium">
             {% for row in standings[:3] %}
-            {% set is_me = row.user.username == session.get('username') %}
+            {% set is_me = me and row.user.id == me.id %}
             {% if is_me %}<a class="podium-spot podium-{{ loop.index }}" href="{{ url_for('analysis') }}" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis">{% else %}<a class="podium-spot podium-{{ loop.index }}" href="{{ url_for('player_profile', user_id=row.user.id) }}">{% endif %}
                 <div class="medal">{{ ['🥇', '🥈', '🥉'][loop.index0] }}</div>
                 {{ avatar(row.user, '', 'mx-auto my-2') }}
@@ -67,7 +67,7 @@
                     <div class="rank">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 else loop.index }}</div>
                     {{ avatar(row.user, 'sm') }}
                     <div class="who">
-                        {% if row.user.username == session.get('username') %}
+                        {% if me and row.user.id == me.id %}
                             <a href="{{ url_for('analysis') }}" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis">{{ row.user.username }}</a> <span class="text-brand small fw-bold">{{ _('(you)') }}</span>
                         {% else %}
                             <a href="{{ url_for('player_profile', user_id=row.user.id) }}">{{ row.user.username }}</a>
