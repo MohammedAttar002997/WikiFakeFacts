@@ -103,7 +103,7 @@ def find_missing():
     """Strings used in the code (templates, .py, .js) that a catalog doesn't translate yet."""
     root = os.path.dirname(os.path.abspath(__file__))
     used = dynamic_strings()
-    for folder, ext in (('templates', '.html'), ('.', '.py'), ('static/js', '.js')):
+    for folder, ext in (('templates', '.html'), ('.', '.py'), ('public/static/js', '.js')):
         for name in os.listdir(os.path.join(root, folder)):
             if not name.endswith(ext) or name == 'translations.py':
                 continue

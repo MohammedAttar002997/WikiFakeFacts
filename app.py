@@ -33,7 +33,8 @@ from chatbot import QUICK_HELP, get_chatbot_response
 from badges import BADGES, award_badges, compute_streaks, player_streaks
 
 
-app = Flask(__name__)
+# Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
+app = Flask(__name__, static_folder='public/static')
 DEV_SECRET_KEY = 'hackathon-secret-key'  # Only for local development; serve.py refuses to run with it
 app.secret_key = os.environ.get('SECRET_KEY') or DEV_SECRET_KEY
 ON_VERCEL = bool(os.environ.get('VERCEL'))  # Vercel sets VERCEL=1 for builds and functions

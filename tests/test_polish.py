@@ -1,6 +1,7 @@
 """Finishing touches from the final check-up: error pages, headers, the help assistant's language, navigation and
 page titles."""
 import io
+import os
 from types import SimpleNamespace
 
 import pytest
@@ -129,3 +130,13 @@ def test_players_page_totals(login, app_ctx):
     assert '2 games played' in html and '1 game played' in html and 'Idle' not in html
     badges = UserBadge.query.filter_by(user_id=User.query.filter_by(username='Bob').one().id).count()
     assert f'🏅 {badges}' in html
+
+
+# ---------- Static files -------------------------------------------------------------------------------------------
+
+@pytest.mark.parametrize('path', ['/static/css/app.css', '/static/js/app.js'])
+def test_static_files_come_from_public(app, path):
+    # On Vercel the CDN serves public/ at the same URLs, so pages must link there and Flask must serve it locally
+    assert os.path.isfile(os.path.join(os.path.dirname(app_module.__file__), 'public', path.lstrip('/')))
+    assert path in app.test_client().get('/').get_data(as_text=True)
+    assert app.test_client().get(path).status_code == 200

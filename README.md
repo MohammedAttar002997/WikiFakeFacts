@@ -23,7 +23,8 @@ WikiFakeFacts/
 ├── translations.py         # UI translation helpers; catalogs in locales/
 ├── models.py               # SQLAlchemy models
 ├── migrations/             # Database migrations (Flask-Migrate / Alembic)
-├── templates/, static/     # HTML templates, CSS and JavaScript
+├── templates/              # HTML templates
+├── public/static/          # CSS and JavaScript (served by Vercel's CDN)
 ├── locales/                # Translations (es, fr, de, it, pt, ar)
 ├── tests/                  # pytest suite
 ├── rag_indexer.py          # Optional: builds the local knowledge-base index (chroma_db/)
