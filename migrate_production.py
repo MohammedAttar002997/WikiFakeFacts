@@ -45,8 +45,8 @@ def psycopg_loads():
         return False
 
 
-def main():
-    env_file = sys.argv[1] if len(sys.argv) > 1 else '.env.production.local'
+def use_production_database(env_file='.env.production.local'):
+    """Point the app at the database in env_file before it's imported. Exits with a hint if that isn't possible."""
     if not os.path.exists(env_file):
         sys.exit(f'{env_file} not found. Download the production settings first:\n'
                  f'    vercel env pull {env_file} --environment=production')
@@ -61,6 +61,10 @@ def main():
         print('psycopg is blocked or missing here, so using pg8000 instead.')
         use_pg8000_with_tls()
         os.environ['DATABASE_URL'] = pg8000_url(url)
+
+
+def main():
+    use_production_database(*sys.argv[1:2])
 
     # Imported only now: the app reads DATABASE_URL when it's imported
     from flask_migrate import check, current, upgrade
