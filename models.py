@@ -119,3 +119,12 @@ class ErrorLog(db.Model):
     path = db.Column(db.String(200), nullable=False)
     error = db.Column(db.Text, nullable=False)
     traceback = db.Column(db.Text, nullable=False)
+
+class KnowledgeChunk(db.Model):
+    """A passage of a topic's saved article (knowledge_base.json) with its embedding, for the fallback search when
+    Wikipedia is down. Filled by rag_indexer.py."""
+    id = db.Column(db.Integer, primary_key=True)  # Article order within a topic
+    topic = db.Column(db.String(100), nullable=False, index=True)
+    model = db.Column(db.String(100), nullable=False)  # Searches only use chunks embedded with the current model
+    content = db.Column(db.Text, nullable=False)
+    embedding = db.Column(db.LargeBinary, nullable=False)  # float32 vector

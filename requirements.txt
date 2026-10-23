@@ -16,7 +16,6 @@ psycopg[binary]==3.3.6      # Postgres (hosted database, e.g. on Vercel)
 openai==3.35.1
 pydantic==2.14.1
 langchain-openai==1.7.2
-langchain-community==0.4.2
 langchain-core==1.6.12
 langchain-text-splitters==1.1.3
 numpy==2.5.4

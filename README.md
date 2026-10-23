@@ -5,12 +5,12 @@ WikiFakeFact is an AI-powered quiz game designed to test players' knowledge with
 ## Features
 
 *   **AI-Powered Quiz Generation**: Utilizes OpenAI's GPT models to generate quizzes with structured outputs.
-*   **Robust RAG System**: Integrates LangChain with OpenAI's `text-embedding-3-small` for a Retrieval-Augmented Generation (RAG) system, providing high-quality fallback content when Wikipedia is unavailable.
+*   **RAG Fallback**: When Wikipedia is unavailable, a Retrieval-Augmented Generation (RAG) search over a saved copy of every topic's article (LangChain text splitting, OpenAI `text-embedding-3-small` embeddings stored in the database) picks the passages the quiz is built from.
 *   **Multilingual Support**: Quizzes available in English, Spanish, French, German, Italian, Portuguese and Arabic (with a right-to-left layout).
 *   **Difficulty Levels**: Caters to audiences from Ages 7-99.
 *   **My Progress Dashboard**: Provides AI-powered insights into player performance.
 *   **Players Directory**: Public profiles for players with their photo, favorite topic, stats and badges. Players can upload a photo, pick a favorite topic and change their name from the Profile and account page.
-*   **Knowledge Base**: Contains full-length articles for seven categories: Sports, Animals, Countries, Fruits, Planets/Space, Technologies, Musical Instruments.
+*   **Knowledge Base**: A saved copy of the Wikipedia article for each of the 140 built-in topics across seven categories: Sports, Animals, Countries, Fruits, Planets/Space, Technologies, Musical Instruments.
 
 ## Project Structure
 
@@ -27,11 +27,11 @@ WikiFakeFacts/
 ├── public/static/          # CSS and JavaScript (served by Vercel's CDN)
 ├── locales/                # Translations (es, fr, de, it, pt, ar)
 ├── tests/                  # pytest suite
-├── rag_indexer.py          # Optional: builds the local knowledge-base index (chroma_db/)
-├── knowledge_base.json     # Articles for the knowledge-base fallback
+├── knowledge_base.json     # Saved Wikipedia article per built-in topic, for the fallback
+├── build_knowledge_base.py # Refreshes knowledge_base.json from Wikipedia
+├── rag_indexer.py          # Embeds the saved articles into the knowledge_chunk table for the RAG search
 ├── requirements.txt        # Pinned app dependencies
-├── requirements-dev.txt    # + test tools
-└── requirements-rag.txt    # + optional knowledge-base fallback
+└── requirements-dev.txt    # + test tools
 ```
 
 ## Setup and Installation
@@ -79,14 +79,16 @@ FLASK_DEBUG=1                       # development only: auto-reload and in-brows
 # OPENAI_EMBEDDING_MODEL="text-embedding-3-small"
 ```
 
-### 5. Optional: Build the Local Knowledge Base
+### 5. Optional: Index the Knowledge Base
 
-When Wikipedia is unavailable, quizzes fall back to a local knowledge base, and if that isn't set up either, to the AI model's own knowledge. The knowledge base needs `chromadb`, which doesn't install on Python 3.15 yet; on Python 3.12 or 3.13:
+When Wikipedia is unavailable, quizzes for the built-in topics use the saved article in `knowledge_base.json`. To have the RAG search pick the most relevant passages instead of sending the whole article, embed the articles once (a few cents of OpenAI usage):
 
 ```bash
-pip install -r requirements-rag.txt
-python rag_indexer.py      # creates chroma_db/ from knowledge_base.json
+python rag_indexer.py                # your local database
+python rag_indexer.py --production   # the hosted database (after vercel env pull, see below)
 ```
+
+Run it again after changing `OPENAI_EMBEDDING_MODEL`. To refresh the saved articles themselves (for example after changing the topic list), run `python build_knowledge_base.py` first. Topics without a saved article, like custom quizzes, fall back to the AI model's own knowledge.
 
 ### 6. Run the Flask Application
 

@@ -1,66 +1,49 @@
-import os
-import json
-from dotenv import load_dotenv
+"""Build the knowledge-base search index: split every saved article in knowledge_base.json into passages, embed
+them with OpenAI and store them in the knowledge_chunk table, replacing what was there.
+
+    python rag_indexer.py                # your local database
+    python rag_indexer.py --production   # the hosted database, connecting like migrate_production.py
+
+Run it after build_knowledge_base.py or after changing OPENAI_EMBEDDING_MODEL. Until it has run, the fallback uses
+the whole saved article instead of the best passages.
+"""
+import sys
+
+import numpy as np
 from langchain_openai import OpenAIEmbeddings
-from langchain_community.vectorstores import Chroma
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_core.documents import Document
 
-from data import EMBEDDING_MODEL
+from migrate_production import use_production_database
+
+CHUNK_SIZE = 1000
+CHUNK_OVERLAP = 150
 
 
-load_dotenv()
-OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
+def split_articles(articles):
+    """[(topic, passage)] in article order."""
+    splitter = RecursiveCharacterTextSplitter(chunk_size=CHUNK_SIZE, chunk_overlap=CHUNK_OVERLAP)
+    return [(topic, passage) for topic, article in articles.items() for passage in splitter.split_text(article)]
+
+
 def index_knowledge_base():
-    """
-    Loads the local knowledge base, splits it into chunks, and stores it in a Chroma vector store using OpenAI embeddings.
-    """
-    kb_path = os.path.join(os.path.dirname(__file__), 'knowledge_base.json')
-    persist_directory = os.path.join(os.path.dirname(__file__), 'chroma_db')
+    # Imported only now: the app reads DATABASE_URL when it's imported
+    from app import app
+    from data import EMBEDDING_MODEL, OPEN_AI_KEY, load_knowledge_base
+    from models import db, KnowledgeChunk
 
-    if not os.path.exists(kb_path):
-        print("Knowledge base file not found.")
-        return
-
-    with open(kb_path, 'r') as f:
-        kb = json.load(f)
-
-    documents = []
-    for topic, content in kb.items():
-        # Create a LangChain Document for each topic
-        doc = Document(
-            page_content=content,
-            metadata={"topic": topic}
-        )
-        documents.append(doc)
-
-    # Split documents into chunks
-    # Increased chunk size and overlap for better context retention with full articles
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=150)
-    splits = text_splitter.split_documents(documents)
-
-    # Initialize OpenAI Embeddings
-    # Using the pre-configured environment variables for OpenAI
-    embeddings = OpenAIEmbeddings(
-        model=EMBEDDING_MODEL,
-        api_key=OPEN_AI_KEY
-    )
-
-    # Remove existing index if it exists to start fresh
-    if os.path.exists(persist_directory):
-        import shutil
-        shutil.rmtree(persist_directory)
-
-    # Create and persist the vector store
-    vectorstore = Chroma.from_documents(
-        documents=splits,
-        embedding=embeddings,
-        persist_directory=persist_directory
-    )
-
-    print(f"Successfully indexed {len(documents)} topics into {len(splits)} chunks using {EMBEDDING_MODEL}.")
-    return vectorstore
+    passages = split_articles(load_knowledge_base())
+    print(f'Embedding {len(passages)} passages with {EMBEDDING_MODEL}...')
+    vectors = OpenAIEmbeddings(model=EMBEDDING_MODEL, api_key=OPEN_AI_KEY).embed_documents([p for _, p in passages])
+    with app.app_context():
+        KnowledgeChunk.query.delete()
+        db.session.add_all(KnowledgeChunk(topic=topic, model=EMBEDDING_MODEL, content=passage,
+                                          embedding=np.asarray(vector, dtype=np.float32).tobytes())
+                           for (topic, passage), vector in zip(passages, vectors))
+        db.session.commit()
+    print(f'Indexed {len(passages)} passages for {len({t for t, _ in passages})} topics.')
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
+    if '--production' in sys.argv[1:]:
+        use_production_database()
     index_knowledge_base()
