@@ -6,7 +6,6 @@ __pycache__/
 
 # Local Database
 *.sqlite
-chroma_db/
 
 # IDE settings
 .idea/

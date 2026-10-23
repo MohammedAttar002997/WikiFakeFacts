@@ -1,13 +1,15 @@
+import json
+import os
+from functools import cache
+
+import numpy as np
 import wikipedia
 from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
-import os
-from langchain_community.vectorstores import Chroma
-import re
 
-from default_text import MENU
+from models import db, KnowledgeChunk
 
 # override=True so a debug-server reload picks up a changed .env
 load_dotenv(override=True)
@@ -49,46 +51,43 @@ class AIAnalysis(BaseModel):
     topic_insights: list[TopicInsight]
 
 
-# Each knowledge-base article covers a whole category; rag_indexer.py tags every chunk with it as metadata "topic"
-TOPIC_CATEGORY = {topic: category for category, topics in MENU.items() for topic in topics}
-MAX_KNOWLEDGE_CHUNKS = 3
+KB_PATH = os.path.join(os.path.dirname(__file__), 'knowledge_base.json')
+RAG_CHUNKS = 8  # Passages given to the AI: enough true facts for a long game (11 rounds of 3)
 
 
-def select_relevant_chunks(topic, chunks):
-    """Chunks that actually mention the quiz topic, best match first. "Mercury (planet)" matches "Mercury"."""
-    name = re.sub(r'\s*\(.*\)$', '', topic).strip().lower()
-    return [chunk for chunk in chunks if name and name in chunk.page_content.lower()][:MAX_KNOWLEDGE_CHUNKS]
+@cache
+def load_knowledge_base():
+    """{topic: saved Wikipedia article} for every built-in topic (made by build_knowledge_base.py)."""
+    with open(KB_PATH, encoding='utf-8') as f:
+        return json.load(f)
 
 
-def fetch_local_knowledge(query):
-    """
-    LangChain RAG Retrieval: Fetches content about a built-in topic from the Chroma vector store.
+def search_knowledge_chunks(topic):
+    """RAG retrieval: the passages of the topic's saved article closest to it by embedding, in article order.
+    Empty when rag_indexer.py hasn't indexed the topic with the current embedding model."""
+    chunks = KnowledgeChunk.query.filter_by(topic=topic, model=EMBEDDING_MODEL).order_by(KnowledgeChunk.id).all()
+    if not chunks:
+        return ""
+    embeddings = OpenAIEmbeddings(model=EMBEDDING_MODEL, api_key=OPEN_AI_KEY)
+    query = np.asarray(embeddings.embed_query(f"Key facts about {topic}"), dtype=np.float32)
+    vectors = np.stack([np.frombuffer(chunk.embedding, dtype=np.float32) for chunk in chunks])
+    similarity = vectors @ query / (np.linalg.norm(vectors, axis=1) * np.linalg.norm(query))
+    best = sorted(np.argsort(-similarity)[:RAG_CHUNKS])
+    return "\n\n".join(chunks[i].content for i in best)
 
-    Only chunks from the topic's own category article that mention the topic are used; otherwise nothing is
-    returned, so the quiz falls back to the AI's own knowledge instead of an unrelated passage.
-    """
-    category = TOPIC_CATEGORY.get(query)
-    if not category:
-        return "", ""
+
+def fetch_local_knowledge(topic):
+    """Content about a built-in topic for when Wikipedia is down: the best passages of its saved article, or the
+    whole saved article if the search isn't available. ("", "") for other topics."""
     try:
-        persist_directory = os.path.join(os.path.dirname(__file__), 'chroma_db')
-        if os.path.exists(persist_directory):
-            embeddings = OpenAIEmbeddings(
-                model=EMBEDDING_MODEL,
-                api_key=OPEN_AI_KEY
-            )
-            vectorstore = Chroma(persist_directory=persist_directory, embedding_function=embeddings)
-
-            # Search more widely within the category, then keep the chunks that mention the topic
-            candidates = vectorstore.similarity_search(query, k=10, filter={"topic": category})
-            docs = select_relevant_chunks(query, candidates)
-            if docs:
-                combined_content = "\n\n".join([doc.page_content for doc in docs])
-                return combined_content, "LangChain RAG"
-        return "", ""
+        content = search_knowledge_chunks(topic)
+        if content:
+            return content, "Knowledge base (RAG)"
     except Exception as e:
-        print(f"Error fetching local knowledge via LangChain: {e}")
-        return "", ""
+        db.session.rollback()  # A failed query mustn't break the rest of the request
+        print(f"Knowledge-base search failed for '{topic}': {e!r}")
+    article = load_knowledge_base().get(topic, "")
+    return (article, "Knowledge base") if article else ("", "")
 
 
 def fetch_wikipedia_article(query):
@@ -129,14 +128,14 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
         # Try Wikipedia first
         article_content, source = fetch_wikipedia_article(article_title)
 
-        # Fallback to LangChain RAG if Wikipedia fails
+        # Fall back to the saved copy of the article if Wikipedia fails
         if not article_content:
-            print(f"Wikipedia fetch failed for '{article_title}'. Falling back to LangChain RAG...")
+            print(f"Wikipedia fetch failed for '{article_title}'. Falling back to the knowledge base...")
             article_content, source = fetch_local_knowledge(article_title)
 
         # Final fallback: If both fail, use AI's internal knowledge (Zero-shot RAG)
         if not article_content:
-            print(f"Local RAG also failed for '{article_title}'. Using AI internal knowledge...")
+            print(f"No saved article for '{article_title}' either. Using AI internal knowledge...")
             source = "AI Internal Knowledge"
             article_content = f"The topic is {article_title}. Use your internal knowledge to generate the quiz."
 

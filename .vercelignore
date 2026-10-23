@@ -3,7 +3,6 @@
 __pycache__/
 *.sqlite
 uploads/
-chroma_db/
 tests/
 .idea/
 .env
