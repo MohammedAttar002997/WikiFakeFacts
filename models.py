@@ -109,3 +109,13 @@ class RateLimit(db.Model):
     key = db.Column(db.String(120), primary_key=True)
     hits = db.Column(db.Integer, nullable=False, default=0)
     window_start = db.Column(db.DateTime, nullable=False, default=utcnow)
+
+class ErrorLog(db.Model):
+    """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
+    and nothing about the player: just the page, the error and where in the code it happened."""
+    id = db.Column(db.Integer, primary_key=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+    method = db.Column(db.String(10), nullable=False)
+    path = db.Column(db.String(200), nullable=False)
+    error = db.Column(db.Text, nullable=False)
+    traceback = db.Column(db.Text, nullable=False)

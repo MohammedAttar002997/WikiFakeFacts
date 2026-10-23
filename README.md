@@ -127,7 +127,17 @@ Vercel runs `app.py` as a serverless function. Its disk isn't kept between reque
 
 When a pull request adds a migration, run `python migrate_production.py` from that branch **before** merging it, so the database is ready when the new code goes live. Keep migrations additive (new tables or nullable columns), so the code that's live in the meantime keeps working.
 
-**Preview deployments and the database.** Out of the box, the Neon integration gives preview deployments the production database, so testing a pull request reads and writes real players' data. To give each preview its own copy, open the project's **Storage** tab in Vercel, select the Neon database, and in the connection's **Advanced Options → Deployments Configuration** turn on a database branch for **Preview** (keep "Resource must be active before deployment" on). Each branch is copied from production when the preview is created, so migrations already applied there are included. Branches are removed with their deployments under Vercel's retention policy, so delete old ones in the Neon console if you reach the free plan's branch limit.
+**Preview deployments and the database.** Out of the box, the Neon integration gives preview deployments the production database, so testing a pull request reads and writes real players' data. To give each preview its own copy, open the project's **Storage** tab in Vercel, select the Neon database, and connect the project again with **Create database branch for deployment** ticked for **Preview** only (never Production). Each branch is copied from production when the preview is created, so migrations already applied there are included. Branches are removed with their deployments under Vercel's retention policy, so delete old ones in the Neon console if you reach the free plan's branch limit.
+
+**Errors on the live site.** Vercel's Hobby plan keeps runtime logs for only 30 minutes, so the app also saves its newest 500 unexpected errors (failed quiz creation, AI analysis or help chat, and server errors) in the `error_log` table: the time, page, error and traceback, but nothing about the player. To read them:
+
+```bash
+vercel env pull .env.production.local --environment=production
+python production_errors.py              # the newest 20
+python production_errors.py -n 50 --full # more, with tracebacks
+```
+
+Locally, `flask --app app errors` shows the same for your own database.
 
 ## Database migrations
 

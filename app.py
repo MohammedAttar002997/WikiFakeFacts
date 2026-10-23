@@ -4,17 +4,18 @@ import os
 import json
 import random
 import secrets
+import traceback
 from datetime import timedelta
 
 import click
 from flask import Flask, abort, g, render_template, request, redirect, url_for, session, flash, jsonify, send_file
 from PIL import Image, ImageOps, UnidentifiedImageError
-from sqlalchemy import case, func, inspect, text, update
+from sqlalchemy import case, func, inspect, select, text, update
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from sqlalchemy.exc import IntegrityError
+from sqlalchemy.exc import IntegrityError, StatementError
 from sqlalchemy.orm.attributes import set_committed_value
 from flask_migrate import Migrate, stamp, upgrade
 from flask_wtf.csrf import CSRFError, CSRFProtect
@@ -22,7 +23,7 @@ from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
-                    UserBadge, PinAttempt, RateLimit)
+                    UserBadge, PinAttempt, RateLimit, ErrorLog)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, format_date, template_context, template_globals, translate as _,
@@ -159,7 +160,8 @@ def page_not_found(error):
 
 @app.errorhandler(500)
 def server_error(error):
-    db.session.rollback()
+    # Flask has already logged it; keep a copy that outlasts Vercel's logs
+    save_error(getattr(error, 'original_exception', None) or error)
     return render_template('errors.html', code=500, title=_("Something went wrong"),
                            message=_("Sorry, something went wrong on our side. Please try again in a moment.")), 500
 
@@ -510,9 +512,36 @@ def quiz_generation_allowed(user):
 def report_failure(message, error):
     """Tell the player what went wrong in their language. The details can name servers or SQL, so they only go to
     the log."""
-    db.session.rollback()
     app.logger.error('%s failed: %r', request.path, error, exc_info=error)
+    save_error(error)
     flash(message, "danger")
+
+
+ERROR_LOG_SIZE = 500  # Newest errors kept in the error_log table
+
+
+def describe_error(error):
+    """'ValueError: message'. For database errors only the database's own message, without the SQL's values."""
+    message = str(error.orig) if isinstance(error, StatementError) and error.orig else str(error)
+    return f'{type(error).__name__}: {message}'[:2000]
+
+
+def save_error(error):
+    """Roll back the failed request's changes and store the error in error_log, dropping the oldest beyond
+    ERROR_LOG_SIZE. Never raises: a broken error log mustn't hide the original error."""
+    db.session.rollback()
+    try:
+        db.session.add(ErrorLog(method=request.method, path=request.path[:200], error=describe_error(error),
+                                # The innermost frames matter most, so long tracebacks keep their end
+                                traceback=''.join(traceback.format_tb(error.__traceback__))[-8000:]))
+        db.session.flush()
+        oldest_kept = (select(ErrorLog.id).order_by(ErrorLog.id.desc())
+                       .offset(ERROR_LOG_SIZE - 1).limit(1).scalar_subquery())
+        ErrorLog.query.filter(ErrorLog.id < oldest_kept).delete(synchronize_session=False)
+        db.session.commit()
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error('Could not save the error: %r', e)
 
 
 def flash_content_error(error):
@@ -689,6 +718,25 @@ def delete_account():
     session.clear()
     flash(_("The account “{name}” and all its data have been deleted.").format(name=name), "success")
     return redirect(url_for('index'))
+
+
+def print_errors(limit, full=False):
+    """The newest saved errors, newest first."""
+    errors = ErrorLog.query.order_by(ErrorLog.id.desc()).limit(limit).all()
+    if not errors:
+        click.echo('No errors saved.')
+    for entry in errors:
+        click.echo(f'{entry.created_at:%Y-%m-%d %H:%M} UTC  {entry.method} {entry.path}\n    {entry.error}')
+        if full:
+            click.echo(entry.traceback)
+
+
+@app.cli.command('errors')
+@click.option('-n', '--limit', default=20, show_default=True, help='How many to show.')
+@click.option('--full', is_flag=True, help='Also show where in the code each one happened.')
+def errors_command(limit, full):
+    """Show the newest unexpected errors."""
+    print_errors(limit, full)
 
 
 @app.cli.command('reset-pin')
@@ -1411,6 +1459,7 @@ def analysis(user_id=None):
             db.session.commit()
         except Exception as e:
             app.logger.error('AI analysis failed: %r', e, exc_info=e)
+            save_error(e)
             # Fall back to the last saved analysis, even if it's missing the newest quizzes
             ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json) if saved else None
 
@@ -1519,8 +1568,8 @@ def chatbot_api():
         })
 
     except Exception as e:
-        db.session.rollback()
         app.logger.error('Help chat failed: %r', e, exc_info=e)
+        save_error(e)
         return jsonify({'error': _("Sorry, I encountered an error. Please try again.")}), 500
 
 
