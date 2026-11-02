@@ -973,6 +973,17 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .review-tag { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: .1rem .5rem; border-radius: 999px; }
 .tag-fake { background: #ef4444; color: #fff; }
 .tag-pick { background: var(--wf-brand-soft); color: var(--wf-brand); }
+.source-quote blockquote {
+    margin: 0;
+    padding: .5rem .85rem;
+    border-inline-start: 4px solid var(--wf-brand);
+    border-radius: .4rem;
+    background: var(--wf-surface-2);
+    font-style: italic;
+}
+.source-quote blockquote::before { content: "“"; }
+.source-quote blockquote::after { content: "”"; }
+.source-quote figcaption { padding-inline-start: .85rem; }
 .tag-their-pick { background: rgba(245, 158, 11, .16); color: #d97706; }
 .review-chip-who { font-weight: 900; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

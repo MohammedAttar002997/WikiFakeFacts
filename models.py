@@ -43,6 +43,8 @@ class QuizSession(db.Model):
     difficulty = db.Column(db.String(50), nullable=False, default='Medium')
     questions_json = db.Column(db.Text, nullable=False) # Store the generated questions as JSON
     explanations_json = db.Column(db.Text, nullable=True)  # Why each round's fake fact is false
+    quotes_json = db.Column(db.Text, nullable=True)  # Sentence of the source behind each round's answer, or null
+    source_url = db.Column(db.String(500), nullable=True)  # Wikipedia article the quiz was made from
     answers_json = db.Column(db.Text, nullable=True)  # Statement the player picked in each round
     current_question_index = db.Column(db.Integer, default=0)
     score = db.Column(db.Integer, default=0)
@@ -64,6 +66,8 @@ class DailyChallenge(db.Model):
     topic = db.Column(db.String(100), nullable=False)
     questions_json = db.Column(db.Text, nullable=False)
     explanations_json = db.Column(db.Text, nullable=False)
+    quotes_json = db.Column(db.Text, nullable=True)
+    source_url = db.Column(db.String(500), nullable=True)
     source = db.Column(db.String(50), nullable=True)
     created_at = db.Column(db.DateTime, default=utcnow)
 
