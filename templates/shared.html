@@ -69,6 +69,12 @@
                             {% else %}{{ _('Behind {name}').format(name=player.username) }}{% endif %}
                         </div>
                     </div>
+                    {% if is_owner or (me and challenger.id == me.id) %}
+                    <a href="{{ url_for('review', quiz_session_id=quiz_session.id, vs=attempt.id) if is_owner else url_for('review', quiz_session_id=attempt.id) }}"
+                       class="btn btn-sm btn-outline-primary" title="{{ _('Compare answers') }}" aria-label="{{ _('Compare answers') }}: {{ challenger.username }}">
+                        <i class="bi bi-layout-split"></i>
+                    </a>
+                    {% endif %}
                 </div>
                 {% endfor %}
             </div>

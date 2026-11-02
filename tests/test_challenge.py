@@ -91,3 +91,65 @@ def test_attempts_survive_the_original_player_deleting_their_account(login, shar
     app_module.delete_player_data(phoenix)
     attempt = QuizSession.query.one()
     assert attempt.challenge_of_id is None and attempt.is_completed
+
+
+def test_results_compare_answers_round_by_round(login, shared):
+    # Phoenix got rounds 1-2 right; Alice gets only round 1 right, picking a true statement in rounds 2-3
+    html = take(login('Alice'), shared, answers(1, 3))
+    assert 'Round by round: you vs Phoenix' in html
+    assert html.count('Picked by Phoenix') == 3
+    assert html.count('Your pick') == 3
+
+
+def test_challenger_review_compares_with_the_original(login, shared):
+    client = login('Alice')
+    take(client, shared, answers(3, 3))
+    attempt = QuizSession.query.filter(QuizSession.challenge_of_id.isnot(None)).one()
+    html = client.get(f'/review/{attempt.id}').get_data(as_text=True)
+    assert 'you vs Phoenix' in html
+
+
+def test_owner_compares_with_one_challenger(login, shared):
+    take(login('Alice'), shared, answers(3, 3))
+    original = QuizSession.query.filter_by(share_code=shared).one()
+    attempt = QuizSession.query.filter_by(challenge_of_id=original.id).one()
+    phoenix = login('Phoenix', create=False)
+    html = phoenix.get(f'/review/{original.id}?vs={attempt.id}').get_data(as_text=True)
+    assert 'you vs Alice' in html and 'Picked by Alice' in html
+    assert f'vs={attempt.id}' in phoenix.get(f'/r/{shared}').get_data(as_text=True)
+
+
+def test_review_ignores_a_vs_that_is_not_a_challenger(login, shared):
+    play_quiz(login('Alice'), answers(1, 3))  # Alice's own quiz, not an attempt at Phoenix's
+    other = QuizSession.query.filter(QuizSession.share_code != shared).one()
+    original = QuizSession.query.filter_by(share_code=shared).one()
+    html = login('Phoenix', create=False).get(f'/review/{original.id}?vs={other.id}').get_data(as_text=True)
+    assert 'Answer review' in html and 'Alice' not in html
+
+
+def test_bell_counts_new_challengers_until_the_challenges_page_is_seen(login, shared):
+    take(login('Alice'), shared, answers(3, 3))
+    take(login('Bob'), shared, answers(1, 3))
+    phoenix = login('Phoenix', create=False)
+    assert '2 new challengers' in phoenix.get('/history').get_data(as_text=True)
+
+    html = phoenix.get('/challenges').get_data(as_text=True)
+    assert html.index('Bob') < html.index('Alice')  # newest first
+    assert html.count('chip-new') == 2
+    assert 'new challenger' not in html  # seen now
+
+    assert 'chip-new' not in phoenix.get('/challenges').get_data(as_text=True)
+    take(login('Carol'), shared, answers(2, 3))
+    assert '1 new challenger' in phoenix.get('/history').get_data(as_text=True)
+
+
+def test_challenges_page_lists_challenges_taken(login, shared):
+    alice = login('Alice')
+    take(alice, shared, answers(3, 3))
+    html = alice.get('/challenges').get_data(as_text=True)
+    assert 'Phoenix' in html and 'You won' in html
+    assert 'new challenger' not in html  # taking a challenge isn't a notification for the challenger
+
+
+def test_challenges_page_needs_sign_in(app):
+    assert app.test_client().get('/challenges').headers['Location'] == '/'

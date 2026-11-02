@@ -1,0 +1,80 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+
+{% block title %}{{ _('Challenges') }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-lightning-charge-fill"></i> {{ me.username }}</span>
+            <h1>{{ _('Challenges') }}</h1>
+            <p>{{ _('Share a result after a quiz to challenge friends, then compare your answers round by round.') }}</p>
+        </div>
+
+        <div class="wf-card p-3 p-md-4 mb-4">
+            <div class="section-label px-1"><i class="bi bi-people-fill text-brand fs-4"></i>{{ _('Who took your challenges') }}</div>
+            {% if received %}
+            <div class="d-flex flex-column gap-2">
+                {% for row in received %}
+                {% set attempt, original = row.attempt, row.original %}
+                <div class="rank-row{% if row.is_new %} rank-row-new{% endif %}">
+                    {{ avatar(row.challenger, 'sm') }}
+                    <div class="who">
+                        <a href="{{ url_for('player_profile', user_id=row.challenger.id) }}">{{ row.challenger.username }}</a>
+                        {% if row.is_new %}<span class="chip chip-new ms-1">{{ _('New') }}</span>{% endif %}
+                        <div class="meta text-truncate">{{ original.topic }}</div>
+                    </div>
+                    <div class="score">
+                        <div class="pct"><span dir="ltr">{{ attempt.score }} – {{ original.score }}</span></div>
+                        <div class="meta">
+                            {% if attempt.score > original.score %}{{ _('{name} won').format(name=row.challenger.username) }}
+                            {% elif attempt.score == original.score %}{{ _('Tied') }}
+                            {% else %}{{ _('You won') }}{% endif %}
+                        </div>
+                    </div>
+                    <a href="{{ url_for('review', quiz_session_id=original.id, vs=attempt.id) }}" class="btn btn-sm btn-outline-primary"
+                       title="{{ _('Compare answers') }}" aria-label="{{ _('Compare answers') }}: {{ row.challenger.username }}">
+                        <i class="bi bi-layout-split"></i><span class="d-none d-md-inline ms-1">{{ _('Compare answers') }}</span>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted px-1 mb-0">{{ _('Nobody has taken one of your challenges yet. Share a result to get started!') }}</p>
+            {% endif %}
+        </div>
+
+        <div class="wf-card p-3 p-md-4">
+            <div class="section-label px-1"><i class="bi bi-lightning-charge-fill text-brand fs-4"></i>{{ _('Challenges you took') }}</div>
+            {% if taken %}
+            <div class="d-flex flex-column gap-2">
+                {% for attempt, original, owner in taken %}
+                <div class="rank-row">
+                    {{ avatar(owner, 'sm') }}
+                    <div class="who">
+                        <a href="{{ url_for('player_profile', user_id=owner.id) }}">{{ owner.username }}</a>
+                        <div class="meta text-truncate">{{ original.topic }}</div>
+                    </div>
+                    <div class="score">
+                        <div class="pct"><span dir="ltr">{{ attempt.score }} – {{ original.score }}</span></div>
+                        <div class="meta">
+                            {% if attempt.score > original.score %}{{ _('You won') }}
+                            {% elif attempt.score == original.score %}{{ _('Tied') }}
+                            {% else %}{{ _('{name} won').format(name=owner.username) }}{% endif %}
+                        </div>
+                    </div>
+                    <a href="{{ url_for('review', quiz_session_id=attempt.id) }}" class="btn btn-sm btn-outline-primary"
+                       title="{{ _('Compare answers') }}" aria-label="{{ _('Compare answers') }}: {{ owner.username }}">
+                        <i class="bi bi-layout-split"></i><span class="d-none d-md-inline ms-1">{{ _('Compare answers') }}</span>
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted px-1 mb-0">{{ _("You haven't taken anyone's challenge yet. Open a result a friend shared to play the same quiz.") }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
