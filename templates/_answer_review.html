@@ -1,28 +1,42 @@
-{# Round-by-round answer review card. Expects `review` from build_answer_review(). #}
+{# Round-by-round answer review card. Expects `review` from build_answer_review(), and `versus` (the other player in
+   a challenge, or None) to show their pick in each round too. #}
+{% macro outcome_chip(outcome, who=None) %}
+{% set prefix %}{% if who %}<span class="review-chip-who">{{ who }}:</span> {% endif %}{% endset %}
+{% if outcome.correct %}
+<span class="chip review-chip-good"><i class="bi bi-check-circle-fill"></i>{{ prefix }}{{ _('Spotted it') }}</span>
+{% elif outcome.timed_out %}
+<span class="chip review-chip-bad"><i class="bi bi-stopwatch-fill"></i>{{ prefix }}{{ _('Time ran out') }}</span>
+{% else %}
+<span class="chip review-chip-bad"><i class="bi bi-x-circle-fill"></i>{{ prefix }}{{ _('Missed') }}</span>
+{% endif %}
+{% endmacro %}
 <div class="wf-card wf-card-pad">
-    <div class="section-label"><i class="bi bi-search text-brand fs-4"></i>{{ _('Answer review') }}</div>
+    <div class="section-label"><i class="bi {{ 'bi-people-fill' if versus else 'bi-search' }} text-brand fs-4"></i>{{ _('Round by round: you vs {name}').format(name=versus.name) if versus else _('Answer review') }}</div>
     <div class="d-flex flex-column gap-4">
         {% for round in review %}
         <div class="review-round">
             <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
                 <span class="fw-black">{{ _('Round {n}').format(n=loop.index) }}</span>
-                {% if round.correct %}
-                <span class="chip review-chip-good"><i class="bi bi-check-circle-fill"></i>{{ _('Spotted it') }}</span>
-                {% elif round.timed_out %}
-                <span class="chip review-chip-bad"><i class="bi bi-stopwatch-fill"></i>{{ _('Time ran out') }}</span>
+                {% if versus %}
+                <span class="d-flex flex-wrap justify-content-end gap-1">
+                    {{ outcome_chip(round, _('You')) }}
+                    {{ outcome_chip(round.them, versus.name) }}
+                </span>
                 {% else %}
-                <span class="chip review-chip-bad"><i class="bi bi-x-circle-fill"></i>{{ _('Missed') }}</span>
+                {{ outcome_chip(round) }}
                 {% endif %}
             </div>
             <ul class="review-facts list-unstyled mb-2">
                 {% for statement, is_real in round.facts %}
                 {% set picked = statement == round.picked %}
+                {% set they_picked = versus and statement == round.them.picked %}
                 <li class="review-fact{% if not is_real %} is-fake{% elif picked %} is-wrong-pick{% endif %}">
                     <i class="bi {{ 'bi-patch-check-fill' if is_real else 'bi-incognito' }}" aria-hidden="true"></i>
                     <span class="flex-grow-1">{{ statement }}</span>
                     <span class="review-tags">
                         {% if not is_real %}<span class="review-tag tag-fake">{{ _('Fake') }}</span>{% endif %}
                         {% if picked %}<span class="review-tag tag-pick">{{ _('Your pick') }}</span>{% endif %}
+                        {% if they_picked %}<span class="review-tag tag-their-pick">{{ _('Picked by {name}').format(name=versus.name) }}</span>{% endif %}
                     </span>
                 </li>
                 {% endfor %}

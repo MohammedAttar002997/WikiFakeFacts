@@ -973,6 +973,29 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .review-tag { font-size: .72rem; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: .1rem .5rem; border-radius: 999px; }
 .tag-fake { background: #ef4444; color: #fff; }
 .tag-pick { background: var(--wf-brand-soft); color: var(--wf-brand); }
+.tag-their-pick { background: rgba(245, 158, 11, .16); color: #d97706; }
+.review-chip-who { font-weight: 900; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* Challenges: navbar bell with the number of new challengers, and the list of them */
+.challenge-bell { position: relative; text-decoration: none; }
+.challenge-bell:hover { transform: none; }
+.challenge-bell .count {
+    position: absolute;
+    top: -.3rem;
+    inset-inline-end: -.3rem;
+    min-width: 1.15rem;
+    height: 1.15rem;
+    padding: 0 .3rem;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: .7rem;
+    font-weight: 900;
+    line-height: 1.15rem;
+    text-align: center;
+}
+.rank-row-new { border-color: rgba(245, 158, 11, .7); background: rgba(245, 158, 11, .07); }
+.chip-new { background: #f59e0b; border-color: transparent; color: #fff; font-size: .7rem; padding: .1rem .5rem; }
 
 @media (prefers-reduced-motion: reduce) {
     *, *::before, *::after { animation: none !important; transition: none !important; }

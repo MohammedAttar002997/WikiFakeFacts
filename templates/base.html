@@ -52,6 +52,12 @@
                    title="{{ _('Profile and account') }}" aria-label="{{ _('Profile and account') }}: {{ me.username }}">
                     {{ avatar(me, 'sm') }}
                 </a>
+                {% set bell_label = _n('{n} new challenger', '{n} new challengers', new_challengers) if new_challengers else _('Challenges') %}
+                <a class="theme-toggle challenge-bell" href="{{ url_for('challenges') }}"
+                   title="{{ bell_label }}" aria-label="{{ bell_label }}">
+                    <i class="bi {{ 'bi-bell-fill' if new_challengers else 'bi-bell' }}"></i>
+                    {% if new_challengers %}<span class="count" aria-hidden="true">{{ new_challengers if new_challengers < 10 else '9+' }}</span>{% endif %}
+                </a>
                 {% endif %}
                 <div class="dropdown">
                     <button type="button" class="theme-toggle lang-toggle" data-bs-toggle="dropdown" aria-expanded="false"

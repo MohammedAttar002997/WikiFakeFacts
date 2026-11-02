@@ -18,6 +18,7 @@ class User(db.Model):
     # Profile photo as a 256×256 WebP; deferred so looking up a player doesn't load the image
     avatar = db.deferred(db.Column(db.LargeBinary, nullable=True))
     avatar_updated_at = db.Column(db.DateTime, nullable=True)  # Set while there's a photo; versions its URL
+    challenges_seen_at = db.Column(db.DateTime, nullable=True)  # Last visit to /challenges; newer challengers are new
     scores = db.relationship('Score', backref='user', lazy=True)
 
 class Score(db.Model):

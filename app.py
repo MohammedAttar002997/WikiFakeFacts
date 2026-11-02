@@ -16,6 +16,7 @@ from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
 from sqlalchemy.exc import IntegrityError, StatementError
+from sqlalchemy.orm import aliased
 from sqlalchemy.orm.attributes import set_committed_value
 from flask_migrate import Migrate, stamp, upgrade
 from flask_wtf.csrf import CSRFError, CSRFProtect
@@ -133,7 +134,8 @@ def forget_cached_player():
 
 @app.context_processor
 def inject_player():
-    return {'me': current_user()}
+    me = current_user()
+    return {'me': me, 'new_challengers': count_new_challengers(me) if me else 0}
 
 
 app.jinja_env.globals.update(template_globals())
@@ -413,18 +415,63 @@ def seconds_left(quiz_session):
     return quiz_session.time_limit - (utcnow() - started).total_seconds()
 
 
-def build_answer_review(quiz_session):
-    """Round-by-round answer review: which statement was fake, what the player picked, and why."""
+def build_answer_review(quiz_session, opponent=None):
+    """Round-by-round answer review: which statement was fake, what the player picked, and why. With `opponent`
+    (the other side of a challenge, same questions) each round also says what they picked."""
     questions = json.loads(quiz_session.questions_json)
     answers = json.loads(quiz_session.answers_json or '[]')
     explanations = json.loads(quiz_session.explanations_json or '[]')
-    return [{
-        'facts': list(facts.items()),
-        'picked': answers[i] if i < len(answers) else None,
-        'correct': i < len(answers) and facts.get(answers[i]) is False,
-        'timed_out': i < len(answers) and answers[i] is None,
-        'explanation': explanations[i] if i < len(explanations) else None,
-    } for i, facts in enumerate(questions[:quiz_session.current_question_index])]
+    their_answers = json.loads(opponent.answers_json or '[]') if opponent else []
+
+    def outcome(picks, i, facts):
+        answered = i < len(picks)
+        return {'picked': picks[i] if answered else None,
+                'correct': answered and facts.get(picks[i]) is False,
+                'timed_out': answered and picks[i] is None}
+
+    review = []
+    for i, facts in enumerate(questions[:quiz_session.current_question_index]):
+        row = {'facts': list(facts.items()), **outcome(answers, i, facts),
+               'explanation': explanations[i] if i < len(explanations) else None}
+        if opponent:
+            row['them'] = outcome(their_answers, i, facts)
+        review.append(row)
+    return review
+
+
+def challenge_opponent(quiz_session, vs_id=None):
+    """The other finished quiz in a head-to-head with `quiz_session`, or None: the quiz it replayed, or (for the
+    original quiz) the challenger's attempt with id `vs_id`."""
+    if vs_id is not None:
+        attempt = db.session.get(QuizSession, vs_id)
+        return attempt if attempt and attempt.challenge_of_id == quiz_session.id and attempt.is_completed else None
+    if quiz_session.challenge_of_id:
+        original = db.session.get(QuizSession, quiz_session.challenge_of_id)
+        return original if original and original.is_completed else None
+    return None
+
+
+def versus_details(opponent):
+    """What the answer review shows about the other player in a challenge."""
+    return {'name': db.session.get(User, opponent.user_id).username} if opponent else None
+
+
+def challengers_query(user):
+    """(attempt, its Score, challenger, original quiz) for every finished challenge of one of `user`'s quizzes."""
+    original = aliased(QuizSession)
+    return (db.session.query(QuizSession, Score, User, original)
+            .join(Score, Score.quiz_session_id == QuizSession.id)
+            .join(User, QuizSession.user_id == User.id)
+            .join(original, QuizSession.challenge_of_id == original.id)
+            .filter(original.user_id == user.id, QuizSession.is_completed.is_(True)))
+
+
+def count_new_challengers(user):
+    """How many players finished one of `user`'s challenges since they last opened /challenges."""
+    query = challengers_query(user)
+    if user.challenges_seen_at:
+        query = query.filter(Score.timestamp > user.challenges_seen_at)
+    return query.count()
 
 
 def get_topic_stats(user_scores):
@@ -1154,6 +1201,7 @@ def results():
         return redirect(url_for('quiz'))
 
     percentage = (quiz_session.score / quiz_session.total_questions) * 100
+    opponent = challenge_opponent(quiz_session)
 
     return render_template('results.html',
                            score=quiz_session.score,
@@ -1163,7 +1211,8 @@ def results():
                            is_daily=quiz_session.daily_challenge_id is not None,
                            share=share_details(quiz_session),
                            challenge=challenge_comparison(quiz_session),
-                           review=build_answer_review(quiz_session))
+                           review=build_answer_review(quiz_session, opponent),
+                           versus=versus_details(opponent))
 
 
 @app.route('/r/<code>')
@@ -1306,8 +1355,36 @@ def review(quiz_session_id):
         return redirect(url_for('history'))
 
     score = Score.query.filter_by(quiz_session_id=quiz_session.id).first()
+    # A challenge attempt is compared with the quiz it replayed; the original quiz with one challenger (?vs=)
+    opponent = challenge_opponent(quiz_session, request.args.get('vs', type=int))
     return render_template('review.html', quiz_session=quiz_session, score=score,
-                           share=share_details(quiz_session), review=build_answer_review(quiz_session))
+                           share=share_details(quiz_session), review=build_answer_review(quiz_session, opponent),
+                           versus=versus_details(opponent))
+
+
+@app.route('/challenges')
+def challenges():
+    """Who took the player's challenges (newest first, the ones since their last visit marked new) and the
+    challenges they took themselves."""
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    seen_at = user.challenges_seen_at
+    received = [{'attempt': attempt, 'challenger': challenger, 'original': original,
+                 'is_new': seen_at is None or score.timestamp > seen_at}
+                for attempt, score, challenger, original
+                in challengers_query(user).order_by(Score.timestamp.desc(), Score.id.desc()).all()]
+    original = aliased(QuizSession)
+    taken = (db.session.query(QuizSession, original, User)
+             .join(original, QuizSession.challenge_of_id == original.id)
+             .join(User, original.user_id == User.id)
+             .filter(QuizSession.user_id == user.id, QuizSession.is_completed.is_(True))
+             .order_by(QuizSession.id.desc()).all())
+
+    user.challenges_seen_at = utcnow()
+    db.session.commit()
+    return render_template('challenges.html', received=received, taken=taken)
 
 
 @app.route('/leaderboard')
