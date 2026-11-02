@@ -100,3 +100,8 @@ def test_three_event_quizzes_in_a_week_earn_a_badge(login, app_ctx):
     assert not UserBadge.query.filter_by(badge='event').first()
     play_event(client, 1)
     assert UserBadge.query.filter_by(badge='event').one()
+
+
+def test_navbar_has_a_weekly_tab_marked_active_on_the_event_page(app):
+    html = app.test_client().get('/event').get_data(as_text=True)
+    assert 'class="nav-link active" href="/event" aria-current="page"' in html
