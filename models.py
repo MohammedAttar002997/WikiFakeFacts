@@ -53,6 +53,7 @@ class QuizSession(db.Model):
     round_started_at = db.Column(db.DateTime, nullable=True)  # When the current round was first shown (timed mode)
     share_code = db.Column(db.String(16), unique=True, nullable=True)  # Unguessable id for the public result link
     challenge_of_id = db.Column(db.Integer, db.ForeignKey('quiz_session.id'), nullable=True)  # Quiz this one replays
+    rematch_for_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)  # Player this quiz was sent to
 
 class DailyChallenge(db.Model):
     """One shared quiz per day and language; every player gets the same questions."""

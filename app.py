@@ -135,7 +135,7 @@ def forget_cached_player():
 @app.context_processor
 def inject_player():
     me = current_user()
-    return {'me': me, 'new_challengers': count_new_challengers(me) if me else 0}
+    return {'me': me, 'challenge_news': count_challenge_news(me) if me else 0}
 
 
 app.jinja_env.globals.update(template_globals())
@@ -242,7 +242,7 @@ def init_database():
 
 
 def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
-                        custom_title=None, time_limit=None):
+                        custom_title=None, time_limit=None, rematch_for_id=None):
     """Generate a quiz, save it, and make it the player's current quiz."""
     quiz_data, source, ai_topic, explanations = get_ai_response(questions_count, topic, difficulty, language_name,
                                                                 custom_content=custom_content)
@@ -251,11 +251,12 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
         # the user's own title wins, then the AI-detected topic
         topic = (custom_title or '').strip() or ai_topic or "Custom Content"
 
-    return save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, time_limit=time_limit)
+    return save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, time_limit=time_limit,
+                             rematch_for_id=rematch_for_id)
 
 
 def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None,
-                      time_limit=None, challenge_of_id=None):
+                      time_limit=None, challenge_of_id=None, rematch_for_id=None):
     """Save already-generated questions as the player's current quiz."""
     quiz_session = QuizSession(
         user_id=user.id,
@@ -269,7 +270,10 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
         score=0,
         daily_challenge_id=daily_challenge_id,
         time_limit=time_limit,
-        challenge_of_id=challenge_of_id
+        challenge_of_id=challenge_of_id,
+        rematch_for_id=rematch_for_id,
+        # A rematch is played through its share link, so it needs one even if its results page is never shown
+        share_code=secrets.token_urlsafe(8) if rematch_for_id else None
     )
     db.session.add(quiz_session)
     db.session.commit()
@@ -451,9 +455,22 @@ def challenge_opponent(quiz_session, vs_id=None):
     return None
 
 
-def versus_details(opponent):
-    """What the answer review shows about the other player in a challenge."""
-    return {'name': db.session.get(User, opponent.user_id).username} if opponent else None
+MENU_TOPICS = {topic for topics in MENU.values() for topic in topics}
+
+
+def versus_details(quiz_session, opponent):
+    """What the answer review shows about the other player in a challenge, and the attempt a rematch starts from."""
+    if not opponent:
+        return None
+    attempt = quiz_session if quiz_session.challenge_of_id else opponent
+    return {'name': db.session.get(User, opponent.user_id).username, 'attempt_id': attempt.id,
+            'can_rematch': can_rematch(attempt)}
+
+
+def can_rematch(attempt):
+    """Rematches need a fresh quiz on the same topic, which only built-in topics can get (a custom quiz's content
+    belongs to the player who uploaded it)."""
+    return attempt.topic in MENU_TOPICS
 
 
 def challengers_query(user):
@@ -466,12 +483,24 @@ def challengers_query(user):
             .filter(original.user_id == user.id, QuizSession.is_completed.is_(True)))
 
 
-def count_new_challengers(user):
-    """How many players finished one of `user`'s challenges since they last opened /challenges."""
-    query = challengers_query(user)
+def pending_rematches_query(user):
+    """(rematch quiz, its Score, sender) for every finished rematch sent to `user` that they haven't finished."""
+    finished_by_user = (select(QuizSession.challenge_of_id)
+                        .where(QuizSession.user_id == user.id, QuizSession.is_completed.is_(True),
+                               QuizSession.challenge_of_id.isnot(None)))
+    return (db.session.query(QuizSession, Score, User)
+            .join(Score, Score.quiz_session_id == QuizSession.id)
+            .join(User, QuizSession.user_id == User.id)
+            .filter(QuizSession.rematch_for_id == user.id, QuizSession.is_completed.is_(True),
+                    QuizSession.id.notin_(finished_by_user)))
+
+
+def count_challenge_news(user):
+    """How many challengers and rematches reached `user` since they last opened /challenges."""
+    queries = [challengers_query(user), pending_rematches_query(user)]
     if user.challenges_seen_at:
-        query = query.filter(Score.timestamp > user.challenges_seen_at)
-    return query.count()
+        queries = [q.filter(Score.timestamp > user.challenges_seen_at) for q in queries]
+    return sum(q.count() for q in queries)
 
 
 def get_topic_stats(user_scores):
@@ -496,9 +525,8 @@ def get_topic_stats(user_scores):
 
 def find_practice_topic(user, analysis_data):
     """The player's weakest topic that a new quiz can be made for, with its saved custom content if any."""
-    menu_topics = {topic for topics in MENU.values() for topic in topics}
     for data in reversed(analysis_data):
-        if data['topic'] in menu_topics:
+        if data['topic'] in MENU_TOPICS:
             return data, None
         content = (CustomContent.query.filter_by(user_id=user.id, title=data['topic'])
                    .order_by(CustomContent.created_at.desc()).first())
@@ -631,6 +659,9 @@ def delete_player_data(user, chat_id=None):
     if own_quiz_ids:
         QuizSession.query.filter(QuizSession.challenge_of_id.in_(own_quiz_ids)).update(
             {QuizSession.challenge_of_id: None}, synchronize_session=False)
+    # Rematches other players sent to this player stay in their history, addressed to nobody
+    QuizSession.query.filter_by(rematch_for_id=user.id).update(
+        {QuizSession.rematch_for_id: None}, synchronize_session=False)
     for model in (UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
@@ -1212,7 +1243,9 @@ def results():
                            share=share_details(quiz_session),
                            challenge=challenge_comparison(quiz_session),
                            review=build_answer_review(quiz_session, opponent),
-                           versus=versus_details(opponent))
+                           versus=versus_details(quiz_session, opponent),
+                           rematch_for=db.session.get(User, quiz_session.rematch_for_id)
+                           if quiz_session.rematch_for_id else None)
 
 
 @app.route('/r/<code>')
@@ -1359,7 +1392,7 @@ def review(quiz_session_id):
     opponent = challenge_opponent(quiz_session, request.args.get('vs', type=int))
     return render_template('review.html', quiz_session=quiz_session, score=score,
                            share=share_details(quiz_session), review=build_answer_review(quiz_session, opponent),
-                           versus=versus_details(opponent))
+                           versus=versus_details(quiz_session, opponent))
 
 
 @app.route('/challenges')
@@ -1382,9 +1415,43 @@ def challenges():
              .filter(QuizSession.user_id == user.id, QuizSession.is_completed.is_(True))
              .order_by(QuizSession.id.desc()).all())
 
+    rematches = [{'quiz': quiz, 'sender': sender, 'is_new': seen_at is None or score.timestamp > seen_at}
+                 for quiz, score, sender
+                 in pending_rematches_query(user).order_by(Score.timestamp.desc(), Score.id.desc()).all()]
+
     user.challenges_seen_at = utcnow()
     db.session.commit()
-    return render_template('challenges.html', received=received, taken=taken)
+    return render_template('challenges.html', received=received, taken=taken, rematches=rematches,
+                           can_rematch=can_rematch)
+
+
+@app.route('/rematch/<int:attempt_id>', methods=['POST'])
+def rematch(attempt_id):
+    """Play a new quiz on the topic of a finished challenge; when it's done, it's sent to the other player."""
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+
+    attempt = db.session.get(QuizSession, attempt_id)
+    original = db.session.get(QuizSession, attempt.challenge_of_id) if attempt and attempt.challenge_of_id else None
+    if not original or not attempt.is_completed or user.id not in (attempt.user_id, original.user_id):
+        flash(_("That rematch isn't available."), "warning")
+        return redirect(url_for('challenges'))
+    if not can_rematch(attempt):
+        flash(_("Rematches are only possible for quizzes on the built-in topics."), "info")
+        return redirect(url_for('challenges'))
+    if not quiz_generation_allowed(user):
+        return redirect(url_for('challenges'))
+
+    opponent_id = original.user_id if user.id == attempt.user_id else attempt.user_id
+    try:
+        language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
+        create_quiz_session(user, original.topic, original.difficulty, original.total_questions, language_name,
+                            time_limit=original.time_limit, rematch_for_id=opponent_id)
+        return redirect(url_for('quiz'))
+    except Exception as e:
+        report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
+        return redirect(url_for('challenges'))
 
 
 @app.route('/leaderboard')

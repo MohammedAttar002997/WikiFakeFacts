@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import rematch_button %}
 
 {% block title %}{{ _('Game Results') }} · WikiFakeFact{% endblock %}
 
@@ -80,7 +81,18 @@
                 <div class="align-self-center text-muted fw-bold">{{ _('vs') }}</div>
                 <div><div class="h3 fw-black mb-0"><span dir="ltr">{{ challenge.their_score }} / {{ challenge.total }}</span></div><div class="small text-muted">{{ challenge.opponent }}</div></div>
             </div>
+            {% if versus and versus.can_rematch %}
+            <div class="mb-3">{{ rematch_button(versus.attempt_id, challenge.opponent) }}</div>
+            {% endif %}
             <a href="{{ url_for('shared_result', code=challenge.code) }}" class="fw-bold text-decoration-none">{{ _('See everyone who took this challenge') }}</a>
+        </div>
+        {% endif %}
+
+        {% if rematch_for %}
+        <div class="wf-card wf-card-pad mt-4 text-center">
+            <div class="display-6 mb-1">⚔️</div>
+            <h2 class="h4 fw-black mb-2">{{ _('Rematch sent to {name}!').format(name=rematch_for.username) }}</h2>
+            <p class="text-muted mb-0">{{ _('{name} will find it on their Challenges page and play the same questions.').format(name=rematch_for.username) }}</p>
         </div>
         {% endif %}
 
