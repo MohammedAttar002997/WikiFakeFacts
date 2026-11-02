@@ -78,3 +78,15 @@
     </select>
 </div>
 {% endmacro %}
+
+{# Button that starts a rematch of a finished challenge (`attempt_id` is the challenger's attempt) against `name` #}
+{% macro rematch_button(attempt_id, name, small=false) %}
+<form action="{{ url_for('rematch', attempt_id=attempt_id) }}" method="POST" class="d-inline"
+      data-loading="{{ _('Generating your quiz…') }}">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <button type="submit" class="btn {{ 'btn-sm btn-outline-primary' if small else 'btn-primary' }}"
+            title="{{ _('Rematch {name}').format(name=name) }}" aria-label="{{ _('Rematch {name}').format(name=name) }}">
+        <i class="bi bi-arrow-repeat"></i><span class="{{ 'd-none d-md-inline ' if small }}ms-1">{{ _('Rematch') }}</span>
+    </button>
+</form>
+{% endmacro %}

@@ -131,16 +131,16 @@ def test_bell_counts_new_challengers_until_the_challenges_page_is_seen(login, sh
     take(login('Alice'), shared, answers(3, 3))
     take(login('Bob'), shared, answers(1, 3))
     phoenix = login('Phoenix', create=False)
-    assert '2 new challengers' in phoenix.get('/history').get_data(as_text=True)
+    assert '2 new challenge updates' in phoenix.get('/history').get_data(as_text=True)
 
     html = phoenix.get('/challenges').get_data(as_text=True)
     assert html.index('Bob') < html.index('Alice')  # newest first
     assert html.count('chip-new') == 2
-    assert 'new challenger' not in html  # seen now
+    assert 'new challenge update' not in html  # seen now
 
     assert 'chip-new' not in phoenix.get('/challenges').get_data(as_text=True)
     take(login('Carol'), shared, answers(2, 3))
-    assert '1 new challenger' in phoenix.get('/history').get_data(as_text=True)
+    assert '1 new challenge update' in phoenix.get('/history').get_data(as_text=True)
 
 
 def test_challenges_page_lists_challenges_taken(login, shared):
@@ -148,8 +148,97 @@ def test_challenges_page_lists_challenges_taken(login, shared):
     take(alice, shared, answers(3, 3))
     html = alice.get('/challenges').get_data(as_text=True)
     assert 'Phoenix' in html and 'You won' in html
-    assert 'new challenger' not in html  # taking a challenge isn't a notification for the challenger
+    assert 'new challenge update' not in html  # taking a challenge isn't a notification for the challenger
 
 
 def test_challenges_page_needs_sign_in(app):
     assert app.test_client().get('/challenges').headers['Location'] == '/'
+
+
+def attempt_id():
+    return QuizSession.query.filter(QuizSession.challenge_of_id.isnot(None)).one().id
+
+
+def play_rematch(client, attempt, picks):
+    client.post(f'/rematch/{attempt}')
+    for pick in picks:
+        client.post('/quiz', data={'option': pick})
+    return client.get('/results').get_data(as_text=True)
+
+
+def test_rematch_makes_a_new_quiz_on_the_same_topic_and_sends_it(login, shared, ai):
+    alice = login('Alice')
+    take(alice, shared, answers(1, 3))
+    original = QuizSession.query.filter_by(share_code=shared).one()
+    html = play_rematch(alice, attempt_id(), answers(3, 3))
+    assert 'Rematch sent to Phoenix!' in html
+
+    rematch = QuizSession.query.filter(QuizSession.rematch_for_id.isnot(None)).one()
+    assert (rematch.topic, rematch.difficulty, rematch.total_questions) == (
+        original.topic, original.difficulty, original.total_questions)
+    assert ai.quiz_calls[-1]['topic'] == original.topic
+    assert rematch.rematch_for_id == User.query.filter_by(username='Phoenix').one().id
+
+
+def test_opponent_sees_the_rematch_and_plays_it(login, shared):
+    alice = login('Alice')
+    take(alice, shared, answers(1, 3))
+    play_rematch(alice, attempt_id(), answers(3, 3))
+    rematch = QuizSession.query.filter(QuizSession.rematch_for_id.isnot(None)).one()
+
+    phoenix = login('Phoenix', create=False)
+    # Alice taking Phoenix's challenge, then her rematch
+    assert '2 new challenge updates' in phoenix.get('/history').get_data(as_text=True)
+    html = phoenix.get('/challenges').get_data(as_text=True)
+    assert 'Rematches for you' in html and f'/r/{rematch.share_code}/play' in html
+
+    results = take(phoenix, rematch.share_code, answers(2, 3))
+    assert 'Alice wins this one.' in results
+    assert 'Rematches for you' not in phoenix.get('/challenges').get_data(as_text=True)  # played, so gone
+    # Alice is told Phoenix took her rematch, and can rematch back
+    alice_page = alice.get('/challenges').get_data(as_text=True)
+    assert 'chip-new' in alice_page and 'Rematch Phoenix' in alice_page
+
+
+def test_unfinished_rematch_is_not_sent(login, shared):
+    alice = login('Alice')
+    take(alice, shared, answers(1, 3))
+    alice.post(f'/rematch/{attempt_id()}')
+    alice.post('/quiz', data={'option': 'R0 FAKE'})
+    html = login('Phoenix', create=False).get('/challenges').get_data(as_text=True)
+    assert 'Rematches for you' not in html
+
+
+def test_both_players_can_ask_for_a_rematch(login, shared):
+    take(login('Alice'), shared, answers(1, 3))
+    phoenix = login('Phoenix', create=False)
+    play_rematch(phoenix, attempt_id(), answers(3, 3))
+    rematch = QuizSession.query.filter(QuizSession.rematch_for_id.isnot(None)).one()
+    assert rematch.rematch_for_id == User.query.filter_by(username='Alice').one().id
+
+
+def test_outsiders_cannot_rematch(login, shared):
+    take(login('Alice'), shared, answers(1, 3))
+    response = login('Mallory').post(f'/rematch/{attempt_id()}')
+    assert response.headers['Location'] == '/challenges'
+    assert QuizSession.query.filter(QuizSession.rematch_for_id.isnot(None)).count() == 0
+
+
+def test_custom_topic_quizzes_offer_no_rematch(login, shared):
+    take(login('Alice'), shared, answers(1, 3))
+    QuizSession.query.update({QuizSession.topic: 'My biology notes'})
+    app_module.db.session.commit()
+    alice = login('Alice', create=False)
+    assert 'Rematch' not in alice.get(f'/review/{attempt_id()}').get_data(as_text=True)
+    alice.post(f'/rematch/{attempt_id()}')
+    assert QuizSession.query.filter(QuizSession.rematch_for_id.isnot(None)).count() == 0
+
+
+def test_rematches_survive_the_receiver_deleting_their_account(login, shared):
+    alice = login('Alice')
+    take(alice, shared, answers(1, 3))
+    play_rematch(alice, attempt_id(), answers(3, 3))
+    app_module.delete_player_data(User.query.filter_by(username='Phoenix').one())
+    rematch = QuizSession.query.filter_by(user_id=User.query.filter_by(username='Alice').one().id,
+                                          challenge_of_id=None).order_by(QuizSession.id.desc()).first()
+    assert rematch.is_completed and rematch.rematch_for_id is None

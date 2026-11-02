@@ -1,4 +1,5 @@
 {% extends "base.html" %}
+{% from "_macros.html" import rematch_button %}
 
 {% block title %}{{ _('Answer review') }} · WikiFakeFact{% endblock %}
 
@@ -15,6 +16,13 @@
                 {{ _('{score} correct').format(score=result) }}
             </p>
         </div>
+
+        {% if versus and versus.can_rematch %}
+        <div class="wf-card wf-card-pad mb-4 d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <span class="fw-bold">{{ _('Think you can do better? Challenge {name} to a new quiz on {topic}.').format(name=versus.name, topic=quiz_session.topic) }}</span>
+            {{ rematch_button(versus.attempt_id, versus.name) }}
+        </div>
+        {% endif %}
 
         {% if share %}
         <div class="mb-4">{% include "_share.html" %}</div>
