@@ -242,7 +242,7 @@ def init_database():
 
 
 def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
-                        custom_title=None, time_limit=None, rematch_for_id=None):
+                        custom_title=None, time_limit=None, rematch_for_id=None, event_week=None):
     """Generate a quiz, save it, and make it the player's current quiz."""
     quiz = get_ai_response(questions_count, topic, difficulty, language_name, custom_content=custom_content)
     if custom_content:
@@ -252,11 +252,12 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
 
     return save_quiz_session(user, topic, difficulty, quiz.rounds, quiz.explanations, quiz.source,
                              time_limit=time_limit, rematch_for_id=rematch_for_id, quotes=quiz.quotes,
-                             source_url=quiz.source_url)
+                             source_url=quiz.source_url, event_week=event_week)
 
 
 def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None,
-                      time_limit=None, challenge_of_id=None, rematch_for_id=None, quotes=None, source_url=None):
+                      time_limit=None, challenge_of_id=None, rematch_for_id=None, quotes=None, source_url=None,
+                      event_week=None):
     """Save already-generated questions as the player's current quiz."""
     quiz_session = QuizSession(
         user_id=user.id,
@@ -274,6 +275,7 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
         time_limit=time_limit,
         challenge_of_id=challenge_of_id,
         rematch_for_id=rematch_for_id,
+        event_week=event_week,
         # A rematch is played through its share link, so it needs one even if its results page is never shown
         share_code=secrets.token_urlsafe(8) if rematch_for_id else None
     )
@@ -328,6 +330,51 @@ def daily_attempt(user, date):
     """The player's quiz for the given day's challenge (any language), or None."""
     return (QuizSession.query.join(DailyChallenge, QuizSession.daily_challenge_id == DailyChallenge.id)
             .filter(QuizSession.user_id == user.id, DailyChallenge.date == date).first())
+
+
+EVENT_DIFFICULTY = DIFFICULTY_OPTIONS["2"]  # Medium
+EVENT_ROUNDS = 5
+EVENT_BEST_OF = 3  # Quizzes per player that count each week, so playing more helps without winning by itself
+
+
+def week_start(day=None):
+    """The Monday of the UTC week `day` (default today) is in; weekly events run Monday to Sunday."""
+    day = day or utcnow().date()
+    return day - timedelta(days=day.weekday())
+
+
+def event_week(day=None):
+    """ISO week key, like '2026-W45'."""
+    year, week, _weekday = week_start(day).isocalendar()
+    return f'{year}-W{week:02d}'
+
+
+def event_theme(day=None):
+    """The category featured in `day`'s week: each category in turn, a different one every week."""
+    names = sorted(MENU)
+    return names[week_start(day).toordinal() // 7 % len(names)]
+
+
+def event_standings(week):
+    """[{user, points, quizzes}] for a week's event, best first. Points are the sum of each player's EVENT_BEST_OF
+    best scores; of two players with the same points, the one who needed fewer quizzes ranks higher."""
+    rows = (db.session.query(Score, User).join(User, Score.user_id == User.id)
+            .join(QuizSession, Score.quiz_session_id == QuizSession.id)
+            .filter(QuizSession.event_week == week).all())
+    by_player = {}
+    for score, user in rows:
+        by_player.setdefault(user.id, (user, []))[1].append(score.score)
+    standings = [{'user': user, 'points': sum(sorted(scores, reverse=True)[:EVENT_BEST_OF]), 'quizzes': len(scores)}
+                 for user, scores in by_player.values()]
+    standings.sort(key=lambda row: (-row['points'], row['quizzes'], row['user'].username.lower()))
+    return standings
+
+
+def event_topic(user, week, theme):
+    """A topic of the theme the player hasn't had in this week's event yet, while there are any left."""
+    played = {topic for (topic,) in db.session.query(QuizSession.topic)
+              .filter_by(user_id=user.id, event_week=week)}
+    return random.choice([t for t in MENU[theme] if t not in played] or MENU[theme])
 
 
 def flash_new_badges(user):
@@ -881,7 +928,8 @@ def recommend_difficulty(user):
 def render_setup():
     return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS,
                            difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
-                           daily_topic=daily_topic(today_utc()), timed_seconds=TIMED_ROUND_SECONDS,
+                           daily_topic=daily_topic(today_utc()), event_theme=event_theme(),
+                           timed_seconds=TIMED_ROUND_SECONDS,
                            recommended=recommend_difficulty(current_user()))
 
 
@@ -1245,6 +1293,7 @@ def results():
                            percentage=round(percentage, 2),
                            topic=quiz_session.topic,
                            is_daily=quiz_session.daily_challenge_id is not None,
+                           is_event=quiz_session.event_week is not None,
                            share=share_details(quiz_session),
                            challenge=challenge_comparison(quiz_session),
                            review=build_answer_review(quiz_session, opponent),
@@ -1365,6 +1414,44 @@ def daily_start():
     except Exception as e:
         report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
         return redirect(url_for('daily'))
+
+
+@app.route('/event')
+def event():
+    today = utcnow().date()
+    week = event_week(today)
+    standings = event_standings(week)
+    user = current_user()
+    my_row = next((row for row in standings if user and row['user'].id == user.id), None)
+    last_week_day = today - timedelta(days=7)
+    last_standings = event_standings(event_week(last_week_day))
+    return render_template('event.html', theme=event_theme(today), week_start=week_start(today),
+                           days_left=6 - today.weekday(), standings=standings, my_row=my_row,
+                           last_theme=event_theme(last_week_day),
+                           last_champion=last_standings[0] if last_standings else None,
+                           rounds=EVENT_ROUNDS, difficulty=EVENT_DIFFICULTY, best_of=EVENT_BEST_OF,
+                           max_points=EVENT_BEST_OF * EVENT_ROUNDS)
+
+
+@app.route('/event/start', methods=['POST'])
+def event_start():
+    user = current_user()
+    if not user:
+        session['next_url'] = url_for('event')
+        flash(_("Sign in to play this week's event."), "info")
+        return redirect(url_for('index'))
+    if not quiz_generation_allowed(user):
+        return redirect(url_for('event'))
+
+    week, theme = event_week(), event_theme()
+    try:
+        language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
+        create_quiz_session(user, event_topic(user, week, theme), EVENT_DIFFICULTY, EVENT_ROUNDS, language_name,
+                            event_week=week)
+        return redirect(url_for('quiz'))
+    except Exception as e:
+        report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
+        return redirect(url_for('event'))
 
 
 @app.route('/history')
