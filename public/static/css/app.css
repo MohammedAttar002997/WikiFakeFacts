@@ -1071,7 +1071,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     transition: transform .2s ease, border-color .2s ease;
 }
 .daily-banner:hover { transform: translateY(-2px); border-color: rgba(var(--wf-brand-rgb), .5); color: inherit; }
-.daily-banner .min-w-0 { min-width: 0; }
+.daily-banner .min-w-0, .event-champion .min-w-0 { min-width: 0; }
 .daily-banner-icon {
     flex-shrink: 0;
     display: grid;

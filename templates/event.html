@@ -1,0 +1,79 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Weekly event') }} · WikiFakeFact{% endblock %}
+{% from "_macros.html" import avatar, CATEGORY_EMOJI %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-stars"></i> {{ _('Week of {date}').format(date=week_start.strftime('%Y-%m-%d')) }}</span>
+            <h1>{{ _('Weekly event') }}</h1>
+            <p>{{ _('A new theme every Monday. Your {n} best event quizzes of the week count, so keep playing to raise your score.').format(n=best_of) }}</p>
+        </div>
+
+        <div class="wf-card wf-card-pad mb-4 daily-card">
+            <div class="daily-icon"><span aria-hidden="true">{{ CATEGORY_EMOJI.get(theme, '✨') }}</span></div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="small fw-bold text-muted text-uppercase">{{ _("This week's theme") }}</div>
+                <div class="h3 fw-black mb-1 text-truncate">{{ _(theme) }}</div>
+                <div class="small text-muted">
+                    {{ _n('{n} round', '{n} rounds', rounds) }} &middot; {{ _(difficulty.split(' (')[0]) }} &middot;
+                    {% if days_left %}{{ _n('{n} day left', '{n} days left', days_left) }}{% else %}{{ _('last day, ends at midnight UTC') }}{% endif %}
+                </div>
+            </div>
+            <div class="flex-shrink-0 daily-action">
+                {% if my_row %}
+                <div class="text-center mb-2">
+                    <div class="h2 fw-black text-brand mb-0"><span dir="ltr">{{ my_row.points }} / {{ max_points }}</span></div>
+                    <div class="small text-muted">{{ _n('Your points from {n} quiz', 'Your points from {n} quizzes', my_row.quizzes) }}</div>
+                </div>
+                {% endif %}
+                <form action="{{ url_for('event_start') }}" method="POST" data-loading="{{ _('Generating your quiz…') }}">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-primary btn-lg w-100">
+                        <i class="bi bi-play-fill me-1"></i>{{ _('Play another event quiz') if my_row else _('Play the event') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <div class="wf-card p-3 p-md-4">
+            <div class="section-label px-1"><i class="bi bi-trophy-fill text-brand fs-4"></i>{{ _('Event leaderboard') }}</div>
+            {% if standings %}
+            <div class="d-flex flex-column gap-2">
+                {% for row in standings %}
+                {% set is_me = me and row.user.id == me.id %}
+                <div class="rank-row{% if is_me %} rank-row-me{% endif %}">
+                    <div class="rank">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 else loop.index }}</div>
+                    {{ avatar(row.user, 'sm') }}
+                    <div class="who">
+                        <span class="fw-bold">{{ row.user.username }}</span>{% if is_me %} <span class="text-brand small fw-bold">{{ _('(you)') }}</span>{% endif %}
+                        <div class="meta">{{ _n('{n} quiz played', '{n} quizzes played', row.quizzes) }}</div>
+                    </div>
+                    <div class="score">
+                        <div class="pct"><span dir="ltr">{{ row.points }} / {{ max_points }}</span></div>
+                        <div class="meta">{{ _('points') }}</div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <p class="text-muted text-center my-4">{{ _("Nobody has played this week's event yet. Be the first!") }}</p>
+            {% endif %}
+        </div>
+
+        {% if last_champion %}
+        <div class="wf-card wf-card-pad mt-4 d-flex align-items-center gap-3 event-champion">
+            <span class="fs-2" aria-hidden="true">👑</span>
+            {{ avatar(last_champion.user, 'sm') }}
+            <div class="min-w-0">
+                <div class="small fw-bold text-muted text-uppercase">{{ _("Last week's champion") }}</div>
+                <div class="fw-black text-truncate">{{ last_champion.user.username }}</div>
+                <div class="small text-muted">{{ _('{theme} · {points} points').format(theme=_(last_theme), points=last_champion.points) }}</div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

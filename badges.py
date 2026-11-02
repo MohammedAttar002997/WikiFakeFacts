@@ -1,6 +1,7 @@
 """Badges and daily play streaks, worked out from a player's finished quizzes."""
 from datetime import timedelta
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from default_text import MENU
@@ -19,6 +20,7 @@ BADGES = [
     {'key': 'streak_7', 'icon': '📆', 'name': 'Week warrior', 'description': 'Play 7 days in a row.'},
     {'key': 'explorer', 'icon': '🧭', 'name': 'Explorer', 'description': 'Play a quiz in every category.'},
     {'key': 'daily', 'icon': '🌅', 'name': 'Daily player', 'description': 'Finish a daily challenge.'},
+    {'key': 'event', 'icon': '🎪', 'name': 'Event regular', 'description': 'Finish 3 quizzes of one weekly event.'},
     {'key': 'custom', 'icon': '📄', 'name': 'Bring your own', 'description': 'Finish a quiz made from your own content.'},
     {'key': 'comeback', 'icon': '📈', 'name': 'Comeback', 'description': 'Score 80% or more on a topic where you once scored under 50%.'},
 ]
@@ -41,8 +43,9 @@ def compute_streaks(play_dates, today=None):
     return current, best
 
 
-def earned_badge_keys(scores, daily_completed, today=None):
-    """Every badge the given scores qualify for. `scores` must be oldest first."""
+def earned_badge_keys(scores, daily_completed, today=None, most_event_quizzes=0):
+    """Every badge the given scores qualify for. `scores` must be oldest first; `most_event_quizzes` is the most
+    quizzes the player has finished in any one weekly event."""
     earned = set()
     if not scores:
         return earned
@@ -66,6 +69,8 @@ def earned_badge_keys(scores, daily_completed, today=None):
         earned.add('explorer')
     if daily_completed:
         earned.add('daily')
+    if most_event_quizzes >= 3:
+        earned.add('event')
     if any(s.topic not in TOPIC_CATEGORY for s in scores):
         earned.add('custom')
 
@@ -84,8 +89,13 @@ def award_badges(user):
     scores = Score.query.filter_by(user_id=user.id).order_by(Score.timestamp, Score.id).all()
     daily_completed = QuizSession.query.filter(QuizSession.user_id == user.id, QuizSession.is_completed.is_(True),
                                                QuizSession.daily_challenge_id.isnot(None)).first() is not None
+    event_counts = (db.session.query(func.count(QuizSession.id))
+                    .filter(QuizSession.user_id == user.id, QuizSession.is_completed.is_(True),
+                            QuizSession.event_week.isnot(None))
+                    .group_by(QuizSession.event_week).all())
+    most_event_quizzes = max((count for (count,) in event_counts), default=0)
     have = {b.badge for b in UserBadge.query.filter_by(user_id=user.id)}
-    new_keys = [b['key'] for b in BADGES if b['key'] in earned_badge_keys(scores, daily_completed) - have]
+    new_keys = [b['key'] for b in BADGES if b['key'] in earned_badge_keys(scores, daily_completed, most_event_quizzes=most_event_quizzes) - have]
     if not new_keys:
         return []
     for key in new_keys:
