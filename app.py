@@ -244,19 +244,19 @@ def init_database():
 def create_quiz_session(user, topic, difficulty, questions_count, language_name, custom_content=None,
                         custom_title=None, time_limit=None, rematch_for_id=None):
     """Generate a quiz, save it, and make it the player's current quiz."""
-    quiz_data, source, ai_topic, explanations = get_ai_response(questions_count, topic, difficulty, language_name,
-                                                                custom_content=custom_content)
+    quiz = get_ai_response(questions_count, topic, difficulty, language_name, custom_content=custom_content)
     if custom_content:
         # Label custom quizzes by their subject so progress/leaderboard show a real topic:
         # the user's own title wins, then the AI-detected topic
-        topic = (custom_title or '').strip() or ai_topic or "Custom Content"
+        topic = (custom_title or '').strip() or quiz.topic or "Custom Content"
 
-    return save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, time_limit=time_limit,
-                             rematch_for_id=rematch_for_id)
+    return save_quiz_session(user, topic, difficulty, quiz.rounds, quiz.explanations, quiz.source,
+                             time_limit=time_limit, rematch_for_id=rematch_for_id, quotes=quiz.quotes,
+                             source_url=quiz.source_url)
 
 
 def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None,
-                      time_limit=None, challenge_of_id=None, rematch_for_id=None):
+                      time_limit=None, challenge_of_id=None, rematch_for_id=None, quotes=None, source_url=None):
     """Save already-generated questions as the player's current quiz."""
     quiz_session = QuizSession(
         user_id=user.id,
@@ -264,6 +264,8 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
         difficulty=difficulty,
         questions_json=json.dumps(quiz_data),
         explanations_json=json.dumps(explanations),
+        quotes_json=json.dumps(quotes) if quotes is not None else None,
+        source_url=source_url,
         answers_json='[]',
         total_questions=len(quiz_data),
         current_question_index=0,
@@ -308,9 +310,10 @@ def get_daily_challenge(date, language_name):
         return challenge
 
     topic = daily_topic(date)
-    quiz_data, source, _ai_topic, explanations = get_ai_response(DAILY_ROUNDS, topic, DAILY_DIFFICULTY, language_name)
-    challenge = DailyChallenge(date=date, language=language_name, topic=topic, source=source,
-                               questions_json=json.dumps(quiz_data), explanations_json=json.dumps(explanations))
+    quiz = get_ai_response(DAILY_ROUNDS, topic, DAILY_DIFFICULTY, language_name)
+    challenge = DailyChallenge(date=date, language=language_name, topic=topic, source=quiz.source,
+                               questions_json=json.dumps(quiz.rounds), explanations_json=json.dumps(quiz.explanations),
+                               quotes_json=json.dumps(quiz.quotes), source_url=quiz.source_url)
     db.session.add(challenge)
     try:
         db.session.commit()
@@ -425,6 +428,7 @@ def build_answer_review(quiz_session, opponent=None):
     questions = json.loads(quiz_session.questions_json)
     answers = json.loads(quiz_session.answers_json or '[]')
     explanations = json.loads(quiz_session.explanations_json or '[]')
+    quotes = json.loads(quiz_session.quotes_json or '[]')
     their_answers = json.loads(opponent.answers_json or '[]') if opponent else []
 
     def outcome(picks, i, facts):
@@ -436,7 +440,8 @@ def build_answer_review(quiz_session, opponent=None):
     review = []
     for i, facts in enumerate(questions[:quiz_session.current_question_index]):
         row = {'facts': list(facts.items()), **outcome(answers, i, facts),
-               'explanation': explanations[i] if i < len(explanations) else None}
+               'explanation': explanations[i] if i < len(explanations) else None,
+               'quote': quotes[i] if i < len(quotes) else None}
         if opponent:
             row['them'] = outcome(their_answers, i, facts)
         review.append(row)
@@ -1244,6 +1249,7 @@ def results():
                            challenge=challenge_comparison(quiz_session),
                            review=build_answer_review(quiz_session, opponent),
                            versus=versus_details(quiz_session, opponent),
+                           source_url=quiz_session.source_url,
                            rematch_for=db.session.get(User, quiz_session.rematch_for_id)
                            if quiz_session.rematch_for_id else None)
 
@@ -1298,7 +1304,9 @@ def take_challenge(code):
 
     save_quiz_session(user, original.topic, original.difficulty, json.loads(original.questions_json),
                       json.loads(original.explanations_json or '[]'), _('Challenge'),
-                      time_limit=original.time_limit, challenge_of_id=original.id)
+                      time_limit=original.time_limit, challenge_of_id=original.id,
+                      quotes=json.loads(original.quotes_json) if original.quotes_json else None,
+                      source_url=original.source_url)
     return redirect(url_for('quiz'))
 
 
@@ -1343,7 +1351,9 @@ def daily_start():
         challenge = get_daily_challenge(date, language_name)
         save_quiz_session(user, challenge.topic, DAILY_DIFFICULTY, json.loads(challenge.questions_json),
                           json.loads(challenge.explanations_json), challenge.source,
-                          daily_challenge_id=challenge.id)
+                          daily_challenge_id=challenge.id,
+                          quotes=json.loads(challenge.quotes_json) if challenge.quotes_json else None,
+                          source_url=challenge.source_url)
         return redirect(url_for('quiz'))
     except IntegrityError:
         # A second click started the same attempt at the same moment; continue that one
@@ -1392,7 +1402,7 @@ def review(quiz_session_id):
     opponent = challenge_opponent(quiz_session, request.args.get('vs', type=int))
     return render_template('review.html', quiz_session=quiz_session, score=score,
                            share=share_details(quiz_session), review=build_answer_review(quiz_session, opponent),
-                           versus=versus_details(quiz_session, opponent))
+                           versus=versus_details(quiz_session, opponent), source_url=quiz_session.source_url)
 
 
 @app.route('/challenges')

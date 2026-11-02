@@ -1,6 +1,8 @@
 import json
 import os
 from functools import cache
+from typing import NamedTuple
+from urllib.parse import quote
 
 import numpy as np
 import wikipedia
@@ -32,6 +34,7 @@ class QuizQuestion(BaseModel):
 class QuizSet(BaseModel):
     questions: list[QuizQuestion]
     explanation: str  # Why the fake fact is false, shown in the answer review
+    source_quote: str  # Sentence of the content that shows the fake fact is false, word for word ('' if none)
 
 class QuizData(BaseModel):
     topic: str  # Short name for the content's subject, used to label custom quizzes
@@ -100,16 +103,47 @@ def fetch_wikipedia_article(query):
 
 
 QUIZ_ATTEMPTS = 2
+MIN_QUOTE_LENGTH = 20  # Shorter "quotes" are fragments that would match almost any article
+WIKIPEDIA_SOURCES = {"Wikipedia", "Knowledge base (RAG)", "Knowledge base"}  # The saved articles are Wikipedia's too
+
+
+class GeneratedQuiz(NamedTuple):
+    rounds: list  # {statement: is_real} per round
+    source: str  # Where the content came from, e.g. "Wikipedia"
+    topic: str  # The AI's short name for the content's subject
+    explanations: list  # Why each round's fake fact is false
+    quotes: list  # Sentence of the content that shows it, or None when the AI's quote isn't really in the content
+    source_url: str | None  # The Wikipedia article the content came from
+
+
+def wikipedia_url(title):
+    return "https://en.wikipedia.org/wiki/" + quote(title.replace(" ", "_"))
+
+
+def normalize_text(text):
+    return " ".join(text.split()).casefold()
+
+
+def verified_quote(quote_text, normalized_content):
+    """The AI's quote if it really is in the content (ignoring spacing and case), else None. Models sometimes
+    paraphrase or invent a "quote", and a made-up source is worse than none."""
+    quote_text = quote_text.strip().strip('"“”«»\'')
+    # Models often end a copied clause with a full stop where the article has a comma or semicolon; without its
+    # last punctuation mark it's still word for word
+    for candidate in (quote_text, quote_text.rstrip('.,;:!?')):
+        if len(candidate) >= MIN_QUOTE_LENGTH and normalize_text(candidate) in normalized_content:
+            return candidate
+    return None
 
 
 def playable_rounds(quiz_sets):
-    """(statements, explanation) for each round the game can play: four different, non-empty statements with
-    exactly one of them fake."""
+    """(statements, explanation, quote) for each round the game can play: four different, non-empty statements
+    with exactly one of them fake."""
     rounds = []
     for quiz_set in quiz_sets:
         statements = {q.statement.strip(): q.is_real for q in quiz_set.questions if q.statement.strip()}
         if len(statements) == 4 and list(statements.values()).count(False) == 1:
-            rounds.append((statements, quiz_set.explanation))
+            rounds.append((statements, quiz_set.explanation, quiz_set.source_quote))
     return rounds
 
 
@@ -150,6 +184,7 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
             f"Analyze the following content: {article_content}\n\n"
             f"Task: Generate exactly {sets_requested} quiz sets for a {difficulty} level in {language}. Each set must have 3 real facts and 1 fake fact.\n"
             f"For each set, set 'explanation' to one short sentence in {language} saying why the fake fact is false and what is actually true.\n"
+            f"Base each set's single fake fact on one specific sentence of the content with one detail changed (the 3 real facts stay true), and set 'source_quote' to that original sentence, copied exactly as it is written in the content: same words, same language, not translated or shortened. Leave 'source_quote' empty only if the content has no text to quote.\n"
             f"Also set 'topic' to a short English name (1-4 words, Title Case) for the main subject of the content, e.g. 'Photosynthesis' or 'French Revolution'.\n"
         )}
     ]
@@ -166,10 +201,18 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
     else:
         raise ValueError(f"The AI returned only {len(rounds)} playable rounds of {questions_count}")
 
-    # Convert to the format expected by the rest of the app: {statement: is_real} per round
-    formatted_quiz_data = [statements for statements, _ in rounds[:questions_count]]
-    explanations = [explanation for _, explanation in rounds[:questions_count]]
-    return formatted_quiz_data, source, quiz_data_obj.topic.strip(), explanations
+    rounds = rounds[:questions_count]
+    # The model's own knowledge has no text to quote from
+    normalized_content = normalize_text(article_content) if source != "AI Internal Knowledge" else ""
+    return GeneratedQuiz(
+        rounds=[statements for statements, _, _ in rounds],
+        source=source,
+        topic=quiz_data_obj.topic.strip(),
+        explanations=[explanation for _, explanation, _ in rounds],
+        quotes=[verified_quote(quote_text, normalized_content) if normalized_content else None
+                for _, _, quote_text in rounds],
+        source_url=wikipedia_url(article_title) if source in WIKIPEDIA_SOURCES else None,
+    )
 
 
 def get_ai_analysis(user_history_json, language="English"):

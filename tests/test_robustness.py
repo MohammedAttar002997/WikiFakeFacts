@@ -76,9 +76,9 @@ def test_results_wait_for_the_last_round(login, app_ctx):
 
 # ---------- AI output -----------------------------------------------------------------------------------------------
 
-def quiz_set(statements, explanation='Because.'):
+def quiz_set(statements, explanation='Because.', source_quote=''):
     return data.QuizSet(questions=[data.QuizQuestion(statement=s, is_real=r) for s, r in statements],
-                        explanation=explanation)
+                        explanation=explanation, source_quote=source_quote)
 
 
 GOOD = [('A', True), ('B', True), ('C', True), ('D', False)]
@@ -93,7 +93,7 @@ GOOD = [('A', True), ('B', True), ('C', True), ('D', False)]
 ])
 def test_unplayable_rounds_are_dropped(statements):
     assert data.playable_rounds([quiz_set(statements), quiz_set(GOOD)]) == [
-        ({'A': True, 'B': True, 'C': True, 'D': False}, 'Because.')]
+        ({'A': True, 'B': True, 'C': True, 'D': False}, 'Because.', '')]
 
 
 @pytest.fixture
@@ -117,8 +117,8 @@ def test_a_bad_quiz_is_asked_for_again(openai_replies):
     replies, calls = openai_replies
     replies += [data.QuizData(topic='Cats', quiz_sets=[quiz_set(GOOD), quiz_set(GOOD[:3])]),
                 data.QuizData(topic='Cats', quiz_sets=[quiz_set(GOOD), quiz_set(GOOD), quiz_set(GOOD)])]
-    rounds, source, topic, explanations = data.get_ai_response(2, 'Cat')
-    assert len(calls) == 2 and len(rounds) == 2 and len(explanations) == 2  # Extra rounds are left out
+    quiz = data.get_ai_response(2, 'Cat')
+    assert len(calls) == 2 and len(quiz.rounds) == 2 and len(quiz.explanations) == 2  # Extra rounds are left out
 
 
 def test_one_spare_round_absorbs_a_bad_one(openai_replies):
@@ -126,7 +126,7 @@ def test_one_spare_round_absorbs_a_bad_one(openai_replies):
     replies, calls = openai_replies
     bad = [('A', True), ('B', False), ('C', True), ('D', False)]
     replies.append(data.QuizData(topic='Cats', quiz_sets=[quiz_set(GOOD)] * 4 + [quiz_set(bad)] + [quiz_set(GOOD)]))
-    rounds, *_ = data.get_ai_response(5, 'Cat')
+    rounds = data.get_ai_response(5, 'Cat').rounds
     assert len(rounds) == 5 and len(calls) == 1
     assert 'exactly 6 quiz sets' in calls[0]['messages'][1]['content']
 

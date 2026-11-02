@@ -1,5 +1,6 @@
-{# Round-by-round answer review card. Expects `review` from build_answer_review(), and `versus` (the other player in
-   a challenge, or None) to show their pick in each round too. #}
+{# Round-by-round answer review card. Expects `review` from build_answer_review(), `versus` (the other player in
+   a challenge, or None) to show their pick in each round too, and `source_url` (the quiz's Wikipedia article, or
+   None). Quotes are in the source's own language, so they get dir="auto" (and lang="en" for English Wikipedia). #}
 {% macro outcome_chip(outcome, who=None) %}
 {% set prefix %}{% if who %}<span class="review-chip-who">{{ who }}:</span> {% endif %}{% endset %}
 {% if outcome.correct %}
@@ -44,7 +45,28 @@
             {% if round.explanation %}
             <div class="tip"><strong>{{ _("Why it's fake:") }}</strong> {{ round.explanation }}</div>
             {% endif %}
+            {% if round.quote %}
+            <figure class="source-quote mt-2 mb-0">
+                <blockquote class="mb-1" dir="auto"{% if source_url %} lang="en"{% endif %}>{{ round.quote }}</blockquote>
+                <figcaption class="small text-muted">
+                    {% if source_url %}
+                    <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer" class="fw-bold text-decoration-none">
+                        <i class="bi bi-wikipedia me-1"></i>{{ _('From the Wikipedia article') }}<i class="bi bi-box-arrow-up-right ms-1"></i>
+                    </a>
+                    {% else %}
+                    <i class="bi bi-file-earmark-text me-1"></i>{{ _("From the quiz's source text") }}
+                    {% endif %}
+                </figcaption>
+            </figure>
+            {% endif %}
         </div>
         {% endfor %}
     </div>
+    {% if source_url %}
+    <div class="text-center mt-4">
+        <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer" class="fw-bold text-decoration-none">
+            <i class="bi bi-wikipedia me-1"></i>{{ _('Read the full article on Wikipedia') }}<i class="bi bi-box-arrow-up-right ms-1"></i>
+        </a>
+    </div>
+    {% endif %}
 </div>

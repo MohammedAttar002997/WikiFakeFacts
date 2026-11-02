@@ -15,7 +15,7 @@ os.environ['DATABASE_URL'] = 'sqlite:///' + os.path.join(_db_dir, 'test.sqlite')
 
 import app as app_module  # noqa: E402
 from app import app as flask_app, db, init_database  # noqa: E402
-from data import AIAnalysis  # noqa: E402
+from data import AIAnalysis, GeneratedQuiz, wikipedia_url  # noqa: E402
 from models import User  # noqa: E402
 
 # Tests post forms directly, so CSRF checks are off here; test_csrf.py turns them back on
@@ -27,7 +27,10 @@ with flask_app.app_context():
 def fake_quiz(n, topic, difficulty, language, custom_content=None):
     """n rounds where 'R{i} FAKE' is the fake fact; mirrors get_ai_response's return value."""
     rounds = [{f'R{i} true A': True, f'R{i} FAKE': False, f'R{i} true B': True, f'R{i} true C': True} for i in range(n)]
-    return rounds, 'Stub', 'Stub Topic', [f'Why round {i} is fake.' for i in range(n)]
+    return GeneratedQuiz(rounds=rounds, source='Stub', topic='Stub Topic',
+                         explanations=[f'Why round {i} is fake.' for i in range(n)],
+                         quotes=[f'Quote proving round {i}.' for i in range(n)],
+                         source_url=None if custom_content else wikipedia_url(topic))
 
 
 def fake_analysis(history_json, language):
