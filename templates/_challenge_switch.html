@@ -1,0 +1,13 @@
+{# Daily | Weekly switch at the top of the two pages behind the navbar's Challenges tab #}
+<nav aria-label="{{ _('Challenges') }}">
+    <ul class="nav seg mb-4">
+        {% for href, icon, label in [('/daily', 'bi-calendar-check-fill', _('Daily challenge')), ('/event', 'bi-stars', _('Weekly event'))] %}
+        {% set active = request.path == href %}
+        <li class="nav-item">
+            <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}>
+                <i class="bi {{ icon }} me-1"></i>{{ label }}
+            </a>
+        </li>
+        {% endfor %}
+    </ul>
+</nav>

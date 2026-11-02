@@ -100,3 +100,13 @@ def test_three_event_quizzes_in_a_week_earn_a_badge(login, app_ctx):
     assert not UserBadge.query.filter_by(badge='event').first()
     play_event(client, 1)
     assert UserBadge.query.filter_by(badge='event').one()
+
+
+def test_one_challenges_tab_leads_to_both_daily_and_weekly(app):
+    client = app.test_client()
+    for page in ('/daily', '/event'):
+        html = client.get(page).get_data(as_text=True)
+        # The navbar tab is active on both pages, and the switch marks the one you're on
+        assert 'class="nav-link active" href="/daily"' in html
+        assert f'class="nav-link active" href="{page}" aria-current="page"' in html
+        assert 'href="/daily"' in html and 'href="/event"' in html
