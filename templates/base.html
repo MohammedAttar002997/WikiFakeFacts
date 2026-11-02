@@ -31,8 +31,7 @@
 <body>
     {% set nav_items = [
         ('/', 'bi-house-door-fill', _('Home')),
-        ('/daily', 'bi-calendar-check-fill', _('Daily')),
-        ('/event', 'bi-stars', _('Weekly')),
+        ('/daily', 'bi-flag-fill', _('Challenges')),
         ('/leaderboard', 'bi-trophy-fill', _('Leaderboard')),
         ('/players', 'bi-people-fill', _('Players')),
         ('/analysis', 'bi-graph-up-arrow', _('My Progress')),
@@ -53,7 +52,7 @@
                    title="{{ _('Profile and account') }}" aria-label="{{ _('Profile and account') }}: {{ me.username }}">
                     {{ avatar(me, 'sm') }}
                 </a>
-                {% set bell_label = _n('{n} new challenge update', '{n} new challenge updates', challenge_news) if challenge_news else _('Challenges') %}
+                {% set bell_label = _n('{n} new challenge update', '{n} new challenge updates', challenge_news) if challenge_news else _('Friend challenges') %}
                 <a class="theme-toggle challenge-bell" href="{{ url_for('challenges') }}"
                    title="{{ bell_label }}" aria-label="{{ bell_label }}">
                     <i class="bi {{ 'bi-bell-fill' if challenge_news else 'bi-bell' }}"></i>
@@ -88,7 +87,8 @@
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav ms-auto gap-xl-1 mt-2 mt-xl-0">
                     {% for href, icon, label in nav_items %}
-                    {% set active = request.path == href or (href != '/' and request.path.startswith(href)) %}
+                    {% set active = request.path == href or (href != '/' and request.path.startswith(href))
+                                    or (href == '/daily' and request.path.startswith('/event')) %}
                     <li class="nav-item">
                         <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}{% if href == '/analysis' %} data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis"{% endif %}>
                             <i class="bi {{ icon }}"></i>{{ label }}

@@ -6,6 +6,7 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-9">
+        {% include "_challenge_switch.html" %}
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-stars"></i> {{ _('Week of {date}').format(date=week_start.strftime('%Y-%m-%d')) }}</span>
             <h1>{{ _('Weekly event') }}</h1>
