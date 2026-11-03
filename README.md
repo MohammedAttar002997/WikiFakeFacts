@@ -109,6 +109,7 @@ python serve.py                # http://127.0.0.1:8000
 - Set `HOST=0.0.0.0` to accept connections from other machines and `PORT` to change the port.
 - It won't start without a real `SECRET_KEY` or with `FLASK_DEBUG=1`, since either would let people take over accounts or run code on the server.
 - If the site is served over HTTPS, also set `SESSION_COOKIE_SECURE=1`.
+- To show a "Support this project" link in the footer, set `DONATION_URL` to your donation page (Ko-fi, Buy Me a Coffee, ...). It must start with `https://`; without it there's no link.
 
 ### On Vercel
 
