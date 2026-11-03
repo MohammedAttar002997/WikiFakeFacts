@@ -140,3 +140,23 @@ def test_static_files_come_from_public(app, path):
     assert os.path.isfile(os.path.join(os.path.dirname(app_module.__file__), 'public', path.lstrip('/')))
     assert path in app.test_client().get('/').get_data(as_text=True)
     assert app.test_client().get(path).status_code == 200
+
+
+# ---------- Donation link ------------------------------------------------------------------------------------------
+
+def test_footer_has_no_donation_link_by_default(app, monkeypatch):
+    monkeypatch.setitem(app.config, 'DONATION_URL', '')
+    assert 'wf-donate' not in app.test_client().get('/').get_data(as_text=True)
+
+
+def test_footer_links_to_the_donation_page(login, app, monkeypatch):
+    monkeypatch.setitem(app.config, 'DONATION_URL', 'https://ko-fi.com/example')
+    html = login('Player', language='de').get('/').get_data(as_text=True)
+    assert 'href="https://ko-fi.com/example"' in html and 'rel="noopener noreferrer"' in html
+    assert translate('Support this project', 'de') in html
+
+
+@pytest.mark.parametrize('url', ['http://ko-fi.com/example', 'javascript:alert(1)'])
+def test_donation_link_must_be_https(app, monkeypatch, url):
+    monkeypatch.setitem(app.config, 'DONATION_URL', url)
+    assert 'wf-donate' not in app.test_client().get('/').get_data(as_text=True)

@@ -137,6 +137,10 @@
 
     <footer class="wf-footer text-center py-4">
         &copy; 2026 WikiFakeFact &middot; {{ _('Hackathon Project') }}
+        {% if donation_url %}
+        &middot; <a href="{{ donation_url }}" class="wf-donate" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-heart-fill" aria-hidden="true"></i> {{ _('Support this project') }}</a>
+        {% endif %}
     </footer>
 
     <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">

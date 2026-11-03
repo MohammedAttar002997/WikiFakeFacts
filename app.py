@@ -46,6 +46,8 @@ if ON_VERCEL and app.secret_key == DEV_SECRET_KEY:
 app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 # Set SESSION_COOKIE_SECURE=1 when the site is served over HTTPS, so the cookie is never sent unencrypted
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
+# Donation page (Ko-fi, Buy Me a Coffee, ...) linked in the footer; no link unless it's set to an https URL
+app.config['DONATION_URL'] = os.environ.get('DONATION_URL', '').strip()
 
 # File upload configuration (uploads are read in memory, never saved)
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx'}
@@ -135,7 +137,9 @@ def forget_cached_player():
 @app.context_processor
 def inject_player():
     me = current_user()
-    return {'me': me, 'challenge_news': count_challenge_news(me) if me else 0}
+    donation_url = app.config.get('DONATION_URL') or ''
+    return {'me': me, 'challenge_news': count_challenge_news(me) if me else 0,
+            'donation_url': donation_url if donation_url.startswith('https://') else None}
 
 
 app.jinja_env.globals.update(template_globals())

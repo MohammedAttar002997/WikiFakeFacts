@@ -899,6 +899,9 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .chatbot-fab:hover { color: #fff; transform: scale(1.08) rotate(-6deg); }
 
 .wf-footer { color: var(--wf-muted); font-size: .9rem; }
+.wf-donate { color: var(--wf-muted); text-decoration: none; }
+.wf-donate:hover, .wf-donate:focus { color: var(--wf-brand); text-decoration: underline; }
+.wf-donate .bi-heart-fill { color: #e0457b; }
 
 /* ---------- Loading overlay ---------------------------------------------- */
 
