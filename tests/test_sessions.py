@@ -3,7 +3,7 @@ import pytest
 from werkzeug.security import generate_password_hash
 
 import app as app_module
-from app import db, pin_attempt_allowed
+from app import db, pin_lockout
 from conftest import sign_in_as, signed_in_name
 from models import PinAttempt, User
 
@@ -113,5 +113,5 @@ def test_right_pin_clears_the_count(phoenix, app):
 
 def test_counting_a_new_name_twice_needs_no_existing_row(app_ctx):
     # Two first attempts used to race on inserting the row and fail with an IntegrityError
-    assert pin_attempt_allowed('newname') and pin_attempt_allowed('newname')
+    assert pin_lockout('newname') is None and pin_lockout('newname') is None
     assert db.session.get(PinAttempt, 'newname').failures == 2

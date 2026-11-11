@@ -31,6 +31,31 @@ def test_shared_page_is_public_and_shows_the_result(login, app):
     assert 'class="review-round"' not in html  # the answers stay private
 
 
+def test_shared_page_preview_has_the_image_and_one_set_of_tags(login, app):
+    url = share_url(play_quiz(login('Phoenix'), answers(2, 3)))
+    html = app.test_client().get(url.split('localhost')[-1]).get_data(as_text=True)
+    assert html.count('property="og:title"') == 1 and html.count('property="og:description"') == 1
+    assert 'content="Topic:' in html
+    assert re.search(r'<meta property="og:image" content="https://[^"]+/static/img/og-image\.png">', html)
+    assert '<meta name="twitter:card" content="summary_large_image">' in html
+
+
+def test_every_page_has_a_link_preview(app):
+    html = app.test_client().get('/').get_data(as_text=True)
+    assert '<meta property="og:title" content="WikiFakeFact">' in html
+    assert '<meta property="og:description" content="The ultimate AI-powered trivia game' in html
+    assert '<meta name="description" content="The ultimate AI-powered trivia game' in html
+    assert re.search(r'<meta property="og:image" content="https://[^"]+/static/img/og-image\.png">', html)
+
+
+def test_preview_image_exists():
+    import os
+    from PIL import Image
+    path = os.path.join(os.path.dirname(__file__), '..', 'public', 'static', 'img', 'og-image.png')
+    with Image.open(path) as image:
+        assert image.size == (1200, 630)  # the size link previews expect
+
+
 def test_unknown_or_unfinished_quiz_is_not_found(login, app, app_ctx):
     client = login('Phoenix')
     client.post('/start_quiz', data={'category': '1', 'length': '1', 'difficulty': '1', 'language': 'en'})

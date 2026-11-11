@@ -5,14 +5,9 @@
 
 {% block title %}{{ headline }} · WikiFakeFact{% endblock %}
 
-{% block head %}
-    {# Link previews in chat apps and social networks #}
-    <meta property="og:type" content="website">
-    <meta property="og:site_name" content="WikiFakeFact">
-    <meta property="og:title" content="{{ headline }}">
-    <meta property="og:description" content="{{ _('Topic:') }} {{ quiz_session.topic }} · {{ _('Can you beat that? Three facts are true, one is a lie.') }}">
-    <meta name="twitter:card" content="summary">
-{% endblock %}
+{# Link previews in chat apps and social networks (the rest of the tags and the image come from base.html) #}
+{% block og_title %}{{ headline }}{% endblock %}
+{% block og_description %}{{ _('Topic:') }} {{ quiz_session.topic }} · {{ _('Can you beat that? Three facts are true, one is a lie.') }}{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">

@@ -1,7 +1,7 @@
 import json
 import os
 from functools import cache
-from typing import NamedTuple
+from typing import Literal, NamedTuple
 from urllib.parse import quote
 
 import numpy as np
@@ -24,6 +24,7 @@ OPEN_AI_KEY = os.getenv("OPENAI_API_KEY")
 # Models can be changed in .env without touching the code
 QUIZ_MODEL = os.getenv("OPENAI_QUIZ_MODEL", "gpt-4o-mini")
 ANALYSIS_MODEL = os.getenv("OPENAI_ANALYSIS_MODEL", "gpt-5-mini")
+CHECK_MODEL = os.getenv("OPENAI_CHECK_MODEL", QUIZ_MODEL)
 EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small")
 
 
@@ -39,6 +40,14 @@ class QuizSet(BaseModel):
 class QuizData(BaseModel):
     topic: str  # Short name for the content's subject, used to label custom quizzes
     quiz_sets: list[QuizSet]
+
+Verdict = Literal['supported', 'contradicted', 'not_in_text']
+
+class RoundCheck(BaseModel):
+    verdicts: list[Verdict]  # One per statement, in the order they were given
+
+class QuizCheck(BaseModel):
+    rounds: list[RoundCheck]
 
 class TopicInsight(BaseModel):
     topic: str
@@ -147,6 +156,57 @@ def playable_rounds(quiz_sets):
     return rounds
 
 
+def check_rounds(content, rounds):
+    """Ask the AI, statement by statement, whether the content supports each one. Returns a list of verdicts per
+    round (same order as the statements), or None when the check couldn't run: then the rounds are played as they
+    are, so an API hiccup never costs the player the quiz. The checker isn't told which statement is the fake."""
+    listing = "\n\n".join(
+        f"Round {i + 1}:\n" + "\n".join(f"{j + 1}. {statement}" for j, statement in enumerate(statements))
+        for i, (statements, _, _) in enumerate(rounds))
+    try:
+        client = OpenAI(api_key=OPEN_AI_KEY)
+        response = client.beta.chat.completions.parse(model=CHECK_MODEL, response_format=QuizCheck, messages=[
+            {"role": "system", "content": (
+                "You check quiz statements against a source text, using only that text. For each statement answer "
+                "'supported' if the text says it (a paraphrase or translation counts), 'contradicted' if the text says "
+                "something different (another number, date, name, place or relation), or 'not_in_text' if the text "
+                "doesn't say either way. A number the text gives elsewhere for the same thing counts as supported.")},
+            {"role": "user", "content": (
+                f"Source text:\n{content}\n\n"
+                f"Statements:\n{listing}\n\n"
+                f"Return exactly {len(rounds)} rounds, each with one verdict per statement, in the order given.")},
+        ])
+        parsed = response.choices[0].message.parsed
+        verdicts = [r.verdicts for r in parsed.rounds]
+    except Exception as e:
+        print(f"Fact check failed, playing the rounds unchecked: {e!r}")
+        return None
+    if len(verdicts) != len(rounds) or any(len(v) != len(s) for v, (s, _, _) in zip(verdicts, rounds)):
+        print("Fact check came back in the wrong shape, playing the rounds unchecked")
+        return None
+    return verdicts
+
+
+def round_quality(statements, verdicts):
+    """2: the fake isn't backed by the content and every real fact is. 1: nothing is wrong, but a real fact
+    isn't in the content (or the round wasn't checked). 0: wrong, because the content backs the fake or
+    contradicts a real fact, so a player who knows the topic would be marked wrong."""
+    if verdicts is None:
+        return 1
+    real = [v for is_real, v in zip(statements.values(), verdicts) if is_real]
+    fake = [v for is_real, v in zip(statements.values(), verdicts) if not is_real]
+    if 'supported' in fake or 'contradicted' in real:
+        return 0
+    return 2 if all(v == 'supported' for v in real) else 1
+
+
+def choose_rounds(scored, needed):
+    """The `needed` best (quality, round) pairs, in the order they were made; wrong rounds (quality 0) only
+    when there's nothing else, so a quiz is never lost to the check."""
+    best = sorted(range(len(scored)), key=lambda i: -scored[i][0])[:needed]
+    return [scored[i][1] for i in sorted(best)]
+
+
 def get_ai_response(questions_count, article_title, difficulty="Medium", language="English", custom_content=None):
     if not OPEN_AI_KEY:
         raise RuntimeError("OpenAI API key is required.")
@@ -189,19 +249,29 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
         )}
     ]
     # The model doesn't always follow the format (a round with two fakes, a repeated statement, a set too few, a
-    # refusal), so only playable rounds are kept, with one more try if too few are left
+    # refusal), so only playable rounds are kept. It also gets facts wrong: a "fake" the article actually backs, or a
+    # "real" fact it contradicts. So rounds made from real content are checked against it, and wrong ones are only
+    # played if there's nothing else. One more try if too few good rounds are left; rounds of both tries count.
+    grounded = source != "AI Internal Knowledge"
+    scored, quiz_data_obj = [], None
     for attempt in range(QUIZ_ATTEMPTS):
         # Using Structured Outputs with beta.chat.completions.parse
         response = client.beta.chat.completions.parse(model=QUIZ_MODEL, messages=messages, response_format=QuizData)
-        quiz_data_obj = response.choices[0].message.parsed
-        rounds = playable_rounds(quiz_data_obj.quiz_sets if quiz_data_obj else [])
-        if len(rounds) >= questions_count:
+        parsed = response.choices[0].message.parsed
+        quiz_data_obj = parsed or quiz_data_obj
+        rounds = playable_rounds(parsed.quiz_sets if parsed else [])
+        verdicts = check_rounds(article_content, rounds) if grounded and rounds else None
+        scored += [(round_quality(r[0], verdicts[i] if verdicts else None), r) for i, r in enumerate(rounds)]
+        good = sum(1 for quality, _ in scored if quality > 0)
+        if good >= questions_count:
             break
-        print(f"AI returned {len(rounds)} playable rounds of {questions_count} (attempt {attempt + 1})")
+        print(f"AI returned {good} good rounds of {questions_count} (attempt {attempt + 1})")
     else:
-        raise ValueError(f"The AI returned only {len(rounds)} playable rounds of {questions_count}")
+        if len(scored) < questions_count:
+            raise ValueError(f"The AI returned only {len(scored)} playable rounds of {questions_count}")
+        print("Not enough rounds passed the fact check; playing some that didn't")
 
-    rounds = rounds[:questions_count]
+    rounds = choose_rounds(scored, questions_count)
     # The model's own knowledge has no text to quote from
     normalized_content = normalize_text(article_content) if source != "AI Internal Knowledge" else ""
     return GeneratedQuiz(
