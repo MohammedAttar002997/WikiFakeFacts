@@ -110,6 +110,7 @@ def openai_replies(monkeypatch):
     monkeypatch.setattr(data, 'OpenAI', lambda api_key: client)
     monkeypatch.setattr(data, 'OPEN_AI_KEY', 'test-key')
     monkeypatch.setattr(data, 'fetch_wikipedia_article', lambda title: ('Article text', 'Wikipedia'))
+    monkeypatch.setattr(data, 'check_rounds', lambda content, rounds: None)  # Fact check: tests/test_fact_check.py
     return replies, calls
 
 
