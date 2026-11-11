@@ -26,7 +26,7 @@ from alembic.operations import Operations
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
                     UserBadge, PinAttempt, RateLimit, ErrorLog)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
-from default_text import CATEGORIES, MENU, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
+from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, format_date, template_context, template_globals, translate as _,
                           translate_plural as _n)
 from content_extractor import (ContentError, extract_text_from_upload, extract_text_from_url,
@@ -515,7 +515,6 @@ def challenge_opponent(quiz_session, vs_id=None):
     return None
 
 
-MENU_TOPICS = {topic for topics in MENU.values() for topic in topics}
 
 
 def versus_details(quiz_session, opponent):
@@ -530,7 +529,7 @@ def versus_details(quiz_session, opponent):
 def can_rematch(attempt):
     """Rematches need a fresh quiz on the same topic, which only built-in topics can get (a custom quiz's content
     belongs to the player who uploaded it)."""
-    return attempt.topic in MENU_TOPICS
+    return attempt.topic in ALL_TOPICS
 
 
 def challengers_query(user):
@@ -586,7 +585,7 @@ def get_topic_stats(user_scores):
 def find_practice_topic(user, analysis_data):
     """The player's weakest topic that a new quiz can be made for, with its saved custom content if any."""
     for data in reversed(analysis_data):
-        if data['topic'] in MENU_TOPICS:
+        if data['topic'] in ALL_TOPICS:
             return data, None
         content = (CustomContent.query.filter_by(user_id=user.id, title=data['topic'])
                    .order_by(CustomContent.created_at.desc()).first())
@@ -1167,13 +1166,13 @@ def start_quiz():
     language_code = request.form.get('language', 'en')
     session['language'] = language_code
     
-    if category_id not in CATEGORIES or length_id not in GAME_LENGTH_OPTIONS or difficulty_id not in DIFFICULTY_OPTIONS:
+    if (category_id not in CATEGORIES and category_id != SURPRISE) or length_id not in GAME_LENGTH_OPTIONS             or difficulty_id not in DIFFICULTY_OPTIONS:
         flash(_("Please select a category, game length, and difficulty."), "warning")
         return redirect(url_for('setup'))
     
-    category_name = CATEGORIES.get(category_id)
-    topics = MENU.get(category_name)
-    topic = random.choice(topics)
+    # "Surprise me" picks a category first, so each one is as likely however long its list is
+    category_name = random.choice(list(TOPICS)) if category_id == SURPRISE else CATEGORIES[category_id]
+    topic = random.choice(TOPICS[category_name])
     
     length_text = GAME_LENGTH_OPTIONS.get(length_id)
     questions_count = int(length_text.split("rounds")[0].split("(")[1].strip())
@@ -1595,9 +1594,9 @@ def leaderboard():
         conditions.append(Score.timestamp >= utcnow() - timedelta(days=7))
     if category == 'custom':
         # Anything that isn't a built-in topic came from a custom quiz
-        conditions.append(Score.topic.notin_([t for topics in MENU.values() for t in topics]))
+        conditions.append(Score.topic.notin_(ALL_TOPICS))
     elif category != 'all':
-        conditions.append(Score.topic.in_(MENU[CATEGORIES[category]]))
+        conditions.append(Score.topic.in_(TOPICS[CATEGORIES[category]]))
     if difficulty != 'all':
         conditions.append(Score.difficulty == DIFFICULTY_OPTIONS[difficulty])
 

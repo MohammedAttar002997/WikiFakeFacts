@@ -1,3 +1,6 @@
+import json
+import os
+
 CATEGORIES = {
     "1": "Sports",
     "2": "Animals",
@@ -52,6 +55,21 @@ MENU = {
         "Ukulele", "Synthesizer", "Xylophone", "Bagpipes", "Mandolin"
     ]
 }
+
+
+def load_extra_topics():
+    """More topics per category from Wikipedia's Vital articles (topics.json, made by build_topic_list.py)."""
+    with open(os.path.join(os.path.dirname(__file__), 'topics.json'), encoding='utf-8') as f:
+        return json.load(f)
+
+
+# Every topic a quiz can be about, per category: the hand-picked MENU first, then the Vital articles. MENU itself
+# stays the list the knowledge base, the daily challenge and the weekly events use, since only its topics have a
+# saved copy of their article for when Wikipedia is down.
+TOPICS = {category: list(dict.fromkeys(topics + load_extra_topics().get(category, [])))
+          for category, topics in MENU.items()}
+ALL_TOPICS = {topic for topics in TOPICS.values() for topic in topics}
+SURPRISE = 'surprise'  # Setup's category value for a topic from any category
 
 GAME_LENGTH_OPTIONS = {
     "1": "Short (3 rounds)",

@@ -4,10 +4,10 @@ from datetime import timedelta
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
-from default_text import MENU
+from default_text import MENU, TOPICS
 from models import db, utcnow, Score, QuizSession, UserBadge
 
-TOPIC_CATEGORY = {topic: category for category, topics in MENU.items() for topic in topics}
+TOPIC_CATEGORY = {topic: category for category, topics in TOPICS.items() for topic in topics}
 
 # Shown in this order on My Progress
 BADGES = [

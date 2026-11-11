@@ -49,6 +49,15 @@
                     </div>
                     {% endfor %}
                     <div class="col-6 col-md-4 col-lg-3">
+                        <input class="tile-input" type="radio" name="category" id="catSurprise" value="surprise" required>
+                        <label class="tile" for="catSurprise">
+                            <i class="bi bi-check-circle-fill tile-check"></i>
+                            <span class="tile-emoji">🎲</span>
+                            <span class="tile-title">{{ _('Surprise me') }}</span>
+                            <span class="tile-sub">{{ _('Any category') }}</span>
+                        </label>
+                    </div>
+                    <div class="col-12 col-md-4 col-lg-12">
                         <a class="tile tile-link" href="/custom_quiz">
                             <span class="tile-emoji">📄</span>
                             <span class="tile-title text-brand">{{ _('Custom Content') }}</span>
