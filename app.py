@@ -89,6 +89,10 @@ migrate = Migrate(app, db, directory=os.path.join(basedir, 'migrations'), render
 
 # Wrong-PIN throttling per lowercase name (stored in pin_attempt): 5 wrong PINs lock the name for 5 minutes
 MAX_PIN_ATTEMPTS = 5
+# … and at most this many PIN checks per name and day (stored in rate_limit). Without it, 5 guesses every 5 minutes
+# find any 4-digit PIN within about two days; with it, guessing one takes about half a year.
+PIN_DAILY_LIMIT = 25
+PIN_DAY = timedelta(days=1)
 # Requests per key and window, counted in the database so every server instance shares them. They cap what one
 # visitor can cost: AI calls (chat, quizzes) and rows (accounts, chats).
 RATE_LIMITS = {
@@ -611,11 +615,27 @@ def count_in_window(model, key, window, count_column, start_column):
     return result
 
 
-def pin_attempt_allowed(key):
-    """Count a PIN attempt for `key` and say whether it may be checked: at most MAX_PIN_ATTEMPTS per PIN_LOCKOUT
-    window. The attempt is counted before the (deliberately slow) PIN check, so guesses sent in parallel can't all
-    get past the limit; a correct PIN clears the count."""
-    return count_in_window(PinAttempt, key, PIN_LOCKOUT, 'failures', 'first_failure') <= MAX_PIN_ATTEMPTS
+def pin_lockout(key):
+    """Count a PIN attempt for `key` and say whether it's locked out: None if the PIN may be checked, 'minutes'
+    after MAX_PIN_ATTEMPTS in a PIN_LOCKOUT window, 'day' after PIN_DAILY_LIMIT in a day. The attempt is counted
+    before the (deliberately slow) PIN check, so guesses sent in parallel can't all get past the limit; a correct
+    PIN clears both counts. Attempts stopped by the short lockout don't count toward the daily one."""
+    if count_in_window(PinAttempt, key, PIN_LOCKOUT, 'failures', 'first_failure') > MAX_PIN_ATTEMPTS:
+        return 'minutes'
+    if count_in_window(RateLimit, pin_day_key(key), PIN_DAY, 'hits', 'window_start') > PIN_DAILY_LIMIT:
+        return 'day'
+    return None
+
+
+def pin_day_key(key):
+    return f'pin-day:{key}'[:120]
+
+
+def flash_pin_lockout(lockout):
+    if lockout == 'day':
+        flash(_("Too many wrong PINs for this name today. Please try again tomorrow."), "danger")
+    else:
+        flash(_("Too many wrong PINs for this name. Please wait a few minutes and try again."), "danger")
 
 
 def client_ip():
@@ -693,6 +713,7 @@ def flash_content_error(error):
 
 def clear_failed_pins(key):
     PinAttempt.query.filter_by(name=key).delete()
+    RateLimit.query.filter_by(key=pin_day_key(key)).delete()
     db.session.commit()
 
 
@@ -729,8 +750,9 @@ def delete_player_data(user, chat_id=None):
 def check_account_pin(user, pin):
     """Verify a PIN for an account action, counting wrong guesses toward the sign-in lockout."""
     key = user.username.lower()
-    if not pin_attempt_allowed(key):
-        flash(_("Too many wrong PINs for this name. Please wait a few minutes and try again."), "danger")
+    lockout = pin_lockout(key)
+    if lockout:
+        flash_pin_lockout(lockout)
         return False
     if not user.pin_hash or not check_password_hash(user.pin_hash, pin):
         flash(_("That PIN isn't right."), "danger")
@@ -953,8 +975,9 @@ def setup():
         user = User.query.filter(func.lower(User.username) == username.lower()).first()
         # The lockout follows the account a name leads to, so differently written forms of it share one count
         key = (user.username if user else username).lower()
-        if not pin_attempt_allowed(key):
-            flash(_("Too many wrong PINs for this name. Please wait a few minutes and try again."), "danger")
+        lockout = pin_lockout(key)
+        if lockout:
+            flash_pin_lockout(lockout)
             return redirect(url_for('index'))
 
         if not user:
