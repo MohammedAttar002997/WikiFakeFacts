@@ -1,5 +1,8 @@
 import json
+import math
 import os
+import re
+from collections import Counter
 from functools import cache
 from typing import Literal, NamedTuple
 from urllib.parse import quote
@@ -156,8 +159,54 @@ def playable_rounds(quiz_sets):
     return rounds
 
 
+SHORT_CONTENT = 8000  # Characters; shorter content is checked whole
+COMMON_IN = 0.3  # A word in more than this share of the paragraphs (like "Germany" in its own article) tells nothing
+PASSAGES_PER_STATEMENT = 3
+STOP_WORDS = frozenset('about after also among been before being between both could during each from have into '
+                       'like many more most other over same since some such than that their them then there these '
+                       'they this those through under until were what when where which while with would'.split())
+
+
+def keywords(text):
+    """The words of `text` that can tie a statement to a paragraph: numbers of two or more digits (without
+    thousands separators, so "100,000" matches "100000"), and words of five or more letters."""
+    text = re.sub(r'(?<=\d)[,.  ](?=\d{3}\b)', '', text)
+    numbers = {n for n in re.findall(r'\d+(?:\.\d+)?', text) if len(n.replace('.', '')) >= 2}
+    words = {w.casefold() for w in re.findall(r'[^\W\d_]{5,}', text)} - STOP_WORDS
+    return numbers, words
+
+
+def relevant_passages(content, rounds):
+    """The paragraphs of `content` that the fact check needs: for each statement, the PASSAGES_PER_STATEMENT
+    paragraphs that share the most with it, where rare words weigh more than common ones and numbers double.
+    Numbers and names are what the quiz model changes to make a fake, so the paragraph that backs or refutes a
+    statement shares them. The whole content when it's short, or when a round matches nothing at all (statements
+    in another language than the content, say), so no round is checked against too little."""
+    if len(content) <= SHORT_CONTENT:
+        return content
+    paragraphs = [p for p in content.split('\n') if p.strip()]
+    found = [keywords(p) for p in paragraphs]
+    counts = Counter(k for numbers, words in found for k in numbers | words)
+    weight = {k: math.log(len(paragraphs) / n) for k, n in counts.items() if n <= COMMON_IN * len(paragraphs)}
+    keep = set()
+    for statements, _, _ in rounds:
+        matched = False
+        for statement in statements:
+            numbers, words = keywords(statement)
+            scores = [(2 * sum(weight.get(k, 0) for k in numbers & p_numbers)
+                       + sum(weight.get(k, 0) for k in words & p_words), i)
+                      for i, (p_numbers, p_words) in enumerate(found)]
+            best = [i for score, i in sorted(scores, reverse=True)[:PASSAGES_PER_STATEMENT] if score > 0]
+            keep.update(best)
+            matched = matched or bool(best)
+        if not matched:
+            return content
+    return '\n'.join(paragraphs[i] for i in sorted(keep))
+
+
 def check_rounds(content, rounds):
-    """Ask the AI, statement by statement, whether the content supports each one. Returns a list of verdicts per
+    """Ask the AI, statement by statement, whether the content supports each one (only the paragraphs that
+    relate to the statements are sent, which keeps the check fast on long articles). Returns a list of verdicts per
     round (same order as the statements), or None when the check couldn't run: then the rounds are played as they
     are, so an API hiccup never costs the player the quiz. The checker isn't told which statement is the fake."""
     listing = "\n\n".join(
@@ -172,7 +221,7 @@ def check_rounds(content, rounds):
                 "something different (another number, date, name, place or relation), or 'not_in_text' if the text "
                 "doesn't say either way. A number the text gives elsewhere for the same thing counts as supported.")},
             {"role": "user", "content": (
-                f"Source text:\n{content}\n\n"
+                f"Source text:\n{relevant_passages(content, rounds)}\n\n"
                 f"Statements:\n{listing}\n\n"
                 f"Return exactly {len(rounds)} rounds, each with one verdict per statement, in the order given.")},
         ])

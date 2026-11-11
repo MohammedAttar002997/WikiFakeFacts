@@ -36,6 +36,54 @@ def test_best_rounds_are_chosen_in_their_original_order():
     assert data.choose_rounds(scored, 4) == ['wrong', 'a', 'b', 'c']  # only when nothing else is left
 
 
+# ---------- Only the relevant paragraphs are sent ------------------------------------------------------------------
+
+FILLER = [f'Paragraph {i} is about the river Rhine, the forests and the mountains of the country.' for i in range(150)]
+ARTICLE = '\n'.join(FILLER[:40] + [
+    'Germany has a population of 84.7 million according to the 2023 census.',
+    'Frankfurt is the financial centre and home of the European Central Bank.',
+] + FILLER[40:])
+
+
+def test_numbers_match_with_or_without_thousands_separators():
+    assert data.keywords('a diameter of 100,000 light-years')[0] == {'100000'}
+    assert data.keywords('about 87 400 ly, or 4.1 million')[0] == {'87400', '4.1'}
+    assert data.keywords('in 7 days')[0] == set()  # single digits match almost anything
+
+
+def test_long_articles_are_cut_to_the_paragraphs_the_statements_are_about():
+    rounds = [({'Germany has over 100 million people, the 2023 census says.': False,
+                'Frankfurt is the financial centre.': True}, '', '')]
+    passages = data.relevant_passages(ARTICLE, rounds)
+    assert '84.7 million according to the 2023 census' in passages and 'European Central Bank' in passages
+    assert len(passages) < len(ARTICLE) / 10
+
+
+def test_short_content_is_checked_whole():
+    rounds = [({'Frankfurt is the financial centre.': True}, '', '')]
+    assert data.relevant_passages('\n'.join(FILLER[:5]), rounds) == '\n'.join(FILLER[:5])
+
+
+def test_a_round_that_matches_nothing_gets_the_whole_content():
+    """Statements in another language than the article don't share its words; they're checked against all of it."""
+    rounds = [({'Frankfurt is the financial centre.': True}, '', ''),
+              ({'フランクフルトは金融の中心地です。': True}, '', '')]
+    assert data.relevant_passages(ARTICLE, rounds) == ARTICLE
+
+
+def test_the_checker_gets_only_the_relevant_paragraphs(openai, monkeypatch):
+    monkeypatch.setattr(data, 'fetch_wikipedia_article', lambda title: (ARTICLE, 'Wikipedia'))
+    openai.quizzes.append(data.QuizData(topic='Germany', quiz_sets=[data.QuizSet(questions=[
+        data.QuizQuestion(statement='Germany has a population of 84.7 million.', is_real=True),
+        data.QuizQuestion(statement='Frankfurt is home to the European Central Bank.', is_real=True),
+        data.QuizQuestion(statement='The 2023 census counted the people.', is_real=True),
+        data.QuizQuestion(statement='Frankfurt is the capital.', is_real=False)], explanation='', source_quote='')]))
+    openai.checks.append(check(ALL_SUPPORTED_BUT_FAKE))
+    data.get_ai_response(1, 'Germany')
+    prompt = openai.calls[1]['messages'][1]['content']
+    assert 'European Central Bank' in prompt and len(prompt) < len(ARTICLE) / 5
+
+
 # ---------- The check inside quiz generation ----------------------------------------------------------------------
 
 @pytest.fixture
