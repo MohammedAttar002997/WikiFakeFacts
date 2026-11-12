@@ -5,6 +5,7 @@ import os
 from PIL import Image
 
 STATIC = os.path.join(os.path.dirname(__file__), '..', 'public', 'static')
+TEMPLATES = os.path.join(os.path.dirname(__file__), '..', 'templates')
 
 
 def static_path(url):
@@ -47,7 +48,7 @@ def test_service_worker_is_served_from_the_root_and_never_cached(app):
 def test_service_worker_only_keeps_static_files_and_the_offline_page():
     """Structure, not behaviour (there's no browser here): it must leave non-GET requests, other sites and anything
     outside /static/ to the network, and fall back to the offline page only for page loads."""
-    with open(os.path.join(STATIC, 'js', 'sw.js'), encoding='utf-8') as f:
+    with open(os.path.join(TEMPLATES, 'sw.js'), encoding='utf-8') as f:
         sw = f.read()
     assert "request.method !== 'GET'" in sw and 'url.origin !== self.location.origin' in sw
     assert "url.pathname.startsWith('/static/')" in sw
@@ -70,3 +71,9 @@ def test_app_js_registers_the_worker_and_offers_installing():
 def test_install_button_starts_hidden(app):
     html = app.test_client().get('/').get_data(as_text=True)
     assert '<span id="installApp" hidden>' in html and 'Install app' in html
+
+
+def test_service_worker_is_not_under_public():
+    """public/ is only on Vercel's CDN, not in the function that serves /sw.js (it answered 500 from there)."""
+    assert not os.path.exists(os.path.join(STATIC, 'js', 'sw.js'))
+    assert os.path.exists(os.path.join(TEMPLATES, 'sw.js'))
