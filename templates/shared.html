@@ -7,6 +7,7 @@
 
 {# Link previews in chat apps and social networks (the rest of the tags and the image come from base.html) #}
 {% block og_title %}{{ headline }}{% endblock %}
+{% block og_image %}{{ url_for('shared_result_card', code=quiz_session.share_code, _external=True, _scheme='https') }}{% endblock %}
 {% block og_description %}{{ _('Topic:') }} {{ quiz_session.topic }} · {{ _('Can you beat that? Three facts are true, one is a lie.') }}{% endblock %}
 
 {% block content %}
