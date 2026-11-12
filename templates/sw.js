@@ -1,5 +1,5 @@
 // Service worker: makes the site installable as an app and shows an offline page when there's no connection.
-// Served at /sw.js (by app.py) so it covers the whole site.
+// Served at /sw.js by app.py (from templates/, which is part of the Vercel function) so it covers the whole site.
 //
 // Deliberately cautious: pages, quizzes and anything with player data always come from the network and are never
 // cached. Only the app's own CSS, JS and icons are kept, and even those are fetched fresh first (their names carry

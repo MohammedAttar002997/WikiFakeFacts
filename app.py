@@ -835,9 +835,10 @@ def admin():
 
 @app.route('/sw.js')
 def service_worker():
-    """The service worker (public/static/js/sw.js), served from the site root so it may cover every page.
-    Never cached, so a new version reaches players on their next visit."""
-    response = send_file(os.path.join(app.static_folder, 'js', 'sw.js'), mimetype='application/javascript',
+    """The service worker (templates/sw.js), served from the site root so it may cover every page.
+    Never cached, so a new version reaches players on their next visit. It lives in templates/, not public/:
+    on Vercel public/ is only on the CDN and isn't part of the function, which made this route fail."""
+    response = send_file(os.path.join(app.root_path, 'templates', 'sw.js'), mimetype='application/javascript',
                          max_age=0)
     response.headers['Cache-Control'] = 'no-cache'
     response.headers['Service-Worker-Allowed'] = '/'
