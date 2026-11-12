@@ -16,7 +16,7 @@ import time
 
 import requests
 
-from default_text import MENU
+from default_text import CATEGORIES, MENU
 
 API = "https://en.wikipedia.org/w/api.php"
 VITAL = "Wikipedia:Vital articles/Level/4/"
@@ -46,6 +46,13 @@ SOURCES = {
     "Technologies": ("Technology", [("Computing and information technology",), ("Electronics",),
                                     ("Media and communication",)]),
     "Musical Instruments": ("Arts", [("Music", "Musical instruments")]),
+    # Categories with no hand-picked MENU topics: everything comes from here
+    "History": ("History", [(s,) for s in ("History by continent and region", "History by country", "Prehistory",
+                                           "Ancient", "Post-classical", "Early modern", "Modern")]),
+    "Science": ("Physical sciences", [("Physics",), ("Chemistry",), ("Earth science",)]),
+    "Famous People": ("People", None),  # every section: artists, scientists, writers, leaders, athletes …
+    "Cities": ("Geography/Cities", [("Cities", s) for s in ("Africa", "Americas", "Asia", "Europe and Russia",
+                                                             "Oceania")]),
 }
 # Fruits have no section of their own: plants from levels 4 and 5 that Wikipedia files under a fruit category
 FRUIT_PAGES = ["Level/4/Biology and health sciences", "Level/5/Biology and health sciences/Plants"]
@@ -121,13 +128,14 @@ def keep(category, title):
 def main():
     known = {topic for topics in MENU.values() for topic in topics}
     topics = {}
-    for category in MENU:
+    for category in CATEGORIES.values():
         if category == "Fruits":
             titles = fruits()
         else:
             page, sections = SOURCES[category]
             titles = [title for path, title in listed_articles(page)
-                      if any(tuple(path[:len(s)]) == s for s in sections) and keep(category, title)]
+                      if (sections is None or any(tuple(path[:len(s)]) == s for s in sections))
+                      and keep(category, title)]
         topics[category] = [t for t in dict.fromkeys(titles) if t not in known]
         print(f"{category}: {len(topics[category])} new topics")
     with open(OUT, "w", encoding="utf-8") as f:

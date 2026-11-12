@@ -4,7 +4,7 @@ from datetime import timedelta
 from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
-from default_text import MENU, TOPICS
+from default_text import TOPICS
 from models import db, utcnow, Score, QuizSession, UserBadge
 
 TOPIC_CATEGORY = {topic: category for category, topics in TOPICS.items() for topic in topics}
@@ -65,7 +65,7 @@ def earned_badge_keys(scores, daily_completed, today=None, most_event_quizzes=0)
     if best >= 7:
         earned.add('streak_7')
 
-    if {TOPIC_CATEGORY[s.topic] for s in scores if s.topic in TOPIC_CATEGORY} >= set(MENU):
+    if {TOPIC_CATEGORY[s.topic] for s in scores if s.topic in TOPIC_CATEGORY} >= set(TOPICS):
         earned.add('explorer')
     if daily_completed:
         earned.add('daily')

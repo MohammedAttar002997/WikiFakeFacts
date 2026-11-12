@@ -7,7 +7,7 @@ import pytest
 from app import db
 from badges import compute_streaks, earned_badge_keys
 from conftest import answers, play_quiz
-from default_text import MENU
+from default_text import TOPICS
 from models import Score, User, UserBadge, utcnow
 
 TODAY = date(2026, 10, 21)
@@ -49,7 +49,8 @@ def test_comeback_needs_improvement_after_struggling():
 
 
 def test_explorer_needs_every_category():
-    one_each = [s(topics[0], 1, 3) for topics in MENU.values()]
+    # Every category on the setup page, including those whose topics all come from topics.json
+    one_each = [s(topics[0], 1, 3) for topics in TOPICS.values()]
     assert 'explorer' not in earned_badge_keys(one_each[:-1], False)
     assert 'explorer' in earned_badge_keys(one_each, False)
 

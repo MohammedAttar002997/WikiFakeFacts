@@ -24,7 +24,7 @@ def test_every_category_keeps_its_menu_topics_first_and_gains_more():
 def test_topics_file_only_adds_new_topics_to_known_categories():
     with open(TOPICS_FILE, encoding='utf-8') as f:
         extra = json.load(f)
-    assert set(extra) == set(MENU)
+    assert set(extra) == set(CATEGORIES.values())  # every category, including those with no MENU topics
     menu_topics = {t for topics in MENU.values() for t in topics}
     for topics in extra.values():
         assert len(topics) == len(set(topics))  # no duplicates
@@ -106,3 +106,29 @@ def test_new_topics_count_toward_the_explorer_badge():
 
 def test_new_topics_can_be_rematched_and_practised(app_ctx):
     assert app_module.can_rematch(QuizSession(topic=TOPICS['Technologies'][-1]))
+
+
+def test_categories_without_menu_topics_get_theirs_from_the_topics_file():
+    for category in ('History', 'Science', 'Famous People', 'Cities'):
+        assert category in CATEGORIES.values() and category not in MENU
+        assert len(TOPICS[category]) >= 100
+
+
+def test_a_new_category_starts_a_quiz(login, app_ctx):
+    history = next(cid for cid, name in CATEGORIES.items() if name == 'History')
+    quiz = started_topic(login('Player'), history)
+    assert quiz.topic in TOPICS['History']
+
+
+def test_explorer_badge_needs_every_category():
+    from badges import TOPIC_CATEGORY
+    assert set(TOPIC_CATEGORY.values()) == set(CATEGORIES.values())
+
+
+def test_weekly_events_stay_on_menu_categories(app_ctx):
+    assert app_module.event_theme() in MENU  # their topics have a knowledge-base copy
+
+
+def test_setup_shows_every_category(login):
+    html = login('Player').get('/setup').get_data(as_text=True)
+    assert all(f'id="cat{cid}"' in html for cid in CATEGORIES) and '🏛️' in html

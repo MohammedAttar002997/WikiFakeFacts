@@ -9,6 +9,10 @@ CATEGORIES = {
     "5": "Planets and Space",
     "6": "Technologies",
     "7": "Musical Instruments",
+    "8": "History",
+    "9": "Science",
+    "10": "Famous People",
+    "11": "Cities",
 }
 
 MENU = {
@@ -66,8 +70,8 @@ def load_extra_topics():
 # Every topic a quiz can be about, per category: the hand-picked MENU first, then the Vital articles. MENU itself
 # stays the list the knowledge base, the daily challenge and the weekly events use, since only its topics have a
 # saved copy of their article for when Wikipedia is down.
-TOPICS = {category: list(dict.fromkeys(topics + load_extra_topics().get(category, [])))
-          for category, topics in MENU.items()}
+TOPICS = {category: list(dict.fromkeys(MENU.get(category, []) + load_extra_topics().get(category, [])))
+          for category in CATEGORIES.values()}
 ALL_TOPICS = {topic for topics in TOPICS.values() for topic in topics}
 SURPRISE = 'surprise'  # Setup's category value for a topic from any category
 
