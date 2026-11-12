@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+{# Shown by the service worker when there's no connection. Kept apart from base.html: it's saved once and shown
+   later, so it mustn't contain anything about the player (name, menu state) that could go stale. #}
+<html lang="{{ ui_language }}" dir="{{ ui_direction }}" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="theme-color" content="#7c3aed">
+    <title>{{ _("You're offline") }} · WikiFakeFact</title>
+    <style>
+        html, body { margin: 0; min-height: 100%; }
+        body {
+            min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 1.5rem;
+            box-sizing: border-box; text-align: center; color: #fff;
+            font-family: Nunito, "Segoe UI", system-ui, sans-serif;
+            background: radial-gradient(900px 500px at 10% 0%, #5b21b6 0%, transparent 60%),
+                        radial-gradient(800px 500px at 100% 100%, #9d174d 0%, transparent 55%), #0f0c1d;
+        }
+        main { max-width: 26rem; }
+        img { width: 96px; height: 96px; border-radius: 24px; }
+        h1 { font-size: 1.75rem; margin: 1.25rem 0 .5rem; }
+        p { font-size: 1.05rem; line-height: 1.5; color: #e9d5ff; margin: 0 0 1.5rem; }
+        button {
+            font: inherit; font-weight: 800; font-size: 1.05rem; min-height: 48px; padding: .6rem 1.75rem;
+            border: 0; border-radius: 999px; color: #2e1065; background: #fff; cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <main>
+        <img src="/static/img/icons/icon-192.png" alt="" width="96" height="96">
+        <h1>{{ _("You're offline") }}</h1>
+        <p>{{ _('WikiFakeFact needs an internet connection to make quizzes. Check your connection and try again.') }}</p>
+        <button type="button" onclick="location.reload()">{{ _('Try again') }}</button>
+    </main>
+</body>
+</html>

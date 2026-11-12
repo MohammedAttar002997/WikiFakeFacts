@@ -833,6 +833,23 @@ def admin():
     return render_template('admin.html', stats=stats, peak=peak)
 
 
+@app.route('/sw.js')
+def service_worker():
+    """The service worker (public/static/js/sw.js), served from the site root so it may cover every page.
+    Never cached, so a new version reaches players on their next visit."""
+    response = send_file(os.path.join(app.static_folder, 'js', 'sw.js'), mimetype='application/javascript',
+                         max_age=0)
+    response.headers['Cache-Control'] = 'no-cache'
+    response.headers['Service-Worker-Allowed'] = '/'
+    return response
+
+
+@app.route('/offline')
+def offline():
+    """What the installed app shows without a connection (saved by the service worker)."""
+    return render_template('offline.html')
+
+
 @app.route('/logout')
 def logout():
     # Also forgets the current quiz and help chat, so the next player on this browser starts fresh

@@ -1271,3 +1271,7 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 .admin-list li > span:last-child { float: inline-end; }
 .admin-report { padding: .85rem 0; border-bottom: 1px solid var(--wf-border); }
 .admin-report:last-child { border-bottom: 0; }
+
+/* ---------- Install app (footer) --------------------------------------------- */
+.wf-install { color: var(--wf-muted); text-decoration: none; font-size: inherit; min-height: 44px; }
+.wf-install:hover, .wf-install:focus { color: var(--wf-brand); text-decoration: underline; }

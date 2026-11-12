@@ -103,6 +103,28 @@
         }
     });
 
+    // Installable app: register the service worker, and offer "Install app" when the browser allows it
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').catch(() => { /* the site works without it */ });
+        });
+    }
+    const install = document.getElementById('installApp');
+    let installPrompt = null;
+    window.addEventListener('beforeinstallprompt', e => {
+        e.preventDefault();  // no automatic banner; the footer button asks instead
+        installPrompt = e;
+        if (install) install.hidden = false;
+    });
+    if (install) install.querySelector('button').addEventListener('click', async () => {
+        if (!installPrompt) return;
+        installPrompt.prompt();
+        await installPrompt.userChoice;
+        installPrompt = null;
+        install.hidden = true;
+    });
+    window.addEventListener('appinstalled', () => { if (install) install.hidden = true; });
+
     // Help button: on phones it covered whatever the player was reading, so it tucks away while they scroll
     // down and comes back when they scroll up or reach the end of the page
     const fab = document.querySelector('.chatbot-fab');
