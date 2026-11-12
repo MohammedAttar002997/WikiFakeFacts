@@ -24,7 +24,7 @@ from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
-                    UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch)
+                    UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
@@ -103,6 +103,7 @@ RATE_LIMITS = {
     'quiz': (20, timedelta(hours=1)),        # AI-generated quizzes per player
     'quiz_ip': (40, timedelta(hours=1)),     # … and per address, across accounts
     'signup': (10, timedelta(hours=1)),      # new accounts per address
+    'report': (20, timedelta(hours=1)),      # round reports per player
 }
 MAX_CHAT_MESSAGE = 500  # Characters
 MAX_NAME_LENGTH = 30  # For new names; players who signed up before the limit keep theirs
@@ -832,7 +833,7 @@ def delete_player_data(user, chat_id=None):
     # Their live matches go too, except those someone else hosted: those stay, without them
     LiveMatch.query.filter_by(host_id=user.id).delete()
     LiveMatch.query.filter_by(guest_id=user.id).update({LiveMatch.guest_id: None}, synchronize_session=False)
-    for model in (UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
+    for model in (RoundReport, UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
         ChatbotSession.query.filter_by(session_id=chat_id).delete()
@@ -978,6 +979,68 @@ def print_errors(limit, full=False):
         click.echo(f'{entry.created_at:%Y-%m-%d %H:%M} UTC  {entry.method} {entry.path}\n    {entry.error}')
         if full:
             click.echo(entry.traceback)
+
+
+REPORT_REASONS = ('fake_is_true', 'real_is_false', 'other')
+
+
+def reported_rounds(user, quiz_session):
+    """Indexes of the rounds of `quiz_session` that `user` has already reported."""
+    return {r.round_index for r in RoundReport.query.filter_by(user_id=user.id, quiz_session_id=quiz_session.id)}
+
+
+@app.route('/report', methods=['POST'])
+def report_round():
+    """A player reports a round of one of their finished quizzes as wrong."""
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    back = local_path(request.form.get('next')) or url_for('history')
+    quiz_session = db.session.get(QuizSession, request.form.get('quiz_session_id', type=int) or 0)
+    index = request.form.get('round', type=int)
+    reason = request.form.get('reason')
+    if (not quiz_session or quiz_session.user_id != user.id or not quiz_session.is_completed or index is None
+            or not 0 <= index < quiz_session.current_question_index or reason not in REPORT_REASONS):
+        return redirect(back)
+    if index in reported_rounds(user, quiz_session):
+        flash(_("You've already reported this round."), "info")
+        return redirect(back)
+    if over_limit('report', user.id):
+        flash(_("You're going a bit fast. Please wait a few minutes and try again."), "warning")
+        return redirect(back)
+    explanations = json.loads(quiz_session.explanations_json or '[]')
+    db.session.add(RoundReport(
+        user_id=user.id, quiz_session_id=quiz_session.id, round_index=index, topic=quiz_session.topic[:100],
+        statements_json=json.dumps(json.loads(quiz_session.questions_json)[index]),
+        explanation=explanations[index] if index < len(explanations) else None, source_url=quiz_session.source_url,
+        reason=reason, comment=(request.form.get('comment') or '').strip()[:300] or None, created_at=utcnow()))
+    db.session.commit()
+    flash(_("Thanks! We'll check this round."), "success")
+    return redirect(back)
+
+
+@app.cli.command('reports')
+@click.option('-n', '--limit', default=20, show_default=True, help='How many to show.')
+def reports_command(limit):
+    """Show the newest rounds players reported as wrong."""
+    reports = RoundReport.query.order_by(RoundReport.id.desc()).limit(limit).all()
+    if not reports:
+        click.echo('No reports.')
+    for r in reports:
+        user = db.session.get(User, r.user_id)
+        facts = json.loads(r.statements_json)
+        fake = next((s for s, real in facts.items() if real is False), '?')
+        click.echo(f'{r.created_at:%Y-%m-%d %H:%M} UTC  {user.username if user else "?"}  [{r.reason}]  {r.topic}')
+        click.echo(f'    Fake: {fake}')
+        for statement, real in facts.items():
+            if real:
+                click.echo(f'    True: {statement}')
+        if r.explanation:
+            click.echo(f'    Why:  {r.explanation}')
+        if r.comment:
+            click.echo(f'    Comment: {r.comment}')
+        if r.source_url:
+            click.echo(f'    Source: {r.source_url}')
 
 
 @app.cli.command('errors')
@@ -1615,6 +1678,9 @@ def results():
 
     percentage = (quiz_session.score / quiz_session.total_questions) * 100
     opponent = challenge_opponent(quiz_session)
+    # Only the player who played the quiz can report its rounds
+    user = current_user()
+    owner = user if user and user.id == quiz_session.user_id else None
 
     return render_template('results.html',
                            score=quiz_session.score,
@@ -1628,6 +1694,8 @@ def results():
                            review=build_answer_review(quiz_session, opponent),
                            versus=versus_details(quiz_session, opponent),
                            source_url=quiz_session.source_url,
+                           report_quiz=quiz_session if owner else None,
+                           reported=reported_rounds(owner, quiz_session) if owner else set(),
                            rematch_for=db.session.get(User, quiz_session.rematch_for_id)
                            if quiz_session.rematch_for_id else None)
 
@@ -1832,7 +1900,8 @@ def review(quiz_session_id):
     opponent = challenge_opponent(quiz_session, request.args.get('vs', type=int))
     return render_template('review.html', quiz_session=quiz_session, score=score,
                            share=share_details(quiz_session), review=build_answer_review(quiz_session, opponent),
-                           versus=versus_details(quiz_session, opponent), source_url=quiz_session.source_url)
+                           versus=versus_details(quiz_session, opponent), source_url=quiz_session.source_url,
+                           report_quiz=quiz_session, reported=reported_rounds(user, quiz_session))
 
 
 @app.route('/challenges')

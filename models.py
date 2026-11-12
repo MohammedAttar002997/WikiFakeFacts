@@ -141,6 +141,22 @@ class LiveMatch(db.Model):
     scores_saved = db.Column(db.Boolean, nullable=False, default=False)  # Results added to both players' stats
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+class RoundReport(db.Model):
+    """A player saying a round they played was wrong, with a copy of the round as they saw it (the quiz can be
+    deleted later). Read with `flask reports`."""
+    __table_args__ = (db.UniqueConstraint('user_id', 'quiz_session_id', 'round_index', name='uq_round_report'),)
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    quiz_session_id = db.Column(db.Integer, db.ForeignKey('quiz_session.id'), nullable=True)
+    round_index = db.Column(db.Integer, nullable=False)
+    topic = db.Column(db.String(100), nullable=False)
+    statements_json = db.Column(db.Text, nullable=False)  # {statement: is_real} of the round
+    explanation = db.Column(db.Text, nullable=True)
+    source_url = db.Column(db.String(500), nullable=True)
+    reason = db.Column(db.String(20), nullable=False)  # 'fake_is_true', 'real_is_false' or 'other'
+    comment = db.Column(db.String(300), nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""

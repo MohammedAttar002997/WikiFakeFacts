@@ -59,6 +59,39 @@
                 </figcaption>
             </figure>
             {% endif %}
+            {# Players can say a round was wrong; only on their own finished quizzes (results and history) #}
+            {% if report_quiz %}
+            {% set round_index = loop.index0 %}
+            {% if round_index in reported %}
+            <p class="report-done small text-muted mt-2 mb-0"><i class="bi bi-flag-fill me-1"></i>{{ _('Reported. Thanks!') }}</p>
+            {% else %}
+            <details class="report-round mt-2">
+                <summary class="small text-muted"><i class="bi bi-flag me-1"></i>{{ _('Report a problem') }}</summary>
+                <form action="{{ url_for('report_round') }}" method="POST" class="report-form mt-2">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <input type="hidden" name="quiz_session_id" value="{{ report_quiz.id }}">
+                    <input type="hidden" name="round" value="{{ round_index }}">
+                    <input type="hidden" name="next" value="{{ request.full_path if request.query_string else request.path }}">
+                    <fieldset>
+                        <legend class="small fw-bold mb-1">{{ _("What's wrong with this round?") }}</legend>
+                        {% for value, label in [('fake_is_true', _('The fake fact is actually true')),
+                                                 ('real_is_false', _('One of the true facts is wrong')),
+                                                 ('other', _('Something else'))] %}
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="reason" id="reason-{{ round_index }}-{{ value }}"
+                                   value="{{ value }}" required>
+                            <label class="form-check-label small" for="reason-{{ round_index }}-{{ value }}">{{ label }}</label>
+                        </div>
+                        {% endfor %}
+                    </fieldset>
+                    <label class="visually-hidden" for="comment-{{ round_index }}">{{ _('Details (optional)') }}</label>
+                    <textarea class="form-control form-control-sm my-2" name="comment" id="comment-{{ round_index }}"
+                              rows="2" maxlength="300" placeholder="{{ _('Details (optional)') }}"></textarea>
+                    <button type="submit" class="btn btn-sm btn-outline-primary">{{ _('Send report') }}</button>
+                </form>
+            </details>
+            {% endif %}
+            {% endif %}
         </div>
         {% endfor %}
     </div>
