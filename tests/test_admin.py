@@ -49,7 +49,7 @@ def test_games_players_and_ai_quizzes_add_up(admins, login, app_ctx):
     db.session.commit()
     stats = dashboard(utcnow())
     assert stats['totals']['games'] == 2 and stats['games']['Today'] == 2 and stats['players']['7 days'] == 2
-    assert stats['ai']['30 days'] == {'games': 2, 'daily': 1, 'live': 0, 'uploads': 0, 'total': 3}
+    assert stats['ai']['30 days'] == {'games': 2, 'ready': 0, 'daily': 1, 'live': 0, 'uploads': 0, 'total': 3}
     assert sum(n for _, n in stats['per_day']) == 2
 
 
