@@ -334,6 +334,10 @@ def get_ai_response(questions_count, article_title, difficulty="Medium", languag
     )
 
 
+MIN_PATH_STEPS, MAX_PATH_STEPS = 3, 5  # Learning path length (it used to run to 10 steps after a single game)
+MAX_INSIGHTS = 3  # Topic insights shown
+
+
 def get_ai_analysis(user_history_json, language="English"):
     if not OPEN_AI_KEY:
         raise RuntimeError("OpenAI API key is required.")
@@ -343,10 +347,24 @@ def get_ai_analysis(user_history_json, language="English"):
     response = client.beta.chat.completions.parse(
         model=ANALYSIS_MODEL,
         messages=[
-            {"role": "system", "content": f"You are an expert educational analyst. Analyze the user's quiz history and provide deep insights and a learning path. The entire analysis MUST be in {language}."},
+            {"role": "system", "content": (
+                "You are a friendly coach in a trivia game where players spot the one fake fact among four. "
+                "Coach the player using only their quiz history: scores per topic and, under 'missed', the fake "
+                "statement of each round they got wrong and what they picked instead (null: time ran out). "
+                "Never guess at weaknesses the history doesn't show, and don't use words like 'likely' or "
+                "'probably'. Point to the real facts they missed when you can. Keep it short: overall_summary at "
+                f"most 2 sentences; strongest_area and weakest_area 1 sentence each; learning_path {MIN_PATH_STEPS} "
+                f"to {MAX_PATH_STEPS} concrete steps of 1 sentence each, mostly playing and reading in the game; one "
+                "topic_insights entry per topic played (the 3 weakest at most), 1 sentence per field. "
+                f"Address the player as 'you'. The entire analysis MUST be in {language}.")},
             {"role": "user", "content": f"Here is the user's quiz history in JSON format: {user_history_json}"}
         ],
         response_format=AIAnalysis,
     )
-    
-    return response.choices[0].message.parsed
+
+    analysis = response.choices[0].message.parsed
+    if analysis:
+        # The model doesn't always keep to the limits; the page is built for these
+        analysis.learning_path = analysis.learning_path[:MAX_PATH_STEPS]
+        analysis.topic_insights = analysis.topic_insights[:MAX_INSIGHTS]
+    return analysis

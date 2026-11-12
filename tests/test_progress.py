@@ -2,6 +2,7 @@
 import re
 
 from app import db
+from app import MIN_COACHING_GAMES
 from conftest import answers, play_quiz
 from models import CustomContent, QuizSession, Score, User
 
@@ -15,7 +16,8 @@ def add_score(user_name, topic, score, total=5, difficulty='Medium (Ages 13-17)'
 
 def test_analysis_is_saved_and_reused(login, ai):
     client = login('Player')
-    play_quiz(client, answers(2, 3))
+    for _ in range(MIN_COACHING_GAMES):  # the AI coach starts after a few games
+        play_quiz(client, answers(2, 3))
     client.get('/analysis')
     client.get('/analysis')
     assert len(ai.analysis_calls) == 1
@@ -23,7 +25,8 @@ def test_analysis_is_saved_and_reused(login, ai):
 
 def test_analysis_regenerates_after_new_score_or_language(login, ai, app_ctx):
     client = login('Player')
-    play_quiz(client, answers(2, 3))
+    for _ in range(MIN_COACHING_GAMES):  # the AI coach starts after a few games
+        play_quiz(client, answers(2, 3))
     client.get('/analysis')
     with client.session_transaction() as sess:
         sess['language'] = 'de'
@@ -36,7 +39,8 @@ def test_analysis_regenerates_after_new_score_or_language(login, ai, app_ctx):
 
 def test_analysis_falls_back_to_saved_when_ai_fails(login, ai, app_ctx):
     client = login('Player')
-    play_quiz(client, answers(2, 3))
+    for _ in range(MIN_COACHING_GAMES):  # the AI coach starts after a few games
+        play_quiz(client, answers(2, 3))
     client.get('/analysis')
     add_score('Player', 'Mars', 1)
     ai.analysis_error = RuntimeError('OpenAI down')

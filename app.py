@@ -562,6 +562,38 @@ def count_challenge_news(user):
     return sum(q.count() for q in queries)
 
 
+MIN_COACHING_GAMES = 3  # Fewer games give the AI too little to say anything real, so it used to guess
+COACHING_HISTORY = 30  # Newest games the AI coach sees
+MISSED_PER_GAME = 5  # Missed rounds per game it sees
+
+
+def missed_rounds(quiz_session):
+    """[{fake, picked}] for each round of a finished quiz the player got wrong (picked None: time ran out)."""
+    questions = json.loads(quiz_session.questions_json or '[]')
+    answers = json.loads(quiz_session.answers_json or '[]')
+    missed = []
+    for facts, pick in zip(questions, answers):
+        if facts.get(pick) is not False:
+            missed.append({'fake': next((s for s, real in facts.items() if real is False), None), 'picked': pick})
+    return missed[:MISSED_PER_GAME]
+
+
+def coaching_history(user_scores):
+    """What the AI coach is given: each of the newest games with its score and the facts the player missed, so
+    its advice is about what they actually got wrong rather than guesses about the topic."""
+    sessions = {q.id: q for q in QuizSession.query.filter(
+        QuizSession.id.in_([s.quiz_session_id for s in user_scores if s.quiz_session_id]))}
+    return [{
+        'topic': s.topic,
+        'score': s.score,
+        'total': s.total_questions,
+        'percentage': s.percentage,
+        'difficulty': s.difficulty,
+        'date': s.timestamp.strftime("%Y-%m-%d"),
+        'missed': missed_rounds(sessions[s.quiz_session_id]) if s.quiz_session_id in sessions else [],
+    } for s in user_scores[-COACHING_HISTORY:]]
+
+
 def get_topic_stats(user_scores):
     """Per-topic accuracy for a player's scores,the best topic first."""
     topic_stats = {}
@@ -1703,19 +1735,14 @@ def analysis(user_id=None):
     language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
     latest_score_id = user_scores[-1].id
     saved = PlayerAnalysis.query.filter_by(user_id=user.id).first()
-    if saved and saved.last_score_id == latest_score_id and saved.language == language_name:
+    games_to_coaching = max(MIN_COACHING_GAMES - len(user_scores), 0)
+    if games_to_coaching:
+        ai_analysis = None  # The AI coach waits for enough games; no call until then
+    elif saved and saved.last_score_id == latest_score_id and saved.language == language_name:
         ai_analysis = AIAnalysis.model_validate_json(saved.analysis_json)
     else:
-        history = [{
-            'topic': s.topic,
-            'score': s.score,
-            'total': s.total_questions,
-            'percentage': s.percentage,
-            'difficulty': s.difficulty,
-            'date': s.timestamp.strftime("%Y-%m-%d")
-        } for s in user_scores]
         try:
-            ai_analysis = get_ai_analysis(json.dumps(history), language_name)
+            ai_analysis = get_ai_analysis(json.dumps(coaching_history(user_scores)), language_name)
             if not saved:
                 saved = PlayerAnalysis(user_id=user.id)
                 db.session.add(saved)
@@ -1738,6 +1765,7 @@ def analysis(user_id=None):
     return render_template('analysis.html',
                            analysis_data=analysis_data,
                            ai_analysis=ai_analysis,
+                           games_to_coaching=games_to_coaching,
                            practice_topic=practice_topic,
                            badges=BADGES, earned_badges=earned,
                            current_streak=current_streak, best_streak=best_streak,
