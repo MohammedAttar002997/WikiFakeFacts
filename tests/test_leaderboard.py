@@ -6,6 +6,7 @@ import pytest
 
 from app import db
 from models import Score, User, utcnow
+from rating import rating
 
 EASY, MEDIUM, HARD = 'Easy (Ages 7-12)', 'Medium (Ages 13-17)', 'Hard (Ages 18-99)'
 
@@ -38,17 +39,25 @@ def standings(client, query=''):
     return [(name, int(points)) for name, points in rows], html
 
 
-def test_one_row_per_player_with_totals(app, scores):
-    assert standings(app.test_client())[0] == [('Animals', 11), ('Space', 9), ('Custom', 7)]
+# Each player's rating from their (difficulty, correct, questions) in the fixture
+ANIMALS = round(rating([(EASY, 11, 20)]))
+ANIMALS_WEEK = round(rating([(EASY, 2, 10)]))
+SPACE = round(rating([(HARD, 9, 20)]))
+CUSTOM = round(rating([(MEDIUM, 7, 10)]))
+
+
+def test_one_row_per_player_ranked_by_rating(app, scores):
+    # Animals answered the most right (11) but only on Easy, so it now ranks below Space (9 on Hard)
+    assert standings(app.test_client())[0] == [('Space', SPACE), ('Custom', CUSTOM), ('Animals', ANIMALS)]
 
 
 @pytest.mark.parametrize('query, expected', [
-    ('?period=week', [('Space', 9), ('Custom', 7), ('Animals', 2)]),
-    ('?category=2', [('Animals', 11)]),
-    ('?category=5', [('Space', 9)]),
-    ('?category=custom', [('Custom', 7)]),
-    ('?difficulty=3', [('Space', 9)]),
-    ('?category=2&period=week', [('Animals', 2)]),
+    ('?period=week', [('Space', SPACE), ('Custom', CUSTOM), ('Animals', ANIMALS_WEEK)]),
+    ('?category=2', [('Animals', ANIMALS)]),
+    ('?category=5', [('Space', SPACE)]),
+    ('?category=custom', [('Custom', CUSTOM)]),
+    ('?difficulty=3', [('Space', SPACE)]),
+    ('?category=2&period=week', [('Animals', ANIMALS_WEEK)]),
 ])
 def test_filters(app, scores, query, expected):
     assert standings(app.test_client(), query)[0] == expected
@@ -61,7 +70,7 @@ def test_no_matches_shows_reset(app, scores):
 
 def test_unknown_filter_values_fall_back_to_all(app, scores):
     rows, html = standings(app.test_client(), '?period=bogus&category=99&difficulty=x')
-    assert rows == [('Animals', 11), ('Space', 9), ('Custom', 7)]
+    assert rows == [('Space', SPACE), ('Custom', CUSTOM), ('Animals', ANIMALS)]
     assert 'Reset</a>' not in html
 
 

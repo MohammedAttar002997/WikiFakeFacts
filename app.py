@@ -34,6 +34,7 @@ from content_extractor import (ContentError, extract_text_from_upload, extract_t
 from chatbot import QUICK_HELP, get_chatbot_response
 from badges import BADGES, award_badges, compute_streaks, player_streaks
 import live
+from rating import rank as rank_players
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -1878,6 +1879,9 @@ def rematch(attempt_id):
         return redirect(url_for('challenges'))
 
 
+LEADERBOARD_SIZE = 10
+
+
 @app.route('/leaderboard')
 def leaderboard():
     # Filters: unknown values fall back to "all"
@@ -1901,23 +1905,20 @@ def leaderboard():
     if difficulty != 'all':
         conditions.append(Score.difficulty == DIFFICULTY_OPTIONS[difficulty])
 
-    # One row per player: total correct answers across all their quizzes, ties broken by accuracy
-    total_points = func.sum(Score.score)
-    total_questions = func.sum(Score.total_questions)
-    rows = (db.session.query(User, total_points, total_questions, func.count(Score.id))
+    # Ranked by rating (rating.py): accuracy weighted by difficulty, cautious for players with few answers.
+    # One row per player and difficulty from the database; the rating itself is worked out here.
+    rows = (db.session.query(User, Score.difficulty, func.sum(Score.score), func.sum(Score.total_questions),
+                             func.count(Score.id))
             .join(Score, Score.user_id == User.id)
             .filter(*conditions)
-            .group_by(User.id)
-            .order_by(total_points.desc(), (total_points * 1.0 / total_questions).desc())
-            .limit(10)
+            .group_by(User.id, Score.difficulty)
             .all())
-    standings = [{
-        'user': user,
-        'points': points,
-        'total_questions': questions,
-        'quizzes': quizzes,
-        'percentage': points / questions * 100 if questions else 0,
-    } for user, points, questions, quizzes in rows]
+    players = {}
+    for user, difficulty_label, correct, questions, quizzes in rows:
+        player = players.setdefault(user.id, {'user': user, 'groups': [], 'quizzes': 0})
+        player['groups'].append((difficulty_label, correct or 0, questions or 0))
+        player['quizzes'] += quizzes
+    standings = rank_players(list(players.values()))[:LEADERBOARD_SIZE]
     filters = {'period': period, 'category': category, 'difficulty': difficulty}
     return render_template('leaderboard.html', standings=standings, filters=filters,
                            filtered=any(v != 'all' for v in filters.values()),

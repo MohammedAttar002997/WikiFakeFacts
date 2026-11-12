@@ -1241,3 +1241,8 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
     .live-player .points { font-size: 1.4rem; }
     button.answer { flex-wrap: wrap; }
 }
+
+/* ---------- Leaderboard rating explanation ----------------------------------- */
+.rating-info { max-width: 40rem; margin: .5rem auto 0; color: var(--wf-muted); font-size: .95rem; }
+.rating-info summary { cursor: pointer; font-weight: 700; color: var(--wf-brand); list-style-position: inside; min-height: 44px; display: flex; align-items: center; justify-content: center; }
+.rating-info p { text-align: start; margin-top: .25rem; }

@@ -9,7 +9,11 @@
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-trophy-fill"></i> {{ _('Top 10') }}</span>
             <h1>{{ _('Leaderboard') }}</h1>
-            <p>{{ _('The sharpest fake-fact detectors so far, ranked by total correct answers.') }}</p>
+            <p>{{ _('The sharpest fake-fact detectors so far, ranked by rating.') }}</p>
+            <details class="rating-info">
+                <summary>{{ _('How does the rating work?') }}</summary>
+                <p class="mb-0">{{ _('It is your share of right answers, where a right answer on Hard counts double one on Easy (Medium counts 1.5 times). With only a few answers your rating starts low and rises toward your real accuracy as you play more, so a lucky 3 out of 3 does not beat a steady 45 out of 50.') }}</p>
+            </details>
         </div>
 
         <form method="get" action="{{ url_for('leaderboard') }}" class="wf-card leaderboard-filters mb-4" id="leaderboardFilters">
@@ -58,7 +62,7 @@
                 <div class="medal">{{ ['🥇', '🥈', '🥉'][loop.index0] }}</div>
                 {{ avatar(row.user, '', 'mx-auto my-2') }}
                 <div class="name">{{ row.user.username }}</div>
-                <div class="pct">{{ _('{points} pts').format(points=row.points) }}</div>
+                <div class="pct">{{ _('Rating {n}').format(n=row.rating|round|int) }}</div>
                 <div class="block">{{ loop.index }}</div>
             </a>
             {% endfor %}
@@ -82,8 +86,8 @@
                         </div>
                     </div>
                     <div class="score">
-                        <div class="pct">{{ _('{points} pts').format(points=row.points) }}</div>
-                        <div class="meta"><span dir="ltr">{{ row.points }} / {{ row.total_questions }}</span></div>
+                        <div class="pct">{{ row.rating|round|int }}</div>
+                        <div class="meta"><span dir="ltr">{{ row.correct }} / {{ row.total_questions }}</span></div>
                     </div>
                 </div>
                 {% endfor %}
