@@ -36,8 +36,21 @@ def test_shared_page_preview_has_the_image_and_one_set_of_tags(login, app):
     html = app.test_client().get(url.split('localhost')[-1]).get_data(as_text=True)
     assert html.count('property="og:title"') == 1 and html.count('property="og:description"') == 1
     assert 'content="Topic:' in html
-    assert re.search(r'<meta property="og:image" content="https://[^"]+/static/img/og-image\.png">', html)
+    # A shared result gets its own card (og_card.py) rather than the site's general image
+    code = url.rsplit('/', 1)[1]
+    assert f'<meta property="og:image" content="https://localhost/r/{code}/card.png">' in html
     assert '<meta name="twitter:card" content="summary_large_image">' in html
+
+
+def test_result_card_is_a_cached_png(login, app):
+    url = share_url(play_quiz(login('Phoenix'), answers(2, 3)))
+    response = app.test_client().get(url.split('localhost')[-1] + '/card.png')
+    assert response.status_code == 200 and response.mimetype == 'image/png'
+    assert response.data[1:4] == b'PNG' and 'max-age' in response.headers['Cache-Control']
+
+
+def test_unfinished_or_unknown_results_have_no_card(app):
+    assert app.test_client().get('/r/nope/card.png').status_code == 404
 
 
 def test_every_page_has_a_link_preview(app):

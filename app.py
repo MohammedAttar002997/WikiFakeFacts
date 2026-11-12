@@ -35,6 +35,7 @@ from chatbot import QUICK_HELP, get_chatbot_response
 from badges import BADGES, award_badges, compute_streaks, player_streaks
 import live
 from rating import rank as rank_players
+from og_card import result_card
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -1629,6 +1630,20 @@ def results():
                            source_url=quiz_session.source_url,
                            rematch_for=db.session.get(User, quiz_session.rematch_for_id)
                            if quiz_session.rematch_for_id else None)
+
+
+@app.route('/r/<code>/card.png')
+def shared_result_card(code):
+    """The link-preview image of a shared result. A finished result never changes, so it's cached for a day."""
+    quiz_session = QuizSession.query.filter_by(share_code=code, is_completed=True).first()
+    if not quiz_session:
+        abort(404)
+    player = db.session.get(User, quiz_session.user_id)
+    png = result_card(player.username if player else '', quiz_session.score, quiz_session.total_questions,
+                      quiz_session.topic)
+    response = app.response_class(png, mimetype='image/png')
+    response.headers['Cache-Control'] = 'public, max-age=86400'
+    return response
 
 
 @app.route('/r/<code>')
