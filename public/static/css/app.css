@@ -897,6 +897,20 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     transition: transform .2s ease;
 }
 .chatbot-fab:hover { color: #fff; transform: scale(1.08) rotate(-6deg); }
+.chatbot-fab { transition: transform .25s ease, opacity .25s ease; }
+.chatbot-fab.is-tucked { transform: translateY(calc(100% + 2rem)); opacity: 0; pointer-events: none; }
+/* Phones: a smaller button, tucked into the corner (and clear of the home indicator), and room after the footer
+   so the button never sits on the last line of a page */
+@media (max-width: 576px) {
+    .chatbot-fab {
+        width: 3rem;
+        height: 3rem;
+        font-size: 1.25rem;
+        inset-inline-end: 1rem;
+        bottom: calc(1rem + env(safe-area-inset-bottom));
+    }
+    .wf-footer { padding-bottom: 5rem !important; }
+}
 
 .wf-footer { color: var(--wf-muted); font-size: .9rem; }
 .wf-donate { color: var(--wf-muted); text-decoration: none; }

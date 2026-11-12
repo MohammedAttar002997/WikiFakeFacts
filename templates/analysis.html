@@ -70,7 +70,15 @@
             </div>
         </div>
 
-        {% if ai_analysis %}
+        {% if games_to_coaching %}
+        {# The AI coach needs a few games to have something real to say #}
+        <div class="wf-card wf-card-pad mb-4 coach-locked">
+            <div class="section-label"><i class="bi bi-cpu-fill text-brand fs-4"></i>{{ _('AI Performance Summary') }}</div>
+            <p class="lead mb-1">{{ _n('Play {n} more game to unlock your personal AI coach.', 'Play {n} more games to unlock your personal AI coach.', games_to_coaching) }}</p>
+            <p class="text-muted mb-3">{{ _('It looks at the facts you missed and tells you what to practice next.') }}</p>
+            <a href="/setup" class="btn btn-primary"><i class="bi bi-arrow-repeat me-1"></i>{{ _('Play Again') }}</a>
+        </div>
+        {% elif ai_analysis %}
         <div class="wf-card wf-card-pad mb-4">
             <div class="section-label"><i class="bi bi-cpu-fill text-brand fs-4"></i>{{ _('AI Performance Summary') }}</div>
             <p class="lead">{{ ai_analysis.overall_summary }}</p>

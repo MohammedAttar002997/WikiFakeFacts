@@ -3,6 +3,7 @@ import pytest
 from sqlalchemy.exc import IntegrityError
 
 import app as app_module
+from app import MIN_COACHING_GAMES
 from conftest import answers, play_quiz
 from migrate_production import use_production_database
 from models import ErrorLog, User
@@ -31,7 +32,8 @@ def test_failed_quiz_creation_is_saved(login, monkeypatch, app_ctx):
 
 def test_failed_analysis_is_saved_and_the_page_still_works(login, ai, app_ctx):
     client = login('Player')
-    play_quiz(client, answers(2, 3))
+    for _ in range(MIN_COACHING_GAMES):  # the AI coach starts after a few games
+        play_quiz(client, answers(2, 3))
     ai.analysis_error = RuntimeError('OpenAI down')
     assert client.get('/analysis').status_code == 200
     assert ErrorLog.query.one().error == 'RuntimeError: OpenAI down'

@@ -102,4 +102,19 @@
             document.querySelectorAll('form[data-loading] [type="submit"]').forEach(b => { b.disabled = false; });
         }
     });
+
+    // Help button: on phones it covered whatever the player was reading, so it tucks away while they scroll
+    // down and comes back when they scroll up or reach the end of the page
+    const fab = document.querySelector('.chatbot-fab');
+    const phone = window.matchMedia('(max-width: 576px)');
+    let lastY = window.scrollY;
+    if (fab) {
+        window.addEventListener('scroll', () => {
+            const y = window.scrollY;
+            if (Math.abs(y - lastY) < 8) return;  // ignore jitter
+            const atEnd = window.innerHeight + y >= document.documentElement.scrollHeight - 80;
+            fab.classList.toggle('is-tucked', phone.matches && y > lastY && y > 80 && !atEnd);
+            lastY = y;
+        }, { passive: true });
+    }
 })();
