@@ -157,6 +157,35 @@ class RoundReport(db.Model):
     comment = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+class ReadyQuiz(db.Model):
+    """A quiz made ahead of time by /cron/refill (rules in ready_pool.py), waiting for the first player who asks for
+    its kind. Taken quizzes keep their row (used_at set) for a while, so the daily cap counts them."""
+    __table_args__ = (db.Index('ix_ready_quiz_kind', 'category', 'difficulty', 'rounds', 'language', 'used_at'),)
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50), nullable=False)
+    difficulty = db.Column(db.String(50), nullable=False)
+    rounds = db.Column(db.Integer, nullable=False)
+    language = db.Column(db.String(50), nullable=False)
+    topic = db.Column(db.String(100), nullable=False)
+    source = db.Column(db.String(50), nullable=True)
+    source_url = db.Column(db.String(500), nullable=True)
+    questions_json = db.Column(db.Text, nullable=False)
+    explanations_json = db.Column(db.Text, nullable=False)
+    quotes_json = db.Column(db.Text, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+    used_at = db.Column(db.DateTime, nullable=True)  # When a player got it; None while it's in stock
+    quiz_session_id = db.Column(db.Integer, db.ForeignKey('quiz_session.id'), nullable=True)  # The game it became
+
+class QuizDemand(db.Model):
+    """When each kind of quiz was last asked for on the setup page; the refill only makes kinds people play."""
+    __table_args__ = (db.UniqueConstraint('category', 'difficulty', 'rounds', 'language', name='uq_quiz_demand'),)
+    id = db.Column(db.Integer, primary_key=True)
+    category = db.Column(db.String(50), nullable=False)
+    difficulty = db.Column(db.String(50), nullable=False)
+    rounds = db.Column(db.Integer, nullable=False)
+    language = db.Column(db.String(50), nullable=False)
+    last_wanted = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""

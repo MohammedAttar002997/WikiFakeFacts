@@ -1,8 +1,8 @@
 """The numbers on the admin page (/admin): players, games, AI use, popular topics, reports and errors.
 
 Only reads the database. Quiz sessions have no timestamp of their own, so "AI quizzes" over a period counts what
-has one: finished games of freshly generated quizzes (by their score's time), daily challenges, live matches and
-custom uploads. Replays of an existing quiz (challenges, daily attempts) made no AI call and aren't counted.
+has one: finished games of freshly generated quizzes (by their score's time), quizzes made ahead of time by the
+refill (when made, not when played), daily challenges, live matches and custom uploads. Replays of an existing quiz (challenges, daily attempts) made no AI call and aren't counted.
 """
 import json
 from collections import Counter
@@ -11,8 +11,8 @@ from datetime import timedelta
 from sqlalchemy import func
 
 from badges import TOPIC_CATEGORY
-from models import (ChatbotSession, CustomContent, DailyChallenge, ErrorLog, LiveMatch, QuizSession, RoundReport,
-                    Score, User, db)
+from models import (ChatbotSession, CustomContent, DailyChallenge, ErrorLog, LiveMatch, QuizSession, ReadyQuiz,
+                    RoundReport, Score, User, db)
 
 CHART_DAYS = 30
 
@@ -26,10 +26,12 @@ def since(column, now, days):
 
 
 def generated_games(now, days):
-    """Finished games of quizzes the AI made for that game (not replays of someone else's quiz)."""
+    """Finished games of quizzes the AI made for that game (not replays of someone else's quiz, nor ready-made
+    quizzes, which are counted when they're made)."""
+    made_ahead = db.session.query(ReadyQuiz.quiz_session_id).filter(ReadyQuiz.quiz_session_id.isnot(None))
     return count(Score.query.join(QuizSession, Score.quiz_session_id == QuizSession.id)
                  .filter(QuizSession.challenge_of_id.is_(None), QuizSession.daily_challenge_id.is_(None),
-                         since(Score.timestamp, now, days)))
+                         QuizSession.id.not_in(made_ahead), since(Score.timestamp, now, days)))
 
 
 def games_per_day(now):
@@ -60,6 +62,7 @@ def dashboard(now):
     def ai_quizzes(days):
         span = (now - start_of_day).total_seconds() / 86400 if days is None else days
         return {'games': generated_games(now, span),
+                'ready': count(ReadyQuiz.query.filter(window(ReadyQuiz.created_at, days))),
                 'daily': count(DailyChallenge.query.filter(window(DailyChallenge.created_at, days))),
                 'live': count(LiveMatch.query.filter(window(LiveMatch.created_at, days))),
                 'uploads': count(CustomContent.query.filter(window(CustomContent.created_at, days)))}
@@ -92,5 +95,6 @@ def dashboard(now):
         'per_day': games_per_day(now),
         'top_topics': topics.most_common(10), 'categories': categories.most_common(),
         'live': live, 'reports': reports,
+        'ready_in_stock': count(ReadyQuiz.query.filter(ReadyQuiz.used_at.is_(None))),
         'errors': ErrorLog.query.order_by(ErrorLog.id.desc()).limit(10).all(),
     }

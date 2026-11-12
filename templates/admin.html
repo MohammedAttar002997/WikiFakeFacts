@@ -33,6 +33,7 @@
                         <tr><th scope="row">New players</th>{% for n in stats.signups.values() %}<td class="text-end">{{ n }}</td>{% endfor %}</tr>
                         <tr><th scope="row">AI quizzes made</th>{% for a in stats.ai.values() %}<td class="text-end fw-bold">{{ a.total }}</td>{% endfor %}</tr>
                         <tr class="admin-sub"><th scope="row">… finished games</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.games }}</td>{% endfor %}</tr>
+                        <tr class="admin-sub"><th scope="row">… made ahead</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.ready }}</td>{% endfor %}</tr>
                         <tr class="admin-sub"><th scope="row">… daily challenges</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.daily }}</td>{% endfor %}</tr>
                         <tr class="admin-sub"><th scope="row">… live matches</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.live }}</td>{% endfor %}</tr>
                         <tr class="admin-sub"><th scope="row">… custom uploads</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.uploads }}</td>{% endfor %}</tr>
@@ -40,7 +41,7 @@
                     </tbody>
                 </table>
             </div>
-            <p class="small text-muted mt-3 mb-0">AI quizzes count each new quiz once: games of freshly made quizzes (when finished), daily challenges, live matches and uploads. Replays of an existing quiz made no AI call.</p>
+            <p class="small text-muted mt-3 mb-0">AI quizzes count each new quiz once: games of freshly made quizzes (when finished), quizzes made ahead (when made), daily challenges, live matches and uploads. Replays of an existing quiz made no AI call. Ready quizzes in stock now: <strong>{{ stats.ready_in_stock }}</strong>.</p>
         </div>
 
         <div class="wf-card wf-card-pad mb-4">

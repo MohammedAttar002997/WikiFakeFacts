@@ -1,0 +1,27 @@
+name: Refill ready quizzes
+
+# Vercel's Hobby plan runs its own timer (vercel.json) only once a day, so this one tops up the stock of ready-made
+# quizzes every 30 minutes (see ready_pool.py). It needs the repository secret CRON_SECRET, the same value as
+# CRON_SECRET in Vercel. GitHub pauses scheduled workflows after 60 days without commits; re-enable it in Actions.
+on:
+  schedule:
+    - cron: '*/30 * * * *'
+  workflow_dispatch:
+
+permissions: {}
+
+jobs:
+  refill:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - name: Ask the site to make a few quizzes
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "The CRON_SECRET repository secret isn't set; nothing to do."
+            exit 0
+          fi
+          curl --fail-with-body --silent --show-error --max-time 120 \
+            -H "Authorization: Bearer $CRON_SECRET" https://www.wikifakefacts.com/cron/refill

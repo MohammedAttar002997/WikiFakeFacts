@@ -126,7 +126,8 @@ Vercel runs `app.py` as a serverless function. Its disk isn't kept between reque
 
    It never prints the database password. On Windows, if Smart App Control blocks psycopg, it uses the pure-Python pg8000 driver instead.
 
-4. The project is connected to GitHub, so every merge to `main` deploys to production and every pushed branch gets a preview. `.vercelignore` keeps your local database, uploads and `.env` out of deployments.
+4. Optional, so most games start at once instead of waiting for the AI: set `CRON_SECRET` to a long random value (for example the output of `python -c "import secrets; print(secrets.token_urlsafe(32))"`) in Vercel's environment variables **and** as a repository secret in GitHub (Settings → Secrets and variables → Actions). Vercel then calls `/cron/refill` once a day and the `Refill ready quizzes` workflow every 30 minutes; each call makes a few quizzes of the kinds players asked for in the last 7 days (at most 20 a day, see `ready_pool.py`). Without the secret, nothing is made ahead and every quiz is generated when it's started.
+5. The project is connected to GitHub, so every merge to `main` deploys to production and every pushed branch gets a preview. `.vercelignore` keeps your local database, uploads and `.env` out of deployments.
 
 When a pull request adds a migration, run `python migrate_production.py` from that branch **before** merging it, so the database is ready when the new code goes live. Keep migrations additive (new tables or nullable columns), so the code that's live in the meantime keeps working.
 

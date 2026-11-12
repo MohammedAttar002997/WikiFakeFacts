@@ -4,6 +4,7 @@ import os
 import json
 import random
 import secrets
+import time
 import traceback
 from datetime import timedelta
 
@@ -24,7 +25,8 @@ from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
-                    UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport)
+                    UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport, ReadyQuiz,
+                    QuizDemand)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
@@ -37,6 +39,7 @@ import live
 from rating import rank as rank_players
 from og_card import result_card
 from admin_stats import dashboard as admin_dashboard
+import ready_pool
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -54,6 +57,8 @@ app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') ==
 app.config['DONATION_URL'] = os.environ.get('DONATION_URL', '').strip()
 # Players (by name, comma-separated) who may open /admin. Without any, the page doesn't exist.
 app.config['ADMIN_USERS'] = os.environ.get('ADMIN_USERS', '')
+# Shared with the timers that call /cron/refill (Vercel sends it as a Bearer token by itself; see ready_pool.py)
+app.config['CRON_SECRET'] = os.environ.get('CRON_SECRET', '')
 
 # File upload configuration (uploads are read in memory, never saved)
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx'}
@@ -871,6 +876,10 @@ def delete_player_data(user, chat_id=None):
     # Their live matches go too, except those someone else hosted: those stay, without them
     LiveMatch.query.filter_by(host_id=user.id).delete()
     LiveMatch.query.filter_by(guest_id=user.id).update({LiveMatch.guest_id: None}, synchronize_session=False)
+    # Ready quizzes they were given stay counted toward the daily cap, without the link to their game
+    if own_quiz_ids:
+        ReadyQuiz.query.filter(ReadyQuiz.quiz_session_id.in_(own_quiz_ids)).update(
+            {ReadyQuiz.quiz_session_id: None}, synchronize_session=False)
     for model in (RoundReport, UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
@@ -1350,7 +1359,8 @@ def delete_upload(content_id):
 
 
 def quiz_settings_from_form():
-    """(topic, difficulty, rounds, language name) chosen on the setup page, or None after saying what's missing."""
+    """(topic, difficulty, rounds, language name, category name, surprise?) chosen on the setup page, or None after
+    saying what's missing."""
     category_id = request.form.get('category')
     length_id = request.form.get('length')
     difficulty_id = request.form.get('difficulty')
@@ -1367,7 +1377,101 @@ def quiz_settings_from_form():
     topic = random.choice(TOPICS[category_name])
     length_text = GAME_LENGTH_OPTIONS.get(length_id)
     questions_count = int(length_text.split("rounds")[0].split("(")[1].strip())
-    return topic, DIFFICULTY_OPTIONS.get(difficulty_id), questions_count, LANGUAGE_OPTIONS.get(language_code, "English")
+    return (topic, DIFFICULTY_OPTIONS.get(difficulty_id), questions_count, LANGUAGE_OPTIONS.get(language_code, "English"),
+            category_name, category_id == SURPRISE)
+
+
+# ---------- Ready-made quizzes (rules in ready_pool.py) ------------------------------------------------------------
+
+def note_demand(kind):
+    """Remember that someone just asked for this kind of quiz, so the refill keeps some ready."""
+    row = QuizDemand.query.filter_by(**kind._asdict()).first()
+    if row:
+        row.last_wanted = utcnow()
+    else:
+        db.session.add(QuizDemand(**kind._asdict(), last_wanted=utcnow()))
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()  # Someone else asked for the same kind at the same moment; their row will do
+
+
+def take_ready_quiz(kind, any_category=False):
+    """Hand one ready quiz of this kind to the caller (of any category for "Surprise me"), or None if none is left.
+    Two players asking at once can't get the same one: a quiz is only theirs if marking it as used succeeded."""
+    query = ReadyQuiz.query.filter_by(difficulty=kind.difficulty, rounds=kind.rounds, language=kind.language,
+                                      used_at=None)
+    if any_category:
+        query = query.order_by(func.random())
+    else:
+        query = query.filter_by(category=kind.category).order_by(ReadyQuiz.id)
+    for candidate in query.limit(5).all():
+        taken = ReadyQuiz.query.filter_by(id=candidate.id, used_at=None).update(
+            {ReadyQuiz.used_at: utcnow()}, synchronize_session=False)
+        db.session.commit()
+        if taken:
+            db.session.refresh(candidate)
+            return candidate
+    return None
+
+
+def ready_stock():
+    """{Kind: ready quizzes nobody has taken yet}."""
+    rows = (db.session.query(ReadyQuiz.category, ReadyQuiz.difficulty, ReadyQuiz.rounds, ReadyQuiz.language,
+                             func.count(ReadyQuiz.id))
+            .filter(ReadyQuiz.used_at.is_(None))
+            .group_by(ReadyQuiz.category, ReadyQuiz.difficulty, ReadyQuiz.rounds, ReadyQuiz.language).all())
+    return {ready_pool.Kind(*row[:4]): row[4] for row in rows}
+
+
+def made_ahead_since(moment):
+    return ReadyQuiz.query.filter(ReadyQuiz.created_at >= moment).count()
+
+
+def make_ready_quiz(kind):
+    """Have the AI make one quiz of this kind and put it in stock."""
+    topic = random.choice(TOPICS[kind.category])
+    quiz = get_ai_response(kind.rounds, topic, kind.difficulty, kind.language)
+    db.session.add(ReadyQuiz(**kind._asdict(), topic=topic[:100], source=quiz.source, source_url=quiz.source_url,
+                             questions_json=json.dumps(quiz.rounds), explanations_json=json.dumps(quiz.explanations),
+                             quotes_json=json.dumps(quiz.quotes)))
+    db.session.commit()
+
+
+def refill_ready_quizzes(clock=time.monotonic):
+    """Make the quizzes ready_pool.refill_plan asks for, until RUN_SECONDS have passed. Returns a summary."""
+    started, now = clock(), utcnow()
+    day_ago = now - timedelta(days=1)
+    # Taken quizzes are kept 2 days, long enough for the daily cap to count them, then forgotten
+    ReadyQuiz.query.filter(ReadyQuiz.used_at < now - timedelta(days=2)).delete()
+    db.session.commit()
+    wanted = [(ready_pool.Kind(d.category, d.difficulty, d.rounds, d.language), d.last_wanted)
+              for d in QuizDemand.query.filter(QuizDemand.last_wanted >= now - timedelta(days=ready_pool.WANTED_DAYS))
+              if d.category in TOPICS]  # Skips a category that was renamed or removed since
+    plan = ready_pool.refill_plan(wanted, ready_stock(), made_ahead_since(day_ago))
+    made = 0
+    for kind in plan:
+        # Checked again before each quiz: the two timers may run at the same time
+        if clock() - started > ready_pool.RUN_SECONDS or made_ahead_since(day_ago) >= ready_pool.DAILY_CAP:
+            break
+        try:
+            make_ready_quiz(kind)
+            made += 1
+        except Exception as error:
+            # Saved for /admin; stop here rather than pay for more calls that may fail the same way
+            db.session.rollback()
+            save_error(error)
+            return {'made': made, 'planned': len(plan), 'error': describe_error(error)}
+    return {'made': made, 'planned': len(plan), 'in_stock': sum(ready_stock().values())}
+
+
+@app.route('/cron/refill')
+def cron_refill():
+    """Called by the timers (vercel.json, .github/workflows/refill.yml) with CRON_SECRET as a Bearer token."""
+    secret = app.config.get('CRON_SECRET') or ''
+    if not secret or not hmac.compare_digest(request.headers.get('Authorization', ''), f'Bearer {secret}'):
+        abort(401)
+    return jsonify(refill_ready_quizzes())
 
 
 @app.route('/start_quiz', methods=['POST'])
@@ -1379,12 +1483,23 @@ def start_quiz():
     settings = quiz_settings_from_form()
     if not settings or not quiz_generation_allowed(user):
         return redirect(url_for('setup'))
-    topic, difficulty_text, questions_count, language_name = settings
+    topic, difficulty_text, questions_count, language_name, category, surprise = settings
+    kind = ready_pool.Kind(category, difficulty_text, questions_count, language_name)
+    note_demand(kind)
 
     try:
-        # Fetch questions from AI
         time_limit = TIMED_ROUND_SECONDS if request.form.get('timed') else None
-        create_quiz_session(user, topic, difficulty_text, questions_count, language_name, time_limit=time_limit)
+        # A quiz made ahead of time starts at once; without one, the AI makes it now (about 20 seconds)
+        ready = take_ready_quiz(kind, any_category=surprise)
+        if ready:
+            quiz_session = save_quiz_session(
+                user, ready.topic, difficulty_text, json.loads(ready.questions_json),
+                json.loads(ready.explanations_json), ready.source, time_limit=time_limit,
+                quotes=json.loads(ready.quotes_json) if ready.quotes_json else None, source_url=ready.source_url)
+            ready.quiz_session_id = quiz_session.id
+            db.session.commit()
+        else:
+            create_quiz_session(user, topic, difficulty_text, questions_count, language_name, time_limit=time_limit)
         return redirect(url_for('quiz'))
 
     except Exception as e:
@@ -1503,7 +1618,7 @@ def live_new():
     settings = quiz_settings_from_form()
     if not settings or not quiz_generation_allowed(user):
         return redirect(url_for('setup'))
-    topic, difficulty, rounds, language_name = settings
+    topic, difficulty, rounds, language_name, _category, _surprise = settings
     try:
         quiz = get_ai_response(rounds, topic, difficulty, language_name)
     except Exception as e:
