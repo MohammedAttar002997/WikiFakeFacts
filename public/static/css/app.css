@@ -1207,3 +1207,37 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     .wf-navbar .theme-toggle { width: 2.25rem; height: 2.25rem; }
     .wf-navbar .theme-toggle.lang-toggle { padding: 0 .5rem; }
 }
+
+/* ---------- Live match -------------------------------------------------------- */
+.live-scoreboard { display: flex; align-items: center; gap: 1rem; margin: 1rem 0 0; }
+.live-player {
+    flex: 1;
+    min-width: 0;
+    text-align: center;
+    padding: .75rem .5rem;
+    border-radius: 1rem;
+    border: 2px solid var(--wf-border);
+    background: var(--wf-surface-2);
+    transition: border-color .2s ease;
+}
+.live-player.is-you { border-color: var(--wf-brand); }
+.live-player .name { font-weight: 800; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.live-player .points { font-size: 1.75rem; font-weight: 900; color: var(--wf-brand); font-variant-numeric: tabular-nums; }
+.live-player.has-answered .name::after { content: ' ✓'; color: #16a34a; }
+.live-vs { font-weight: 900; color: var(--wf-muted); }
+.live-countdown { font-size: 5rem; font-weight: 900; line-height: 1; color: var(--wf-brand); min-height: 5rem; }
+button.answer { width: 100%; text-align: start; font: inherit; color: inherit; }
+button.answer:disabled { cursor: default; }
+button.answer:disabled:hover { transform: none; border-color: var(--wf-border); }
+button.answer.is-picked { border-color: var(--opt); background: color-mix(in srgb, var(--opt) 12%, var(--wf-surface)); box-shadow: 0 5px 0 0 var(--opt); }
+button.answer.is-picked .pick { opacity: 1; transform: scale(1); }
+button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #ef4444 12%, var(--wf-surface)); box-shadow: 0 5px 0 0 #ef4444; }
+.live-tags { display: flex; flex-wrap: wrap; gap: .25rem; margin-inline-start: auto; }
+.live-tags:empty { display: none; }
+.live-summary-row { padding: .75rem 0; border-bottom: 1px solid var(--wf-border); }
+.live-summary-row:last-child { border-bottom: 0; }
+@media (max-width: 576px) {
+    .live-scoreboard { gap: .5rem; }
+    .live-player .points { font-size: 1.4rem; }
+    button.answer { flex-wrap: wrap; }
+}

@@ -117,6 +117,30 @@ class RateLimit(db.Model):
     hits = db.Column(db.Integer, nullable=False, default=0)
     window_start = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+class LiveMatch(db.Model):
+    """A live head-to-head: two players answer the same rounds at the same time (rules in live.py). Every request
+    reads the row, moves the match on to the current time and writes it back only if `version` is unchanged, so
+    two requests at once can't both apply."""
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(16), unique=True, nullable=False)  # Unguessable id in the invite link
+    host_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    guest_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
+    topic = db.Column(db.String(100), nullable=False)
+    difficulty = db.Column(db.String(50), nullable=False)
+    language = db.Column(db.String(50), nullable=False)
+    source = db.Column(db.String(50), nullable=True)
+    source_url = db.Column(db.String(500), nullable=True)
+    questions_json = db.Column(db.Text, nullable=False)
+    explanations_json = db.Column(db.Text, nullable=False)
+    quotes_json = db.Column(db.Text, nullable=True)
+    state = db.Column(db.String(10), nullable=False, default='waiting')
+    current_round = db.Column(db.Integer, nullable=False, default=0)
+    round_started_at = db.Column(db.DateTime, nullable=True)
+    answers_json = db.Column(db.Text, nullable=False, default='{"host": [], "guest": []}')
+    version = db.Column(db.Integer, nullable=False, default=0)
+    scores_saved = db.Column(db.Boolean, nullable=False, default=False)  # Results added to both players' stats
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""

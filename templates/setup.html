@@ -92,11 +92,15 @@
                 </div>
             </section>
 
-            <div class="text-center">
+            <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
                 <button type="submit" class="btn btn-primary btn-lg px-5">
                     <i class="bi bi-play-fill me-1"></i>{{ _('Start Game') }}
                 </button>
+                <button type="submit" formaction="{{ url_for('live_new') }}" class="btn btn-outline-primary btn-lg px-4">
+                    <i class="bi bi-people-fill me-1"></i>{{ _('Play live with a friend') }}
+                </button>
             </div>
+            <p class="small text-muted text-center mt-3 mb-0">{{ _('Live: you and a friend answer the same rounds at the same time. Right answers score, faster ones score more.') }}</p>
         </form>
     </div>
 </div>
