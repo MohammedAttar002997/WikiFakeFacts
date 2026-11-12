@@ -1246,3 +1246,9 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 .rating-info { max-width: 40rem; margin: .5rem auto 0; color: var(--wf-muted); font-size: .95rem; }
 .rating-info summary { cursor: pointer; font-weight: 700; color: var(--wf-brand); list-style-position: inside; min-height: 44px; display: flex; align-items: center; justify-content: center; }
 .rating-info p { text-align: start; margin-top: .25rem; }
+
+/* ---------- Report a round ------------------------------------------------------ */
+.report-round summary { cursor: pointer; display: inline-flex; align-items: center; min-height: 44px; }
+.report-round summary:hover { color: var(--wf-brand) !important; }
+.report-form { max-width: 32rem; }
+.report-form .form-check { min-height: 2rem; }
