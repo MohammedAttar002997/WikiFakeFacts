@@ -1252,3 +1252,7 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 .report-round summary:hover { color: var(--wf-brand) !important; }
 .report-form { max-width: 32rem; }
 .report-form .form-check { min-height: 2rem; }
+
+/* ---------- Install app (footer) --------------------------------------------- */
+.wf-install { color: var(--wf-muted); text-decoration: none; font-size: inherit; min-height: 44px; }
+.wf-install:hover, .wf-install:focus { color: var(--wf-brand); text-decoration: underline; }
