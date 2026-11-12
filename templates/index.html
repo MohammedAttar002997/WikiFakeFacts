@@ -30,6 +30,9 @@
             </form>
             <p class="small mt-3 mb-0 opacity-75">
                 {{ _('New name? Pick any 4-digit PIN. Returning? Enter your PIN to get back to your results.') }}
+                {% if not me %}
+                    <br><a href="{{ url_for('try_round') }}" class="text-reset fw-bold try-link"><i class="bi bi-lightning-charge-fill me-1"></i>{{ _('Try a round without signing up') }}</a>
+                {% endif %}
                 {% if me %}
                     <br>{{ _('Not {name}?').format(name=me.username) }} <a href="{{ url_for('logout') }}" class="text-reset fw-bold">{{ _('Switch player') }}</a>
                     &middot; <a href="{{ url_for('account') }}" class="text-reset fw-bold">{{ _('Profile and account') }}</a>

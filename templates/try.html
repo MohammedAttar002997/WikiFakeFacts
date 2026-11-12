@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{# One round without signing in: the question (options given) or its result (review given). #}
+{% block title %}{{ _('Try a round') }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        {% if review %}
+        {% include "_answer_review.html" %}
+
+        <div class="wf-card wf-card-pad text-center mt-4 try-cta">
+            <p class="lead mb-3">{{ _('Like it? Pick a name and a PIN to play full games, climb the leaderboard and earn badges.') }}</p>
+            <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                <a href="{{ url_for('index') }}#username" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-1"></i>{{ _('Play a full game') }}</a>
+                <a href="{{ url_for('try_round', new=1) }}" class="btn btn-outline-primary btn-lg"><i class="bi bi-shuffle me-1"></i>{{ _('Try another round') }}</a>
+            </div>
+        </div>
+        {% else %}
+        <div class="wf-card wf-card-pad">
+            <div class="quiz-top">
+                <div class="quiz-counter">{{ _('Try a round') }}</div>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="chip chip-brand"><i class="bi bi-tag-fill"></i>{{ challenge.topic }}</span>
+                    <span class="chip"><i class="bi bi-book-half"></i>{{ challenge.source or 'Wikipedia' }}</span>
+                </div>
+            </div>
+
+            <div class="quiz-question">
+                <div class="q-icon">🕵️</div>
+                <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
+                <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
+            </div>
+
+            <form action="{{ url_for('try_round') }}" method="POST" id="quizForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3 mb-4">
+                    {% for option in options %}
+                    <div class="col-md-6">
+                        <input class="answer-input visually-hidden" type="radio" name="option" id="opt{{ loop.index }}" value="{{ option }}" required>
+                        <label class="answer answer-{{ loop.index }}" for="opt{{ loop.index }}">
+                            <span class="letter">{{ 'ABCD'[loop.index0] if loop.index0 < 4 else loop.index }}</span>
+                            <span class="text">{{ option }}</span>
+                            <i class="bi bi-check-circle-fill pick"></i>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary btn-lg px-5" id="submitAnswer" disabled>
+                        {{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if not review %}
+<script>
+    (function () {
+        const submit = document.getElementById('submitAnswer');
+        document.querySelectorAll('#quizForm input[name="option"]').forEach(input =>
+            input.addEventListener('change', () => { submit.disabled = false; }));
+    })();
+</script>
+{% endif %}
+{% endblock %}
