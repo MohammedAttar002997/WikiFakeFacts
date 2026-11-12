@@ -27,7 +27,7 @@ from models import (db, utcnow, User, Score, QuizSession, CustomContent, Chatbot
                     UserBadge, PinAttempt, RateLimit, ErrorLog)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
-from translations import (UI_LANGUAGES, format_date, template_context, template_globals, translate as _,
+from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
                           translate_plural as _n)
 from content_extractor import (ContentError, extract_text_from_upload, extract_text_from_url,
                                validate_content_length)
@@ -751,6 +751,62 @@ def clear_failed_pins(key):
 @app.route('/')
 def index():
     return render_template('index.html')
+
+
+GUEST_ROUND_DAYS = 30  # Past daily challenges a guest round can come from
+
+
+def pick_guest_round(language_name):
+    """(daily challenge, round index) for a visitor to try without signing in: a round of a past daily challenge
+    in their language (English if there's none), so it costs no AI call and spoils nothing about today's.
+    None when no challenge has been played yet."""
+    today = today_utc()
+    for language in dict.fromkeys([language_name, 'English']):
+        challenges = (DailyChallenge.query.filter(DailyChallenge.language == language, DailyChallenge.date < today)
+                      .order_by(DailyChallenge.date.desc()).limit(GUEST_ROUND_DAYS).all())
+        if challenges:
+            challenge = random.choice(challenges)
+            return challenge, random.randrange(len(json.loads(challenge.questions_json)))
+    return None
+
+
+def guest_round_row(challenge, index, picked):
+    """The round as build_answer_review() shows it, so the answer review card can show the guest's result."""
+    facts = json.loads(challenge.questions_json)[index]
+    explanations = json.loads(challenge.explanations_json or '[]')
+    quotes = json.loads(challenge.quotes_json or '[]')
+    return {'facts': list(facts.items()), 'picked': picked, 'correct': facts.get(picked) is False,
+            'timed_out': False, 'explanation': explanations[index] if index < len(explanations) else None,
+            'quote': quotes[index] if index < len(quotes) else None}
+
+
+@app.route('/try', methods=['GET', 'POST'])
+def try_round():
+    """One round without signing in. The round is kept in the session (not in the page) so the answer is checked
+    against the real one, and nothing is saved for the visitor."""
+    held = session.get('guest_round')
+    challenge = db.session.get(DailyChallenge, held[0]) if held else None
+    if request.method == 'POST':
+        if not challenge:
+            return redirect(url_for('try_round'))
+        index = held[1]
+        picked = request.form.get('option')
+        if picked not in json.loads(challenge.questions_json)[index]:
+            return redirect(url_for('try_round'))
+        session.pop('guest_round', None)
+        return render_template('try.html', challenge=challenge, source_url=challenge.source_url,
+                               review=[guest_round_row(challenge, index, picked)])
+
+    if not challenge or request.args.get('new'):
+        picked_round = pick_guest_round(LANGUAGE_OPTIONS.get(current_language(), 'English'))
+        if not picked_round:
+            flash(_("There are no rounds to try yet. Sign in and play the first game!"), "info")
+            return redirect(url_for('index'))
+        challenge, index = picked_round
+        session['guest_round'] = [challenge.id, index]
+    options = list(json.loads(challenge.questions_json)[session['guest_round'][1]])
+    random.shuffle(options)
+    return render_template('try.html', challenge=challenge, options=options)
 
 
 @app.route('/logout')
