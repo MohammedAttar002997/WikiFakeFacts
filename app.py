@@ -36,6 +36,7 @@ from badges import BADGES, award_badges, compute_streaks, player_streaks
 import live
 from rating import rank as rank_players
 from og_card import result_card
+from admin_stats import dashboard as admin_dashboard
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -51,6 +52,8 @@ app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
 app.config['SESSION_COOKIE_SECURE'] = os.environ.get('SESSION_COOKIE_SECURE') == '1'
 # Donation page (Ko-fi, Buy Me a Coffee, ...) linked in the footer; no link unless it's set to an https URL
 app.config['DONATION_URL'] = os.environ.get('DONATION_URL', '').strip()
+# Players (by name, comma-separated) who may open /admin. Without any, the page doesn't exist.
+app.config['ADMIN_USERS'] = os.environ.get('ADMIN_USERS', '')
 
 # File upload configuration (uploads are read in memory, never saved)
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx'}
@@ -146,7 +149,7 @@ def forget_cached_player():
 def inject_player():
     me = current_user()
     donation_url = app.config.get('DONATION_URL') or ''
-    return {'me': me, 'challenge_news': count_challenge_news(me) if me else 0,
+    return {'me': me, 'challenge_news': count_challenge_news(me) if me else 0, 'is_admin': is_admin(me),
             'donation_url': donation_url if donation_url.startswith('https://') else None}
 
 
@@ -811,6 +814,23 @@ def try_round():
     options = list(json.loads(challenge.questions_json)[session['guest_round'][1]])
     random.shuffle(options)
     return render_template('try.html', challenge=challenge, options=options)
+
+
+def is_admin(user):
+    """Whether `user` is one of the ADMIN_USERS (names compared case-insensitively)."""
+    names = {n.strip().casefold() for n in (app.config.get('ADMIN_USERS') or '').split(',') if n.strip()}
+    return bool(user) and user.username.casefold() in names
+
+
+@app.route('/admin')
+def admin():
+    """Numbers for the site's owner. Anyone else, signed in or not, gets a plain 404, as if it didn't exist."""
+    user = current_user()
+    if not is_admin(user):
+        abort(404)
+    stats = admin_dashboard(utcnow())
+    peak = max([n for _, n in stats['per_day']] + [1])
+    return render_template('admin.html', stats=stats, peak=peak)
 
 
 @app.route('/sw.js')
