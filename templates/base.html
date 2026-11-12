@@ -108,6 +108,12 @@
                     {% endfor %}
                     {% if me %}
                     {% set active = request.path.startswith('/account') %}
+                    {# Admin: in the phone/tablet menu; on wide screens the bar is full, so it's in the footer instead #}
+                    {% if is_admin %}
+                    <li class="nav-item d-xl-none">
+                        <a class="nav-link{% if request.path == '/admin' %} active{% endif %}" href="{{ url_for('admin') }}"><i class="bi bi-speedometer2"></i>Admin</a>
+                    </li>
+                    {% endif %}
                     <li class="nav-item d-xl-none">
                         <a class="nav-link{% if active %} active{% endif %}" href="{{ url_for('account') }}"{% if active %} aria-current="page"{% endif %}>
                             <i class="bi bi-person-circle"></i>{{ _('Profile and account') }}
@@ -153,6 +159,7 @@
         &middot; <a href="{{ donation_url }}" class="wf-donate" target="_blank" rel="noopener noreferrer">
             <i class="bi bi-heart-fill" aria-hidden="true"></i> {{ _('Support this project') }}</a>
         {% endif %}
+        {% if is_admin %}<span class="d-none d-xl-inline">&middot; <a href="{{ url_for('admin') }}" class="wf-donate"><i class="bi bi-speedometer2" aria-hidden="true"></i> Admin</a></span>{% endif %}
     </footer>
 
     <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">

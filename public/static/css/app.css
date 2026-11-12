@@ -1252,3 +1252,22 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 .report-round summary:hover { color: var(--wf-brand) !important; }
 .report-form { max-width: 32rem; }
 .report-form .form-check { min-height: 2rem; }
+
+/* ---------- Admin dashboard ------------------------------------------------------ */
+.admin-kpis { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .75rem; }
+@media (min-width: 640px) { .admin-kpis { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+@media (min-width: 900px) { .admin-kpis { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.admin-table-wrap { overflow-x: auto; }
+.admin-table { --bs-table-bg: transparent; color: var(--wf-text); white-space: nowrap; }
+.admin-table th[scope="row"] { font-weight: 700; }
+.admin-sub th, .admin-sub td { color: var(--wf-muted); font-size: .9rem; font-weight: 500 !important; padding-inline-start: 1.25rem; }
+.admin-chart { display: flex; align-items: flex-end; gap: 3px; height: 180px; padding-bottom: 1.4rem; }
+.admin-bar { position: relative; flex: 1; height: 100%; display: flex; align-items: flex-end; }
+.admin-bar-fill { width: 100%; min-height: 2px; border-radius: 4px 4px 0 0; background: linear-gradient(180deg, #a78bfa, #7c3aed); }
+.admin-bar-label { position: absolute; top: 100%; left: 50%; transform: translateX(-50%); margin-top: .3rem; font-size: .7rem; color: var(--wf-muted); white-space: nowrap; }
+.admin-list { padding-inline-start: 1.25rem; }
+.admin-list li { padding: .25rem 0; }
+.admin-list li > span:first-child { display: inline-block; max-width: 75%; vertical-align: bottom; }
+.admin-list li > span:last-child { float: inline-end; }
+.admin-report { padding: .85rem 0; border-bottom: 1px solid var(--wf-border); }
+.admin-report:last-child { border-bottom: 0; }

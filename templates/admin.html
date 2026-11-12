@@ -1,0 +1,110 @@
+{% extends "base.html" %}
+
+{# The owner's numbers (admin_stats.py). English only: it's not part of the game. #}
+{% block title %}Admin · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-11">
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-speedometer2"></i> Admin</span>
+            <h1>Dashboard</h1>
+            <p>Players, games, AI use and what players reported.</p>
+        </div>
+
+        {% set t = stats.totals %}
+        <div class="admin-kpis mb-4">
+            <div class="stat-tile"><div class="value">{{ t.players }}</div><div class="label">Players</div></div>
+            <div class="stat-tile"><div class="value">{{ t.games }}</div><div class="label">Games played</div></div>
+            <div class="stat-tile"><div class="value">{{ stats.players['7 days'] }}</div><div class="label">Active, 7 days</div></div>
+            <div class="stat-tile"><div class="value">{{ stats.ai['30 days'].total }}</div><div class="label">AI quizzes, 30 days</div></div>
+            <div class="stat-tile"><div class="value{% if t.reports %} text-warning{% endif %}">{{ t.reports }}</div><div class="label">Reported rounds</div></div>
+            <div class="stat-tile"><div class="value{% if t.errors_7d %} text-danger{% endif %}">{{ t.errors_7d }}</div><div class="label">Errors, 7 days</div></div>
+        </div>
+
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="section-label"><i class="bi bi-activity text-brand fs-4"></i>Activity</div>
+            <div class="admin-table-wrap">
+                <table class="table admin-table mb-0">
+                    <thead><tr><th scope="col"></th>{% for label in stats.games %}<th scope="col" class="text-end">{{ label }}</th>{% endfor %}</tr></thead>
+                    <tbody>
+                        <tr><th scope="row">Games played</th>{% for n in stats.games.values() %}<td class="text-end">{{ n }}</td>{% endfor %}</tr>
+                        <tr><th scope="row">Active players</th>{% for n in stats.players.values() %}<td class="text-end">{{ n }}</td>{% endfor %}</tr>
+                        <tr><th scope="row">New players</th>{% for n in stats.signups.values() %}<td class="text-end">{{ n }}</td>{% endfor %}</tr>
+                        <tr><th scope="row">AI quizzes made</th>{% for a in stats.ai.values() %}<td class="text-end fw-bold">{{ a.total }}</td>{% endfor %}</tr>
+                        <tr class="admin-sub"><th scope="row">… finished games</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.games }}</td>{% endfor %}</tr>
+                        <tr class="admin-sub"><th scope="row">… daily challenges</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.daily }}</td>{% endfor %}</tr>
+                        <tr class="admin-sub"><th scope="row">… live matches</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.live }}</td>{% endfor %}</tr>
+                        <tr class="admin-sub"><th scope="row">… custom uploads</th>{% for a in stats.ai.values() %}<td class="text-end">{{ a.uploads }}</td>{% endfor %}</tr>
+                        <tr><th scope="row">Help chats</th>{% for n in stats.chats.values() %}<td class="text-end">{{ n }}</td>{% endfor %}</tr>
+                    </tbody>
+                </table>
+            </div>
+            <p class="small text-muted mt-3 mb-0">AI quizzes count each new quiz once: games of freshly made quizzes (when finished), daily challenges, live matches and uploads. Replays of an existing quiz made no AI call.</p>
+        </div>
+
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="section-label"><i class="bi bi-bar-chart-fill text-brand fs-4"></i>Games per day, last 30 days</div>
+            <div class="admin-chart" role="img" aria-label="Games per day over the last 30 days, at most {{ peak }} a day">
+                {% for day, n in stats.per_day %}
+                <div class="admin-bar" title="{{ day }}: {{ n }}">
+                    <span class="admin-bar-fill" style="height: {{ (n / peak * 100)|round(1) }}%"></span>
+                    {# Every 7 days counting back from today, so the labels never crowd #}{% if loop.revindex0 % 7 == 0 %}<span class="admin-bar-label">{{ day[5:] }}</span>{% endif %}
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="row g-4 mb-4">
+            <div class="col-lg-6">
+                <div class="wf-card wf-card-pad h-100">
+                    <div class="section-label"><i class="bi bi-fire text-brand fs-4"></i>Top topics, 30 days</div>
+                    {% if stats.top_topics %}
+                    <ol class="admin-list mb-0">
+                        {% for topic, n in stats.top_topics %}<li><span class="text-truncate">{{ topic }}</span><span class="fw-bold">{{ n }}</span></li>{% endfor %}
+                    </ol>
+                    {% else %}<p class="text-muted mb-0">No games in the last 30 days.</p>{% endif %}
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="wf-card wf-card-pad h-100">
+                    <div class="section-label"><i class="bi bi-grid-fill text-brand fs-4"></i>Categories, 30 days</div>
+                    {% set most = (stats.categories[0][1] if stats.categories else 1) %}
+                    {% for category, n in stats.categories %}
+                    <div class="mb-2">
+                        <div class="d-flex justify-content-between small"><span>{{ category }}</span><span class="fw-bold">{{ n }}</span></div>
+                        <div class="meter"><span class="meter-good" style="width: {{ (n / most * 100)|round(1) }}%"></span></div>
+                    </div>
+                    {% else %}<p class="text-muted mb-0">No games in the last 30 days.</p>{% endfor %}
+                    <p class="small text-muted mt-3 mb-0">Live matches, 30 days:
+                        {% for state, n in stats.live.items() %}{{ n }} {{ state }}{% if not loop.last %} · {% endif %}{% else %}none{% endfor %}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="section-label"><i class="bi bi-flag-fill text-brand fs-4"></i>Reported rounds <span class="text-muted small fw-normal ms-2">newest 20</span></div>
+            {% for item in stats.reports %}
+            <div class="admin-report">
+                <div class="small text-muted">{{ item.report.created_at.strftime('%Y-%m-%d %H:%M') }} UTC · {{ item.user }} · <span class="chip">{{ item.report.reason.replace('_', ' ') }}</span> · {{ item.report.topic }}</div>
+                <div class="mt-1"><strong>Fake:</strong> {{ item.fake }}</div>
+                <ul class="small mb-1">{% for s in item.true %}<li>{{ s }}</li>{% endfor %}</ul>
+                {% if item.report.explanation %}<div class="small"><strong>Why:</strong> {{ item.report.explanation }}</div>{% endif %}
+                {% if item.report.comment %}<div class="small"><strong>Comment:</strong> {{ item.report.comment }}</div>{% endif %}
+                {% if item.report.source_url %}<a class="small" href="{{ item.report.source_url }}" target="_blank" rel="noopener noreferrer">Source</a>{% endif %}
+            </div>
+            {% else %}<p class="text-muted mb-0">No reports yet.</p>{% endfor %}
+        </div>
+
+        <div class="wf-card wf-card-pad">
+            <div class="section-label"><i class="bi bi-bug-fill text-brand fs-4"></i>Recent errors <span class="text-muted small fw-normal ms-2">newest 10</span></div>
+            {% for e in stats.errors %}
+            <div class="admin-report">
+                <div class="small text-muted">{{ e.created_at.strftime('%Y-%m-%d %H:%M') }} UTC · {{ e.method }} {{ e.path }}</div>
+                <code class="small d-block text-break">{{ e.error }}</code>
+            </div>
+            {% else %}<p class="text-muted mb-0">No errors saved.</p>{% endfor %}
+        </div>
+    </div>
+</div>
+{% endblock %}
