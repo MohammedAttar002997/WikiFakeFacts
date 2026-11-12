@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+
+{# A live match. The page asks /live/<code>/state every poll_ms and draws whichever phase the match is in:
+   waiting (invite link), countdown, question, reveal, finished or expired. #}
+{% block title %}{{ _('Live match') }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="wf-card wf-card-pad live-card" id="live"
+             data-state-url="{{ url_for('live_status', code=match.code) }}"
+             data-answer-url="{{ url_for('live_answer', code=match.code) }}"
+             data-poll-ms="{{ poll_ms }}" data-role="{{ role or '' }}">
+            <div class="quiz-top">
+                <div class="quiz-counter"><i class="bi bi-broadcast me-1"></i>{{ _('Live match') }}</div>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="chip chip-brand"><i class="bi bi-tag-fill"></i>{{ match.topic }}</span>
+                    <span class="chip"><i class="bi bi-book-half"></i>{{ match.source or 'Wikipedia' }}</span>
+                </div>
+            </div>
+
+            {% if can_join %}
+            <div class="live-panel text-center py-4">
+                <div class="display-5 mb-2">⚔️</div>
+                <h1 class="h3 fw-black">{{ _('{name} invites you to a live match').format(name=host_name) }}</h1>
+                <p class="text-muted">{{ _('Live: you and a friend answer the same rounds at the same time. Right answers score, faster ones score more.') }}</p>
+                <form action="{{ url_for('live_join', code=match.code) }}" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-primary btn-lg px-5"><i class="bi bi-play-fill me-1"></i>{{ _('Join the match') }}</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="live-scoreboard" id="liveScoreboard" hidden>
+                <div class="live-player" data-player="host"><div class="name"></div><div class="points">0</div></div>
+                <div class="live-vs">VS</div>
+                <div class="live-player" data-player="guest"><div class="name"></div><div class="points">0</div></div>
+            </div>
+
+            {# waiting #}
+            <div class="live-panel text-center py-4" data-phase="waiting" hidden>
+                <div class="display-5 mb-2">📨</div>
+                <p class="lead">{{ _('Send this link to a friend. The match starts as soon as they join.') }}</p>
+                <div class="d-flex flex-column flex-sm-row gap-2 mb-3">
+                    <input type="text" class="form-control" id="inviteUrl" value="{{ invite_url }}" readonly aria-label="{{ _('Share link') }}">
+                    <button type="button" class="btn btn-primary flex-shrink-0" id="inviteButton"
+                            data-share-text="{{ _('Play a live match against me on WikiFakeFact!') }}"
+                            data-copied-label="{{ _('Link copied!') }}">
+                        <i class="bi bi-share me-1"></i><span>{{ _('Share') }}</span>
+                    </button>
+                </div>
+                <p class="text-muted mb-0"><span class="spinner-grow spinner-grow-sm text-brand me-2" aria-hidden="true"></span>{{ _('Waiting for your friend to join…') }}</p>
+            </div>
+
+            {# countdown #}
+            <div class="live-panel text-center py-5" data-phase="countdown" hidden>
+                <div class="fw-black h3 mb-2">{{ _('Get ready!') }}</div>
+                <div class="live-countdown" id="liveCountdown" aria-live="polite"></div>
+            </div>
+
+            {# question and reveal share the answer tiles #}
+            <div class="live-panel" data-phase="question reveal" hidden>
+                <div class="quiz-timer" id="liveTimer">
+                    <span id="liveRound" class="text-nowrap"></span>
+                    <div class="timer-track" aria-hidden="true"><div class="timer-bar"></div></div>
+                    <span class="timer-count" role="timer" aria-label="{{ _('Seconds left') }}"></span>
+                </div>
+                <div class="quiz-question pb-3">
+                    <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
+                    <p class="text-muted mb-0" id="liveStatus" aria-live="polite"></p>
+                </div>
+                <div class="row g-3" id="liveOptions"></div>
+                <div class="tip mt-3" id="liveExplanation" hidden></div>
+            </div>
+
+            {# finished #}
+            <div class="live-panel text-center py-4" data-phase="finished" hidden>
+                <div class="display-4 mb-2" id="liveTrophy">🏆</div>
+                <h1 class="fw-black mb-3" id="liveWinner" aria-live="polite"></h1>
+                <ol class="list-unstyled text-start live-summary mb-4" id="liveSummary"></ol>
+                <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                    <a href="{{ url_for('setup') }}" class="btn btn-primary btn-lg"><i class="bi bi-arrow-repeat me-1"></i>{{ _('Play Again') }}</a>
+                    <a href="{{ url_for('history') }}" class="btn btn-outline-primary btn-lg"><i class="bi bi-clock-history me-1"></i>{{ _('Quiz history') }}</a>
+                </div>
+            </div>
+
+            {# expired #}
+            <div class="live-panel text-center py-4" data-phase="expired" hidden>
+                <div class="display-5 mb-2">⌛</div>
+                <p class="lead">{{ _('This invite has expired.') }}</p>
+                <a href="{{ url_for('setup') }}" class="btn btn-primary">{{ _('Back to Setup') }}</a>
+            </div>
+
+            <p class="text-danger text-center small mt-3 mb-0" id="liveOffline" hidden>{{ _('Connection lost. Trying again…') }}</p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+<script type="application/json" id="liveText">{{ {
+    'round': _('Round {n} of {total}'), 'waitingFor': _('Waiting for {name}…'), 'youWin': _('You win!'),
+    'wins': _('{name} wins!'), 'draw': _("It's a draw!"), 'points': _('{n} points'), 'fake': _('Fake'),
+    'yourPick': _('Your pick'), 'pickedBy': _('Picked by {name}'), 'why': _("Why it's fake:"),
+    'timeRanOut': _('Time ran out'), 'spotted': _('Spotted it'), 'missed': _('Missed'), 'you': _('You'),
+    'question': _('Three of these are true. Which one is the fake?')
+}|tojson }}</script>
+{% endblock %}
+
+{% block scripts %}
+{% if not can_join %}
+<script>
+(function () {
+    const root = document.getElementById('live');
+    const T = JSON.parse(document.getElementById('liveText').textContent);
+    const fill = (text, values) => text.replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m));
+    const csrf = document.querySelector('meta[name="csrf-token"]').content;
+    const me = root.dataset.role;
+    const $ = (sel) => root.querySelector(sel);
+    let state = null, deadline = 0, shownRound = 0, sending = false, failures = 0;
+
+    // Invite link: the native share sheet on phones, the clipboard elsewhere
+    const invite = document.getElementById('inviteButton');
+    if (invite) invite.addEventListener('click', async () => {
+        const url = document.getElementById('inviteUrl').value, text = invite.dataset.shareText;
+        if (navigator.share) { try { await navigator.share({ title: 'WikiFakeFact', text, url }); } catch (e) {} return; }
+        try { await navigator.clipboard.writeText(text + ' ' + url); invite.querySelector('span').textContent = invite.dataset.copiedLabel; }
+        catch (e) { document.getElementById('inviteUrl').select(); }
+    });
+
+    function showPhase(phase) {
+        root.querySelectorAll('[data-phase]').forEach(el => { el.hidden = !el.dataset.phase.split(' ').includes(phase); });
+        $('#liveScoreboard').hidden = phase === 'waiting' || phase === 'expired';
+    }
+
+    function drawScores() {
+        for (const role of ['host', 'guest']) {
+            const p = state.players[role], el = root.querySelector(`[data-player="${role}"]`);
+            el.querySelector('.name').textContent = (p.name || '…') + (role === me ? ` (${T.you})` : '');
+            el.querySelector('.points').textContent = p.points;
+            el.classList.toggle('is-you', role === me);
+            el.classList.toggle('has-answered', state.phase === 'question' && p.answered);
+        }
+    }
+
+    function drawOptions() {
+        const box = $('#liveOptions');
+        if (shownRound !== state.round || !box.children.length) {
+            shownRound = state.round;
+            box.innerHTML = '';
+            state.options.forEach((option, i) => {
+                const col = document.createElement('div');
+                col.className = 'col-md-6';
+                col.innerHTML = `<button type="button" class="answer answer-${i + 1}"><span class="letter">${'ABCD'[i]}</span>` +
+                    `<span class="text"></span><span class="live-tags"></span><i class="bi bi-check-circle-fill pick"></i></button>`;
+                col.querySelector('.text').textContent = option;
+                col.querySelector('button').addEventListener('click', () => answer(option));
+                box.appendChild(col);
+            });
+        }
+        const other = me === 'host' ? 'guest' : 'host';
+        const result = state.result;
+        box.querySelectorAll('button.answer').forEach(button => {
+            const option = button.querySelector('.text').textContent;
+            const tags = button.querySelector('.live-tags');
+            button.disabled = state.phase !== 'question' || !!state.your_pick || sending;
+            button.classList.toggle('is-picked', option === state.your_pick);
+            button.classList.toggle('is-fake', !!result && option === result.fake);
+            tags.innerHTML = '';
+            if (result) {
+                const add = (text, cls) => { const s = document.createElement('span'); s.className = 'review-tag ' + cls; s.textContent = text; tags.appendChild(s); };
+                if (option === result.fake) add(T.fake, 'tag-fake');
+                if (result.answers[me] && result.answers[me].pick === option) add(T.yourPick, 'tag-pick');
+                if (result.answers[other] && result.answers[other].pick === option) add(fill(T.pickedBy, { name: state.players[other].name }), 'tag-their-pick');
+            }
+        });
+        const status = $('#liveStatus'), explanation = $('#liveExplanation');
+        if (result) {
+            const mine = result.answers[me];
+            status.textContent = !mine ? T.timeRanOut : mine.correct ? `${T.spotted} · +${fill(T.points, { n: mine.points })}` : T.missed;
+            explanation.hidden = !result.explanation;
+            explanation.innerHTML = '';
+            if (result.explanation) {
+                const strong = document.createElement('strong'); strong.textContent = T.why + ' ';
+                explanation.append(strong, document.createTextNode(result.explanation));
+            }
+        } else {
+            explanation.hidden = true;
+            status.textContent = state.your_pick ? fill(T.waitingFor, { name: state.players[other].name }) : T.question;
+        }
+        $('#liveRound').textContent = fill(T.round, { n: state.round, total: state.rounds });
+        $('#liveTimer').hidden = state.phase !== 'question';
+    }
+
+    function drawFinished() {
+        const w = state.winner;
+        $('#liveWinner').textContent = !w ? T.draw : w === me ? T.youWin : fill(T.wins, { name: state.players[w].name });
+        $('#liveTrophy').textContent = !w ? '🤝' : w === me ? '🏆' : '🥈';
+        const list = $('#liveSummary');
+        list.innerHTML = '';
+        state.summary.forEach((round, i) => {
+            const li = document.createElement('li');
+            li.className = 'live-summary-row';
+            const marks = ['host', 'guest'].map(role => {
+                const a = round.answers[role];
+                return `${state.players[role].name}: ${a && a.correct ? '✅ +' + a.points : (a ? '❌' : '⌛')}`;
+            }).join(' · ');
+            li.innerHTML = `<div class="fw-black small text-muted"></div><div class="fw-bold"></div><div class="small"></div>`;
+            li.children[0].textContent = fill(T.round, { n: i + 1, total: state.rounds });
+            li.children[1].textContent = `${T.fake}: ${round.fake}`;
+            li.children[2].textContent = marks;
+            list.appendChild(li);
+        });
+    }
+
+    function draw() {
+        showPhase(state.phase);
+        if (state.phase !== 'waiting' && state.phase !== 'expired') drawScores();
+        if (state.phase === 'question' || state.phase === 'reveal') drawOptions();
+        if (state.phase === 'finished') drawFinished();
+    }
+
+    // Between polls, count down locally so the timer moves smoothly
+    setInterval(() => {
+        if (!state) return;
+        const left = Math.max(0, (deadline - Date.now()) / 1000);
+        if (state.phase === 'countdown') $('#liveCountdown').textContent = Math.ceil(left) || '';
+        if (state.phase === 'question') {
+            $('#liveTimer .timer-bar').style.width = Math.min(100, left / 20 * 100) + '%';
+            $('#liveTimer .timer-count').textContent = Math.ceil(left);
+            $('#liveTimer').classList.toggle('is-low', left <= 5);
+        }
+    }, 200);
+
+    async function poll() {
+        try {
+            const response = await fetch(root.dataset.stateUrl, { headers: { Accept: 'application/json' } });
+            if (!response.ok) throw new Error(response.status);
+            state = await response.json();
+            deadline = Date.now() + (state.seconds || 0) * 1000;
+            failures = 0;
+            document.getElementById('liveOffline').hidden = true;
+            draw();
+        } catch (e) {
+            if (++failures > 2) document.getElementById('liveOffline').hidden = false;
+        }
+        if (!state || (state.phase !== 'finished' && state.phase !== 'expired')) {
+            setTimeout(poll, Number(root.dataset.pollMs));
+        }
+    }
+
+    async function answer(option) {
+        if (!state || state.phase !== 'question' || state.your_pick || sending) return;
+        sending = true;
+        state.your_pick = option;  // show the pick at once; the next poll confirms it
+        drawOptions();
+        try {
+            await fetch(root.dataset.answerUrl, {
+                method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                body: JSON.stringify({ round: state.round, option })
+            });
+        } catch (e) { /* the next poll shows whether it counted */ }
+        sending = false;
+    }
+
+    poll();
+})();
+</script>
+{% endif %}
+{% endblock %}
