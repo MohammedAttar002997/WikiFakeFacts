@@ -9,7 +9,7 @@ import random
 from hidden_rounds import fingerprint
 
 PRACTICE_ROUNDS = 5   # Rounds per practice quiz (fewer if there aren't that many mistakes)
-GAMES_LOOKED_AT = 200  # Newest finished games searched for mistakes
+GAMES_LOOKED_AT = 100  # Newest finished games searched for mistakes (history and results pages count them)
 
 
 def mistakes(games, practice_games, hidden):

@@ -97,12 +97,13 @@ def admin_report_action(report_id, action):
     report = db.session.get(RoundReport, report_id)
     if not is_admin(current_user()) or not report or action not in REPORT_ACTIONS:
         abort(404)
-    statements = json.loads(report.statements_json)
-    fingerprint = hidden_rounds.fingerprint(statements)
+    # Reports made by the code that was live while migration 0024 ran have no fingerprint yet; there are only a few
+    for old in RoundReport.query.filter(RoundReport.fingerprint.is_(None)):
+        old.fingerprint = hidden_rounds.fingerprint(json.loads(old.statements_json))
+    fingerprint = report.fingerprint
     status = REPORT_ACTIONS[action]
-    for same in RoundReport.query.all():
-        if hidden_rounds.fingerprint(json.loads(same.statements_json)) == fingerprint:
-            same.status, same.handled_at = status, core.utcnow() if status else None
+    for same in RoundReport.query.filter_by(fingerprint=fingerprint):
+        same.status, same.handled_at = status, core.utcnow() if status else None
     hidden = HiddenRound.query.filter_by(fingerprint=fingerprint).first()
     if status == 'hidden' and not hidden:
         db.session.add(HiddenRound(fingerprint=fingerprint, topic=report.topic, statements_json=report.statements_json))

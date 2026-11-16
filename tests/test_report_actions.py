@@ -123,3 +123,16 @@ def test_a_quiz_with_a_hidden_round_cant_be_replayed_as_a_challenge(login, app_c
     hide(json.loads(original.questions_json)[2])
     response = login('Ben').post('/r/abc123/play')
     assert response.headers['Location'].endswith('/setup') and QuizSession.query.count() == 1
+
+
+def test_reports_store_the_rounds_fingerprint(reported):
+    assert [r.fingerprint for r in reported] == [fingerprint(json.loads(r.statements_json)) for r in reported]
+
+
+def test_reports_without_a_fingerprint_are_matched_too(admins, login, reported):
+    """Reports made by the old code while migration 0024 was being applied have none; acting on one fills them in."""
+    for r in reported:
+        r.fingerprint = None
+    db.session.commit()
+    act(login('Boss'), reported[0], 'check')
+    assert {(r.status, r.fingerprint is not None) for r in RoundReport.query} == {('checked', True)}

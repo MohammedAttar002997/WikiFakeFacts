@@ -5,6 +5,8 @@ import hmac
 import json
 import random
 import time
+from collections import namedtuple
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 
 from flask import abort, jsonify, request, session, url_for
@@ -184,28 +186,49 @@ def finished_daily_today(date):
             .filter(DailyChallenge.date == date, QuizSession.is_completed.is_(True))}
 
 
-def send_push(subscription, message):
-    """Send `message` (a dict) to one device. Returns the push service's error status, or None if it worked."""
+# What a sending thread gets: plain values, since database rows mustn't be shared between threads
+Device = namedtuple('Device', 'id endpoint p256dh auth language')
+
+
+def send_push(subscription, message, vapid=None):
+    """Send `message` (a dict) to one device (anything with endpoint, p256dh and auth). Returns the push service's
+    error status, 0 when it couldn't be reached, or None if it worked. Safe to call from several threads at once."""
     try:
         webpush(subscription_info={'endpoint': subscription.endpoint,
                                    'keys': {'p256dh': subscription.p256dh, 'auth': subscription.auth}},
-                data=json.dumps(message), vapid_private_key=Vapid.from_string(app.config['VAPID_PRIVATE_KEY']),
+                data=json.dumps(message), vapid_private_key=vapid or Vapid.from_string(app.config['VAPID_PRIVATE_KEY']),
                 vapid_claims={'sub': app.config['VAPID_SUBJECT']}, ttl=6 * 3600, timeout=10)
         return None
     except WebPushException as error:
         return error.response.status_code if error.response is not None else 0
+    except Exception:
+        return 0  # Network trouble on the way to the push service: tried again on the next day's run
 
 
-def send_daily_reminders():
-    date = today_utc()
+def send_daily_reminders(clock=time.monotonic):
+    """Remind everyone due (reminders.due), SEND_WORKERS at a time, starting no new batch after RUN_SECONDS."""
+    started, date = clock(), today_utc()
     topic = daily_topic(date)
+    due = reminders.due(PushSubscription.query.all(), finished_daily_today(date), date)
+    devices = [Device(s.id, s.endpoint, s.p256dh, s.auth, s.language) for s in due]
+    # Made here, not in the threads: translations and url_for need this request's context
+    messages = {lang: {'title': _("Today's challenge is ready", lang=lang),
+                       'body': _("{topic}: three true facts and one fake. Can you spot it?", lang=lang).format(topic=topic),
+                       'url': url_for('daily')} for lang in {d.language for d in devices}}
+    vapid = Vapid.from_string(app.config['VAPID_PRIVATE_KEY']) if devices else None
+    results = {}
+    with ThreadPoolExecutor(max_workers=reminders.SEND_WORKERS) as pool:
+        for batch in reminders.batches(devices):
+            if clock() - started > reminders.RUN_SECONDS:
+                break
+            statuses = pool.map(lambda d: send_push(d, messages[d.language], vapid), batch)
+            results.update(zip((d.id for d in batch), statuses))
+    # Back in this thread: record what happened, in one commit
     sent = removed = failed = 0
-    for subscription in reminders.due(PushSubscription.query.all(), finished_daily_today(date), date):
-        lang = subscription.language
-        status = send_push(subscription, {
-            'title': _("Today's challenge is ready", lang=lang),
-            'body': _("{topic}: three true facts and one fake. Can you spot it?", lang=lang).format(topic=topic),
-            'url': url_for('daily')})
+    for subscription in due:
+        if subscription.id not in results:
+            continue
+        status = results[subscription.id]
         if status is None:
             subscription.last_sent = date
             sent += 1
@@ -214,13 +237,14 @@ def send_daily_reminders():
             removed += 1
         else:
             failed += 1
-        db.session.commit()
-    return {'sent': sent, 'removed': removed, 'failed': failed}
+    db.session.commit()
+    return {'sent': sent, 'removed': removed, 'failed': failed, 'left': len(devices) - len(results)}
 
 
 @app.route('/cron/daily-reminder')
 def cron_daily_reminder():
-    """Called once a day by Vercel's cron (vercel.json)."""
+    """Called by Vercel's cron once a day, plus a catch-up call an hour later for anyone a slow run didn't reach
+    (vercel.json); devices already reminded today are skipped."""
     require_cron_secret()
     if not push_ready():
         return jsonify(record_cron_run('daily-reminder', {'sent': 0, 'note': 'VAPID keys not set'}))

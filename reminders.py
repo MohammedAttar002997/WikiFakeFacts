@@ -8,6 +8,9 @@ Sending goes through pywebpush, signed with the site's VAPID key pair (make_vapi
 from urllib.parse import urlparse
 
 MAX_PER_PLAYER = 5  # Devices one player can get reminders on; the oldest is dropped beyond that
+SEND_WORKERS = 10   # Reminders sent at the same time (each waits on a push service, so they overlap well)
+RUN_SECONDS = 200   # One call starts no new batch after this long, well inside Vercel's time limit; devices left
+                    # over get theirs from the catch-up call an hour later (vercel.json), since `due` skips the rest
 
 # The push services of Chrome/Edge/Android, Firefox, Windows and Safari/iOS. The server sends a request to whatever
 # address a subscription names, so only these are accepted, never an address anyone could make up.
@@ -32,6 +35,11 @@ def due(subscriptions, finished_today, today):
     subscriptions: objects with user_id and last_sent ('YYYY-MM-DD' or None). finished_today: set of user ids.
     """
     return [s for s in subscriptions if s.user_id not in finished_today and s.last_sent != today]
+
+
+def batches(items, size=SEND_WORKERS):
+    """`items` in consecutive lists of at most `size`."""
+    return [items[i:i + size] for i in range(0, len(items), size)]
 
 
 def gone(status_code):
