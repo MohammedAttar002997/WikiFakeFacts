@@ -24,9 +24,10 @@ from flask_wtf.csrf import CSRFError, CSRFProtect
 from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
+from alembic.script import ScriptDirectory
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
                     UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport, ReadyQuiz,
-                    QuizDemand, HiddenRound, PushSubscription)
+                    QuizDemand, HiddenRound, PushSubscription, CronRun)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
@@ -43,6 +44,7 @@ import ready_pool
 import hidden_rounds
 import reminders
 import practice as practice_rules
+import health
 from py_vapid import Vapid
 from pywebpush import WebPushException, webpush
 
@@ -842,15 +844,63 @@ def is_admin(user):
     return bool(user) and user.username.casefold() in names
 
 
+_code_migrations = None
+
+
+def code_migrations():
+    """({revision: down_revision} of the migrations shipped with this code, its newest revision), read once."""
+    global _code_migrations
+    if _code_migrations is None:
+        scripts = ScriptDirectory.from_config(migrate.get_config())
+        revisions = {s.revision: s.down_revision for s in scripts.walk_revisions()}
+        _code_migrations = (revisions, health.migration_head(revisions))
+    return _code_migrations
+
+
+def site_health():
+    """What /health reports and /admin warns about (rules in health.py)."""
+    revisions, head = code_migrations()
+    with db.engine.connect() as conn:
+        database = MigrationContext.configure(conn).get_current_revision()
+    active = {'refill'} if app.config.get('CRON_SECRET') else set()
+    if active and push_ready():
+        active.add('daily-reminder')
+    try:
+        last_runs = {r.name: r.last_run for r in CronRun.query}
+    except Exception:
+        db.session.rollback()  # No cron_run table yet: that's a missing migration, which the banner already says
+        last_runs = {}
+    return {'database': database, 'code': head, 'schema': health.schema_state(database, head, set(revisions)),
+            'late_timers': health.late_timers(utcnow(), last_runs, active)}
+
+
+@app.route('/health')
+def health_check():
+    """Which migration the database and the code are at. Public on purpose: revision names reveal nothing, and the
+    pull-request check (.github/workflows/migration-applied.yml) reads it to see whether a migration was applied."""
+    status = site_health()
+    response = jsonify(database=status['database'], code=status['code'], schema=status['schema'])
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
 @app.route('/admin')
 def admin():
     """Numbers for the site's owner. Anyone else, signed in or not, gets a plain 404, as if it didn't exist."""
     user = current_user()
     if not is_admin(user):
         abort(404)
-    stats = admin_dashboard(utcnow())
+    status = site_health()
+    try:
+        stats = admin_dashboard(utcnow())
+    except Exception as error:
+        # With a migration missing, the numbers can fail too; the page still shows what's wrong
+        save_error(error)
+        if status['schema'] != 'behind':
+            raise
+        return render_template('admin.html', stats=None, peak=1, health=status)
     peak = max([n for _, n in stats['per_day']] + [1])
-    return render_template('admin.html', stats=stats, peak=peak)
+    return render_template('admin.html', stats=stats, peak=peak, health=status)
 
 
 REPORT_ACTIONS = {'hide': 'hidden', 'check': 'checked', 'reopen': None}
@@ -1510,6 +1560,15 @@ def refill_ready_quizzes(clock=time.monotonic):
     return {'made': made, 'planned': len(plan), 'in_stock': sum(ready_stock().values())}
 
 
+def record_cron_run(name, result):
+    """Remember that timer `name` just ran (for the overdue warning on /admin) and pass its result on."""
+    row = db.session.get(CronRun, name) or CronRun(name=name)
+    row.last_run, row.last_result = utcnow(), json.dumps(result)[:300]
+    db.session.add(row)
+    db.session.commit()
+    return result
+
+
 def require_cron_secret():
     """401 unless the request carries CRON_SECRET as a Bearer token (Vercel's cron sends it by itself)."""
     secret = app.config.get('CRON_SECRET') or ''
@@ -1521,7 +1580,7 @@ def require_cron_secret():
 def cron_refill():
     """Called by the timers (vercel.json, .github/workflows/refill.yml)."""
     require_cron_secret()
-    return jsonify(refill_ready_quizzes())
+    return jsonify(record_cron_run('refill', refill_ready_quizzes()))
 
 
 @app.route('/start_quiz', methods=['POST'])
@@ -2095,8 +2154,8 @@ def cron_daily_reminder():
     """Called once a day by Vercel's cron (vercel.json)."""
     require_cron_secret()
     if not push_ready():
-        return jsonify(sent=0, note='VAPID keys not set')
-    return jsonify(send_daily_reminders())
+        return jsonify(record_cron_run('daily-reminder', {'sent': 0, 'note': 'VAPID keys not set'}))
+    return jsonify(record_cron_run('daily-reminder', send_daily_reminders()))
 
 
 @app.route('/daily/start', methods=['POST'])

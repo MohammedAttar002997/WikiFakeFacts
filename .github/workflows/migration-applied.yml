@@ -1,0 +1,29 @@
+name: Migration applied
+
+# A pull request that adds a migration must not be merged before the migration runs on the production database
+# (migrations don't run on Vercel; see "On Vercel" in README.md). This check asks the live site's /health which
+# migration its database is at, and fails until it's the newest one on this branch.
+#
+# After running `python migrate_production.py` from the branch, re-run this check (Checks tab, Re-run jobs).
+on:
+  pull_request:
+    paths:
+      - 'migrations/versions/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  applied:
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.15'
+
+      - name: Compare the branch's newest migration with the production database
+        run: python scripts/check_migration_applied.py https://www.wikifakefacts.com/health
