@@ -516,5 +516,9 @@
   "Practice": "Praticar",
   "Your mistakes": "Seus erros",
   "No mistakes to practice right now. Nice work!": "Nenhum erro para praticar agora. Bom trabalho!",
-  "Rounds you got right won't come back. Practice doesn't count toward your score.": "As rodadas que você acertou não voltam. A prática não conta para sua pontuação."
+  "Rounds you got right won't come back. Practice doesn't count toward your score.": "As rodadas que você acertou não voltam. A prática não conta para sua pontuação.",
+  "What the fake changed:": "O que o falso mudou:",
+  "(nothing)": "(nada)",
+  "(left out)": "(omitido)",
+  "became": "virou"
 }

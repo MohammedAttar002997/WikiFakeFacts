@@ -1001,6 +1001,15 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .source-quote blockquote::before { content: "“"; }
 .source-quote blockquote::after { content: "”"; }
 .source-quote figcaption { padding-inline-start: .85rem; }
+
+/* What the fake changed (fake_diff.py): the source's words in green, the fake's in red, also with an underline so
+   the difference doesn't rely on colour alone */
+mark.diff-source, mark.diff-fake { padding: 0 .1em; border-radius: .25em; color: inherit;
+    text-decoration-line: underline; text-decoration-thickness: 2px; text-underline-offset: .2em; }
+mark.diff-source { background: rgba(16, 185, 129, .18); text-decoration-color: #10b981; }
+mark.diff-fake { background: rgba(239, 68, 68, .16); text-decoration-color: #ef4444; text-decoration-style: wavy; }
+.fake-change { display: flex; flex-wrap: wrap; align-items: baseline; gap: .35rem .75rem; font-size: .95rem; }
+.fake-change-pair { display: inline-flex; flex-wrap: wrap; align-items: baseline; gap: .35rem; overflow-wrap: anywhere; }
 .tag-their-pick { background: rgba(245, 158, 11, .16); color: #d97706; }
 .review-chip-who { font-weight: 900; max-width: 9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 

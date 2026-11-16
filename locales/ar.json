@@ -516,5 +516,9 @@
   "Practice": "تدرّب",
   "Your mistakes": "أخطاؤك",
   "No mistakes to practice right now. Nice work!": "لا توجد أخطاء للتدرّب عليها الآن. أحسنت!",
-  "Rounds you got right won't come back. Practice doesn't count toward your score.": "الجولات التي أصبت فيها لن تعود. التدريب لا يُحتسب في نقاطك."
+  "Rounds you got right won't come back. Practice doesn't count toward your score.": "الجولات التي أصبت فيها لن تعود. التدريب لا يُحتسب في نقاطك.",
+  "What the fake changed:": "ما الذي غيّرته الحقيقة المزيفة:",
+  "(nothing)": "(لا شيء)",
+  "(left out)": "(محذوف)",
+  "became": "أصبح"
 }

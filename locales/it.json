@@ -516,5 +516,9 @@
   "Practice": "Allenati",
   "Your mistakes": "I tuoi errori",
   "No mistakes to practice right now. Nice work!": "Nessun errore da ripassare per ora. Ottimo lavoro!",
-  "Rounds you got right won't come back. Practice doesn't count toward your score.": "I round indovinati non torneranno. L’allenamento non conta per il tuo punteggio."
+  "Rounds you got right won't come back. Practice doesn't count toward your score.": "I round indovinati non torneranno. L’allenamento non conta per il tuo punteggio.",
+  "What the fake changed:": "Cosa ha cambiato il falso:",
+  "(nothing)": "(niente)",
+  "(left out)": "(omesso)",
+  "became": "è diventato"
 }
