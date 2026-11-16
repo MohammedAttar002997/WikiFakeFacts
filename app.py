@@ -39,6 +39,7 @@ from og_card import result_card
 import ready_pool
 import hidden_rounds
 import practice as practice_rules
+import fake_diff
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -495,6 +496,14 @@ def seconds_left(quiz_session):
     return quiz_session.time_limit - (utcnow() - started).total_seconds()
 
 
+def review_round(facts, explanation, quote):
+    """What every answer review shows about a round, whoever played it: the statements, why the fake is fake, the
+    source sentence, and (fake_diff.py) which words of it the fake changed."""
+    fake = next((s for s, real in facts.items() if real is False), None)
+    return {'facts': list(facts.items()), 'explanation': explanation, 'quote': quote,
+            'diff': fake_diff.compare(fake, quote) if quote else None}
+
+
 def build_answer_review(quiz_session, opponent=None):
     """Round-by-round answer review: which statement was fake, what the player picked, and why. With `opponent`
     (the other side of a challenge, same questions) each round also says what they picked."""
@@ -512,9 +521,8 @@ def build_answer_review(quiz_session, opponent=None):
 
     review = []
     for i, facts in enumerate(questions[:quiz_session.current_question_index]):
-        row = {'facts': list(facts.items()), **outcome(answers, i, facts),
-               'explanation': explanations[i] if i < len(explanations) else None,
-               'quote': quotes[i] if i < len(quotes) else None}
+        row = {**review_round(facts, explanations[i] if i < len(explanations) else None,
+                              quotes[i] if i < len(quotes) else None), **outcome(answers, i, facts)}
         if opponent:
             row['them'] = outcome(their_answers, i, facts)
         review.append(row)
@@ -796,9 +804,9 @@ def guest_round_row(challenge, index, picked):
     facts = json.loads(challenge.questions_json)[index]
     explanations = json.loads(challenge.explanations_json or '[]')
     quotes = json.loads(challenge.quotes_json or '[]')
-    return {'facts': list(facts.items()), 'picked': picked, 'correct': facts.get(picked) is False,
-            'timed_out': False, 'explanation': explanations[index] if index < len(explanations) else None,
-            'quote': quotes[index] if index < len(quotes) else None}
+    return {**review_round(facts, explanations[index] if index < len(explanations) else None,
+                           quotes[index] if index < len(quotes) else None),
+            'picked': picked, 'correct': facts.get(picked) is False, 'timed_out': False}
 
 
 @app.route('/try', methods=['GET', 'POST'])

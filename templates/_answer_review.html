@@ -1,6 +1,8 @@
 {# Round-by-round answer review card. Expects `review` from build_answer_review(), `versus` (the other player in
    a challenge, or None) to show their pick in each round too, and `source_url` (the quiz's Wikipedia article, or
    None). Quotes are in the source's own language, so they get dir="auto" (and lang="en" for English Wikipedia). #}
+{# Text with the words fake_diff marked as changed wrapped in <mark>; all on one line so no spaces creep in #}
+{% macro highlighted(segments, kind) %}{% for text, changed in segments %}{% if changed %}<mark class="diff-{{ kind }}">{{ text }}</mark>{% else %}{{ text }}{% endif %}{% endfor %}{% endmacro %}
 {% macro outcome_chip(outcome, who=None) %}
 {% set prefix %}{% if who %}<span class="review-chip-who">{{ who }}:</span> {% endif %}{% endset %}
 {% if outcome.correct %}
@@ -33,7 +35,7 @@
                 {% set they_picked = versus and statement == round.them.picked %}
                 <li class="review-fact{% if not is_real %} is-fake{% elif picked %} is-wrong-pick{% endif %}">
                     <i class="bi {{ 'bi-patch-check-fill' if is_real else 'bi-incognito' }}" aria-hidden="true"></i>
-                    <span class="flex-grow-1">{{ statement }}</span>
+                    <span class="flex-grow-1">{% if not is_real and round.diff %}{{ highlighted(round.diff.fake, 'fake') }}{% else %}{{ statement }}{% endif %}</span>
                     <span class="review-tags">
                         {% if not is_real %}<span class="review-tag tag-fake">{{ _('Fake') }}</span>{% endif %}
                         {% if picked %}<span class="review-tag tag-pick">{{ _('Your pick') }}</span>{% endif %}
@@ -45,9 +47,22 @@
             {% if round.explanation %}
             <div class="tip"><strong>{{ _("Why it's fake:") }}</strong> {{ round.explanation }}</div>
             {% endif %}
+            {% if round.diff %}
+            {# The trick, spelled out: what the source said and what the fake made of it #}
+            <div class="fake-change mt-2">
+                <span class="fw-bold"><i class="bi bi-pencil-square me-1" aria-hidden="true"></i>{{ _('What the fake changed:') }}</span>
+                {% for was, became in round.diff.changes %}
+                <span class="fake-change-pair">
+                    {% if was %}<mark class="diff-source" dir="auto">{{ was }}</mark>{% else %}<span class="text-muted">{{ _('(nothing)') }}</span>{% endif %}
+                    <i class="bi bi-arrow-right" aria-label="{{ _('became') }}"></i>
+                    {% if became %}<mark class="diff-fake" dir="auto">{{ became }}</mark>{% else %}<span class="text-muted">{{ _('(left out)') }}</span>{% endif %}
+                </span>
+                {% endfor %}
+            </div>
+            {% endif %}
             {% if round.quote %}
             <figure class="source-quote mt-2 mb-0">
-                <blockquote class="mb-1" dir="auto"{% if source_url %} lang="en"{% endif %}>{{ round.quote }}</blockquote>
+                <blockquote class="mb-1" dir="auto"{% if source_url %} lang="en"{% endif %}>{% if round.diff %}{{ highlighted(round.diff.source, 'source') }}{% else %}{{ round.quote }}{% endif %}</blockquote>
                 <figcaption class="small text-muted">
                     {% if source_url %}
                     <a href="{{ source_url }}" target="_blank" rel="noopener noreferrer" class="fw-bold text-decoration-none">
