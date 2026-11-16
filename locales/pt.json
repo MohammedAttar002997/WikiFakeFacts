@@ -509,5 +509,12 @@
   "Done! We'll remind you on days you haven't played yet.": "Pronto! Vamos lembrar você nos dias em que ainda não tiver jogado.",
   "Notifications are blocked for this site. Allow them in your browser settings to get reminders.": "As notificações estão bloqueadas para este site. Permita-as nas configurações do navegador para receber lembretes.",
   "This browser can't show reminders. On iPhone, add WikiFakeFact to your Home Screen first.": "Este navegador não consegue mostrar lembretes. No iPhone, adicione primeiro o WikiFakeFact à tela de início.",
-  "Something went wrong. Please try again.": "Algo deu errado. Tente novamente."
+  "Something went wrong. Please try again.": "Algo deu errado. Tente novamente.",
+  "Practice your mistakes": "Pratique seus erros",
+  "{n} round you got wrong is waiting for another try. No AI, no score.": "{n} rodada que você errou espera outra tentativa. Sem IA, sem pontuação.",
+  "{n} rounds you got wrong are waiting for another try. No AI, no score.": "{n} rodadas que você errou esperam outra tentativa. Sem IA, sem pontuação.",
+  "Practice": "Praticar",
+  "Your mistakes": "Seus erros",
+  "No mistakes to practice right now. Nice work!": "Nenhum erro para praticar agora. Bom trabalho!",
+  "Rounds you got right won't come back. Practice doesn't count toward your score.": "As rodadas que você acertou não voltam. A prática não conta para sua pontuação."
 }

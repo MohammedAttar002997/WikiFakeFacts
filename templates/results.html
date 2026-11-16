@@ -15,11 +15,11 @@
     <div class="col-lg-7">
         <div class="wf-card wf-card-pad text-center">
             <div class="display-3 mb-2">{{ verdict[0] }}</div>
-            <h1 class="fw-black mb-1">{{ _('Game Results') }}</h1>
+            <h1 class="fw-black mb-1">{% if is_practice %}{{ _('Practice your mistakes') }}{% else %}{{ _('Game Results') }}{% endif %}</h1>
             <p class="lead text-muted mb-4">
                 {% set who %}<strong class="text-body">{{ me.username }}</strong>{% endset %}
                 {{ verdict[1] }}<br>
-                {{ _('Thank you for playing, {name}!').format(name=who) }}
+                {% if is_practice %}{{ _("Rounds you got right won't come back. Practice doesn't count toward your score.") }}{% else %}{{ _('Thank you for playing, {name}!').format(name=who) }}{% endif %}
             </p>
 
             <div class="score-ring mb-4" style="--p: {{ percentage }}; --ring: {{ verdict[2] }};"
@@ -45,6 +45,7 @@
                 </div>
                 <div class="col-4">
                     <div class="stat-tile">
+                        {% set topic = _('Your mistakes') if is_practice else topic %}
                         <div class="value text-truncate fs-6 pt-2" title="{{ topic }}">{{ topic }}</div>
                         <div class="label">{{ _('Topic:')|replace(':', '') }}</div>
                     </div>
@@ -72,6 +73,8 @@
             </a>
             {% endif %}
         </div>
+
+        <div class="mt-4">{% include "_practice_card.html" %}</div>
 
         {% if challenge %}
         <div class="wf-card wf-card-pad mt-4 text-center challenge-result is-{{ challenge.outcome }}">
