@@ -499,5 +499,15 @@
   "{rounds} rounds at {difficulty}": "{rounds} جولات بمستوى {difficulty}",
   "{score} correct": "إجابات صحيحة: {score}",
   "{theme} · {points} points": "{theme} · {points} نقطة",
-  "A round of this quiz turned out to be wrong, so it can't be replayed. Try a new quiz instead!": "تبيّن أن إحدى جولات هذا الاختبار خاطئة، لذلك لا يمكن إعادة لعبه. جرّب اختبارًا جديدًا بدلًا من ذلك!"
+  "A round of this quiz turned out to be wrong, so it can't be replayed. Try a new quiz instead!": "تبيّن أن إحدى جولات هذا الاختبار خاطئة، لذلك لا يمكن إعادة لعبه. جرّب اختبارًا جديدًا بدلًا من ذلك!",
+  "Today's challenge is ready": "تحدي اليوم جاهز",
+  "{topic}: three true facts and one fake. Can you spot it?": "{topic}: ثلاث حقائق صحيحة وواحدة مزيفة. هل يمكنك اكتشافها؟",
+  "Daily reminder": "تذكير يومي",
+  "Remind me every day": "ذكّرني كل يوم",
+  "Turn off reminders": "إيقاف التذكيرات",
+  "A notification once a day, only if you haven't played yet.": "إشعار واحد يوميًا، فقط إذا لم تلعب بعد.",
+  "Done! We'll remind you on days you haven't played yet.": "تم! سنذكّرك في الأيام التي لم تلعب فيها بعد.",
+  "Notifications are blocked for this site. Allow them in your browser settings to get reminders.": "الإشعارات محظورة لهذا الموقع. اسمح بها في إعدادات المتصفح لتصلك التذكيرات.",
+  "This browser can't show reminders. On iPhone, add WikiFakeFact to your Home Screen first.": "لا يستطيع هذا المتصفح عرض التذكيرات. على iPhone، أضف WikiFakeFact إلى الشاشة الرئيسية أولًا.",
+  "Something went wrong. Please try again.": "حدث خطأ ما. يُرجى المحاولة مرة أخرى."
 }

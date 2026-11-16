@@ -26,7 +26,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
                     UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport, ReadyQuiz,
-                    QuizDemand, HiddenRound)
+                    QuizDemand, HiddenRound, PushSubscription)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
@@ -41,6 +41,9 @@ from og_card import result_card
 from admin_stats import dashboard as admin_dashboard
 import ready_pool
 import hidden_rounds
+import reminders
+from py_vapid import Vapid
+from pywebpush import WebPushException, webpush
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -60,6 +63,11 @@ app.config['DONATION_URL'] = os.environ.get('DONATION_URL', '').strip()
 app.config['ADMIN_USERS'] = os.environ.get('ADMIN_USERS', '')
 # Shared with the timers that call /cron/refill (Vercel sends it as a Bearer token by itself; see ready_pool.py)
 app.config['CRON_SECRET'] = os.environ.get('CRON_SECRET', '')
+# Daily-challenge reminders (reminders.py); without the key pair (make_vapid_keys.py) the option isn't offered
+app.config['VAPID_PUBLIC_KEY'] = os.environ.get('VAPID_PUBLIC_KEY', '')
+app.config['VAPID_PRIVATE_KEY'] = os.environ.get('VAPID_PRIVATE_KEY', '')
+# Who sends the pushes, for push services to contact if something goes wrong (a mailto: or https address)
+app.config['VAPID_SUBJECT'] = os.environ.get('VAPID_SUBJECT', 'https://www.wikifakefacts.com')
 
 # File upload configuration (uploads are read in memory, never saved)
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx'}
@@ -113,6 +121,7 @@ RATE_LIMITS = {
     'quiz_ip': (40, timedelta(hours=1)),     # … and per address, across accounts
     'signup': (10, timedelta(hours=1)),      # new accounts per address
     'report': (20, timedelta(hours=1)),      # round reports per player
+    'push': (20, timedelta(hours=1)),        # reminder switches on/off per player
 }
 MAX_CHAT_MESSAGE = 500  # Characters
 MAX_NAME_LENGTH = 30  # For new names; players who signed up before the limit keep theirs
@@ -913,7 +922,7 @@ def delete_player_data(user, chat_id=None):
     if own_quiz_ids:
         ReadyQuiz.query.filter(ReadyQuiz.quiz_session_id.in_(own_quiz_ids)).update(
             {ReadyQuiz.quiz_session_id: None}, synchronize_session=False)
-    for model in (RoundReport, UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
+    for model in (PushSubscription, RoundReport, UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
         ChatbotSession.query.filter_by(session_id=chat_id).delete()
@@ -1499,12 +1508,17 @@ def refill_ready_quizzes(clock=time.monotonic):
     return {'made': made, 'planned': len(plan), 'in_stock': sum(ready_stock().values())}
 
 
-@app.route('/cron/refill')
-def cron_refill():
-    """Called by the timers (vercel.json, .github/workflows/refill.yml) with CRON_SECRET as a Bearer token."""
+def require_cron_secret():
+    """401 unless the request carries CRON_SECRET as a Bearer token (Vercel's cron sends it by itself)."""
     secret = app.config.get('CRON_SECRET') or ''
     if not secret or not hmac.compare_digest(request.headers.get('Authorization', ''), f'Bearer {secret}'):
         abort(401)
+
+
+@app.route('/cron/refill')
+def cron_refill():
+    """Called by the timers (vercel.json, .github/workflows/refill.yml)."""
+    require_cron_secret()
     return jsonify(refill_ready_quizzes())
 
 
@@ -1978,7 +1992,102 @@ def daily():
                  .all())
     return render_template('daily.html', topic=daily_topic(date), date=date, attempt=attempt,
                            attempt_score=attempt_score, standings=standings, rounds=DAILY_ROUNDS,
-                           difficulty=DAILY_DIFFICULTY)
+                           difficulty=DAILY_DIFFICULTY, push_key=push_ready() and app.config['VAPID_PUBLIC_KEY'])
+
+
+# ---------- Daily-challenge reminders (rules in reminders.py) ------------------------------------------------------
+
+def push_ready():
+    return bool(app.config.get('VAPID_PUBLIC_KEY') and app.config.get('VAPID_PRIVATE_KEY'))
+
+
+@app.route('/push/subscribe', methods=['POST'])
+def push_subscribe():
+    """Store the browser's push subscription for the signed-in player (JSON from PushSubscription.toJSON())."""
+    user = current_user()
+    if not user or not push_ready():
+        abort(404)
+    if over_limit('push', user.id):
+        return jsonify(ok=False), 429
+    data = request.get_json(silent=True) or {}
+    endpoint, keys = data.get('endpoint'), data.get('keys') or {}
+    p256dh, auth = keys.get('p256dh'), keys.get('auth')
+    if (not reminders.valid_endpoint(endpoint) or not isinstance(p256dh, str) or not isinstance(auth, str)
+            or not 0 < len(p256dh) <= 200 or not 0 < len(auth) <= 100):
+        return jsonify(ok=False), 400
+    row = PushSubscription.query.filter_by(endpoint=endpoint).first() or PushSubscription(endpoint=endpoint)
+    # The same device may change hands: it belongs to whoever switched it on last
+    row.user_id, row.p256dh, row.auth = user.id, p256dh, auth
+    row.language = session.get('language', 'en')[:5]
+    db.session.add(row)
+    db.session.commit()
+    extra = (PushSubscription.query.filter_by(user_id=user.id).order_by(PushSubscription.id.desc())
+             .offset(reminders.MAX_PER_PLAYER).all())
+    for old in extra:
+        db.session.delete(old)
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+@app.route('/push/unsubscribe', methods=['POST'])
+def push_unsubscribe():
+    user = current_user()
+    if not user:
+        abort(404)
+    endpoint = (request.get_json(silent=True) or {}).get('endpoint')
+    PushSubscription.query.filter_by(user_id=user.id, endpoint=endpoint).delete()
+    db.session.commit()
+    return jsonify(ok=True)
+
+
+def finished_daily_today(date):
+    """Ids of players who finished the given day's challenge, in any language."""
+    return {uid for (uid,) in db.session.query(QuizSession.user_id)
+            .join(DailyChallenge, QuizSession.daily_challenge_id == DailyChallenge.id)
+            .filter(DailyChallenge.date == date, QuizSession.is_completed.is_(True))}
+
+
+def send_push(subscription, message):
+    """Send `message` (a dict) to one device. Returns the push service's error status, or None if it worked."""
+    try:
+        webpush(subscription_info={'endpoint': subscription.endpoint,
+                                   'keys': {'p256dh': subscription.p256dh, 'auth': subscription.auth}},
+                data=json.dumps(message), vapid_private_key=Vapid.from_string(app.config['VAPID_PRIVATE_KEY']),
+                vapid_claims={'sub': app.config['VAPID_SUBJECT']}, ttl=6 * 3600, timeout=10)
+        return None
+    except WebPushException as error:
+        return error.response.status_code if error.response is not None else 0
+
+
+def send_daily_reminders():
+    date = today_utc()
+    topic = daily_topic(date)
+    sent = removed = failed = 0
+    for subscription in reminders.due(PushSubscription.query.all(), finished_daily_today(date), date):
+        lang = subscription.language
+        status = send_push(subscription, {
+            'title': _("Today's challenge is ready", lang=lang),
+            'body': _("{topic}: three true facts and one fake. Can you spot it?", lang=lang).format(topic=topic),
+            'url': url_for('daily')})
+        if status is None:
+            subscription.last_sent = date
+            sent += 1
+        elif reminders.gone(status):
+            db.session.delete(subscription)
+            removed += 1
+        else:
+            failed += 1
+        db.session.commit()
+    return {'sent': sent, 'removed': removed, 'failed': failed}
+
+
+@app.route('/cron/daily-reminder')
+def cron_daily_reminder():
+    """Called once a day by Vercel's cron (vercel.json)."""
+    require_cron_secret()
+    if not push_ready():
+        return jsonify(sent=0, note='VAPID keys not set')
+    return jsonify(send_daily_reminders())
 
 
 @app.route('/daily/start', methods=['POST'])

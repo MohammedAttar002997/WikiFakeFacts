@@ -196,6 +196,17 @@ class QuizDemand(db.Model):
     language = db.Column(db.String(50), nullable=False)
     last_wanted = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+class PushSubscription(db.Model):
+    """A device where a player switched on daily-challenge reminders (rules in reminders.py)."""
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    endpoint = db.Column(db.String(500), unique=True, nullable=False)  # Address at the browser's push service
+    p256dh = db.Column(db.String(200), nullable=False)  # The browser's keys for encrypting the message
+    auth = db.Column(db.String(100), nullable=False)
+    language = db.Column(db.String(5), nullable=False)  # Interface language when it was switched on
+    last_sent = db.Column(db.String(10), nullable=True)  # UTC date of the last reminder, YYYY-MM-DD
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""
