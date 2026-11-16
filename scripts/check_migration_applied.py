@@ -9,6 +9,7 @@ import json
 import os
 import re
 import sys
+import urllib.error
 import urllib.request
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -39,8 +40,16 @@ def main(url):
     if not head:
         print('Could not find a single newest migration in migrations/versions.')
         return 1
-    with urllib.request.urlopen(url, timeout=30) as response:
-        database = json.load(response).get('database')
+    try:
+        with urllib.request.urlopen(url, timeout=30) as response:
+            database = json.load(response).get('database')
+    except urllib.error.HTTPError as error:
+        if error.code != 404:
+            raise
+        # Only before the first deploy that has /health; afterwards a 404 can't happen
+        print(f'::warning::{url} is not live yet, so this check cannot tell. Run '
+              '`python migrate_production.py` from this branch before merging.')
+        return 0
     print(f'This branch needs {head}; the production database is at {database}.')
     if database == head or (database and database not in revisions):
         # Equal, or newer than anything here (another branch's migration, already applied): nothing missing

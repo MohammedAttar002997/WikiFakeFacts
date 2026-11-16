@@ -107,6 +107,14 @@ def test_the_check_passes_once_the_branch_migration_is_applied(monkeypatch):
     assert run_check(monkeypatch, '0999_newer_elsewhere') == 0
 
 
+def test_the_check_only_warns_while_health_isnt_live_yet(monkeypatch, capsys):
+    def not_found(url, timeout):
+        raise check_migration_applied.urllib.error.HTTPError(url, 404, 'Not Found', {}, None)
+    monkeypatch.setattr(check_migration_applied.urllib.request, 'urlopen', not_found)
+    assert check_migration_applied.main('https://example.test/health') == 0
+    assert 'not live yet' in capsys.readouterr().out
+
+
 def test_the_check_fails_while_the_database_is_behind(monkeypatch, capsys):
     assert run_check(monkeypatch, '0001_baseline') == 1
     assert 'migrate_production.py' in capsys.readouterr().out
