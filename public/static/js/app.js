@@ -125,6 +125,10 @@
     });
     window.addEventListener('appinstalled', () => { if (install) install.hidden = true; });
 
+    // Daily-challenge reminders (daily page): switch push notifications on or off for this device
+    const reminderCard = document.querySelector('[data-push]');
+    if (reminderCard) setUpReminders(reminderCard).catch(() => { /* the page works without them */ });
+
     // Help button: on phones it covered whatever the player was reading, so it tucks away while they scroll
     // down and comes back when they scroll up or reach the end of the page
     const fab = document.querySelector('.chatbot-fab');
@@ -138,5 +142,63 @@
             fab.classList.toggle('is-tucked', phone.matches && y > lastY && y > 80 && !atEnd);
             lastY = y;
         }, { passive: true });
+    }
+
+    async function setUpReminders(card) {
+        const button = card.querySelector('[data-push-button]');
+        const note = card.querySelector('[data-push-note]');
+        const text = card.dataset;
+        card.hidden = false;
+        if (!('serviceWorker' in navigator) || !('PushManager' in window) || !('Notification' in window)) {
+            button.hidden = true;
+            note.textContent = text.unsupported;
+            return;
+        }
+        const registration = await navigator.serviceWorker.register('/sw.js');
+        await navigator.serviceWorker.ready;
+        let subscription = await registration.pushManager.getSubscription();
+        const show = () => {
+            button.textContent = subscription ? text.off : text.on;
+            button.classList.toggle('btn-primary', !subscription);
+            button.classList.toggle('btn-outline-secondary', !!subscription);
+            card.classList.toggle('is-on', !!subscription);
+        };
+        const post = (url, body) => fetch(url, {
+            method: 'POST', body: JSON.stringify(body),
+            headers: { 'Content-Type': 'application/json',
+                       'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').content },
+        }).then(response => { if (!response.ok) throw new Error(response.status); });
+        show();
+        if (Notification.permission === 'denied') note.textContent = text.blocked;
+
+        button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                if (subscription) {
+                    const endpoint = subscription.endpoint;
+                    await subscription.unsubscribe();
+                    subscription = null;
+                    await post('/push/unsubscribe', { endpoint });
+                    note.textContent = text.note;
+                } else if (await Notification.requestPermission() !== 'granted') {
+                    note.textContent = text.blocked;
+                } else {
+                    subscription = await registration.pushManager.subscribe(
+                        { userVisibleOnly: true, applicationServerKey: keyBytes(text.key) });
+                    await post('/push/subscribe', subscription.toJSON());
+                    note.textContent = text.done;
+                }
+            } catch (e) {
+                note.textContent = text.error;
+            } finally {
+                button.disabled = false;
+                show();
+            }
+        });
+    }
+
+    function keyBytes(base64url) {
+        const padded = base64url + '='.repeat((4 - base64url.length % 4) % 4);
+        return Uint8Array.from(atob(padded.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
     }
 })();

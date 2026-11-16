@@ -499,5 +499,15 @@
   "{rounds} rounds at {difficulty}": "{rounds} manches en {difficulty}",
   "{score} correct": "{score} bonnes réponses",
   "{theme} · {points} points": "{theme} · {points} points",
-  "A round of this quiz turned out to be wrong, so it can't be replayed. Try a new quiz instead!": "Une manche de ce quiz s'est révélée fausse, il ne peut donc pas être rejoué. Essayez plutôt un nouveau quiz !"
+  "A round of this quiz turned out to be wrong, so it can't be replayed. Try a new quiz instead!": "Une manche de ce quiz s'est révélée fausse, il ne peut donc pas être rejoué. Essayez plutôt un nouveau quiz !",
+  "Today's challenge is ready": "Le défi du jour est prêt",
+  "{topic}: three true facts and one fake. Can you spot it?": "{topic} : trois faits vrais et un faux. Saurez-vous le repérer ?",
+  "Daily reminder": "Rappel quotidien",
+  "Remind me every day": "Me le rappeler chaque jour",
+  "Turn off reminders": "Désactiver les rappels",
+  "A notification once a day, only if you haven't played yet.": "Une notification par jour, seulement si vous n'avez pas encore joué.",
+  "Done! We'll remind you on days you haven't played yet.": "C'est fait ! Nous vous le rappellerons les jours où vous n'avez pas encore joué.",
+  "Notifications are blocked for this site. Allow them in your browser settings to get reminders.": "Les notifications sont bloquées pour ce site. Autorisez-les dans les réglages de votre navigateur pour recevoir des rappels.",
+  "This browser can't show reminders. On iPhone, add WikiFakeFact to your Home Screen first.": "Ce navigateur ne peut pas afficher de rappels. Sur iPhone, ajoutez d'abord WikiFakeFact à votre écran d'accueil.",
+  "Something went wrong. Please try again.": "Une erreur s'est produite. Veuillez réessayer."
 }

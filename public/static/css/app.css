@@ -1276,6 +1276,16 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .chip-danger { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
 
+/* ---------- Daily-challenge reminder (daily page) ------------------------------ */
+.reminder-card { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.reminder-card[hidden] { display: none; }
+.reminder-card > .flex-grow-1 { flex: 1 1 14rem; }  /* Long notes wrap inside the text, not onto their own line */
+.reminder-card .btn { min-height: 44px; }
+.reminder-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0;
+    background: var(--wf-brand-soft); color: var(--wf-brand); font-size: 1.25rem; }
+.reminder-card.is-on .reminder-icon { background: var(--wf-brand); color: #fff; }
+@media (max-width: 576px) { .reminder-card .btn { width: 100%; } }
+
 /* ---------- Install app (footer) --------------------------------------------- */
 .wf-install { color: var(--wf-muted); text-decoration: none; font-size: inherit; min-height: 44px; }
 .wf-install:hover, .wf-install:focus { color: var(--wf-brand); text-decoration: underline; }

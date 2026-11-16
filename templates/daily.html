@@ -42,6 +42,24 @@
             </div>
         </div>
 
+        {% if me and push_key %}
+        {# Shown by app.js once it knows whether this browser can get push notifications #}
+        <div class="wf-card wf-card-pad mb-4 reminder-card" data-push hidden data-key="{{ push_key }}"
+             data-on="{{ _('Remind me every day') }}" data-off="{{ _('Turn off reminders') }}"
+             data-note="{{ _("A notification once a day, only if you haven't played yet.") }}"
+             data-done="{{ _("Done! We'll remind you on days you haven't played yet.") }}"
+             data-blocked="{{ _('Notifications are blocked for this site. Allow them in your browser settings to get reminders.') }}"
+             data-unsupported="{{ _("This browser can't show reminders. On iPhone, add WikiFakeFact to your Home Screen first.") }}"
+             data-error="{{ _('Something went wrong. Please try again.') }}">
+            <div class="reminder-icon"><i class="bi bi-bell-fill"></i></div>
+            <div class="flex-grow-1 min-w-0">
+                <div class="fw-bold">{{ _('Daily reminder') }}</div>
+                <div class="small text-muted" data-push-note aria-live="polite">{{ _("A notification once a day, only if you haven't played yet.") }}</div>
+            </div>
+            <button type="button" class="btn btn-primary flex-shrink-0" data-push-button>{{ _('Remind me every day') }}</button>
+        </div>
+        {% endif %}
+
         <div class="wf-card p-3 p-md-4">
             <div class="section-label px-1"><i class="bi bi-trophy-fill text-brand fs-4"></i>{{ _("Today's leaderboard") }}</div>
             {% if standings %}

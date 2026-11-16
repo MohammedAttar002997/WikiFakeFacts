@@ -46,3 +46,24 @@ self.addEventListener('fetch', event => {
     }
     // Everything else (quiz state, live matches, uploads …) is left to the browser as if there were no worker
 });
+
+// Daily-challenge reminders (sent by /cron/daily-reminder, see reminders.py)
+self.addEventListener('push', event => {
+    let message = {};
+    try { message = event.data ? event.data.json() : {}; } catch (e) { /* not ours */ }
+    event.waitUntil(self.registration.showNotification(message.title || 'WikiFakeFact', {
+        body: message.body || '',
+        icon: '/static/img/icons/icon-192.png',
+        tag: 'daily-reminder',  // A newer reminder replaces an unread one instead of piling up
+        data: { url: message.url || '/daily' },
+    }));
+});
+
+self.addEventListener('notificationclick', event => {
+    event.notification.close();
+    const url = new URL(event.notification.data && event.notification.data.url || '/daily', self.location.origin).href;
+    event.waitUntil(clients.matchAll({ type: 'window', includeUncontrolled: true }).then(windows => {
+        const open = windows.find(w => w.url.startsWith(self.location.origin));
+        return open ? open.navigate(url).then(w => (w || open).focus()) : clients.openWindow(url);
+    }));
+});

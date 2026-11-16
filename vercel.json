@@ -2,7 +2,8 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "regions": ["fra1"],
   "crons": [
-    { "path": "/cron/refill", "schedule": "0 6 * * *" }
+    { "path": "/cron/refill", "schedule": "0 6 * * *" },
+    { "path": "/cron/daily-reminder", "schedule": "0 16 * * *" }
   ],
   "headers": [
     {
