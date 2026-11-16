@@ -208,6 +208,13 @@ class PushSubscription(db.Model):
     last_sent = db.Column(db.String(10), nullable=True)  # UTC date of the last reminder, YYYY-MM-DD
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+class CronRun(db.Model):
+    """When each timer (/cron/refill, /cron/daily-reminder) last called the site, so /admin can tell when one has
+    stopped (health.py)."""
+    name = db.Column(db.String(30), primary_key=True)
+    last_run = db.Column(db.DateTime, nullable=False)
+    last_result = db.Column(db.String(300), nullable=True)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""

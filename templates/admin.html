@@ -12,6 +12,20 @@
             <p>Players, games, AI use and what players reported.</p>
         </div>
 
+        {# Problems that break the site quietly (health.py) #}
+        {% if health.schema == 'behind' %}
+        <div class="alert alert-danger" role="alert">
+            <strong>The database is missing a migration.</strong> It's at <code>{{ health.database }}</code>, the code needs <code>{{ health.code }}</code>, so pages that use the newer tables fail. Run <code>python migrate_production.py</code> from <code>main</code>.
+        </div>
+        {% endif %}
+        {% for name, last_run in health.late_timers %}
+        <div class="alert alert-warning" role="alert">
+            <strong>The {{ name }} timer seems to have stopped</strong>: {% if last_run %}last call {{ last_run.strftime('%Y-%m-%d %H:%M') }} UTC.{% else %}it hasn't called the site yet.{% endif %}
+            {% if name == 'refill' %}GitHub pauses scheduled workflows after 60 days without commits: open Actions, select <em>Refill ready quizzes</em> and enable it.{% else %}Check Vercel, Settings, Cron Jobs.{% endif %}
+        </div>
+        {% endfor %}
+
+        {% if stats %}
         {% set t = stats.totals %}
         <div class="admin-kpis mb-4">
             <div class="stat-tile"><div class="value">{{ t.players }}</div><div class="label">Players</div></div>
@@ -135,6 +149,7 @@
             </div>
             {% else %}<p class="text-muted mb-0">No errors saved.</p>{% endfor %}
         </div>
+        {% endif %}
     </div>
 </div>
 {% endblock %}
