@@ -6,6 +6,7 @@ import pytest
 
 import app as app_module
 import ready_pool
+from views import timers
 from app import db
 from conftest import answers, play_quiz
 from default_text import CATEGORIES, DIFFICULTY_OPTIONS
@@ -90,7 +91,7 @@ def test_a_run_stops_starting_quizzes_after_its_time(app, app_ctx):
     want(KIND)
     ticks = iter([0, 0, ready_pool.RUN_SECONDS + 1])
     with app.test_request_context('/cron/refill'):
-        assert app_module.refill_ready_quizzes(clock=lambda: next(ticks))['made'] == 1
+        assert timers.refill_ready_quizzes(clock=lambda: next(ticks))['made'] == 1
 
 
 def test_a_failing_ai_stops_the_run_and_is_logged(cron, monkeypatch, app_ctx):
@@ -147,8 +148,8 @@ def test_timed_mode_works_with_a_ready_quiz(stocked, ai, login):
 def test_a_taken_quiz_is_not_taken_twice(app_ctx):
     db.session.add(ReadyQuiz(**KIND._asdict(), topic='Cat', questions_json='[]', explanations_json='[]'))
     db.session.commit()
-    assert app_module.take_ready_quiz(KIND) is not None
-    assert app_module.take_ready_quiz(KIND) is None
+    assert timers.take_ready_quiz(KIND) is not None
+    assert timers.take_ready_quiz(KIND) is None
 
 
 def test_the_admin_page_counts_each_quiz_once(stocked, login):
