@@ -40,6 +40,10 @@ def test_due_skips_players_who_played_and_devices_already_reminded():
     assert [s.user_id for s in reminders.due(subs, {2}, '2026-11-16')] == [1, 4]
 
 
+def test_batches():
+    assert reminders.batches(list(range(5)), 2) == [[0, 1], [2, 3], [4]] and reminders.batches([], 2) == []
+
+
 def test_gone_means_deleted():
     assert reminders.gone(410) and reminders.gone(404) and not reminders.gone(500) and not reminders.gone(429)
 
@@ -160,7 +164,7 @@ def test_players_who_havent_played_get_one_reminder_in_their_language(app, keys,
     subscribe(login('Ann', language='de'), f'{FCM}ann')
     subscribe(login('Ben'), f'{FCM}ben')
     finish_daily('Ben')
-    assert cron(app).get_json() == {'sent': 1, 'removed': 0, 'failed': 0}
+    assert cron(app).get_json() == {'sent': 1, 'removed': 0, 'failed': 0, 'left': 0}
     (endpoint, message), = sent
     topic = app_module.daily_topic(app_module.today_utc())
     assert endpoint == f'{FCM}ann' and message['url'] == '/daily'
@@ -172,7 +176,7 @@ def test_gone_devices_are_deleted_and_other_errors_kept(app, keys, login, sent, 
     subscribe(login('Ann'), f'{FCM}gone')
     subscribe(login('Ben'), f'{FCM}busy')
     sent.fail = {f'{FCM}gone': 410, f'{FCM}busy': 503}
-    assert cron(app).get_json() == {'sent': 0, 'removed': 1, 'failed': 1}
+    assert cron(app).get_json() == {'sent': 0, 'removed': 1, 'failed': 1, 'left': 0}
     assert [s.endpoint for s in PushSubscription.query] == [f'{FCM}busy']
     assert PushSubscription.query.one().last_sent is None  # Tried again tomorrow
 
@@ -190,3 +194,30 @@ def test_the_real_signing_works_with_the_generated_keys(app, keys, monkeypatch, 
     subscription = SimpleNamespace(endpoint=FCM, p256dh=browser_key, auth='c2VjcmV0c2VjcmV0MTIzNA')
     assert timers.send_push(subscription, {'title': 'Hi'}) is None
     assert captured['url'] == FCM and captured['headers']['Authorization'].startswith('vapid t=')
+
+
+def test_many_devices_are_all_reminded_in_parallel_batches(app, keys, login, sent, app_ctx):
+    for i in range(reminders.SEND_WORKERS * 2 + 3):
+        subscribe(login(f'P{i}'), f'{FCM}{i}')
+    assert cron(app).get_json() == {'sent': reminders.SEND_WORKERS * 2 + 3, 'removed': 0, 'failed': 0, 'left': 0}
+    assert len({endpoint for endpoint, _ in sent}) == reminders.SEND_WORKERS * 2 + 3
+
+
+def test_a_slow_run_leaves_the_rest_for_the_catch_up_call(app, keys, login, sent, monkeypatch, app_ctx):
+    for i in range(reminders.SEND_WORKERS + 2):
+        subscribe(login(f'P{i}'), f'{FCM}{i}')
+    ticks = iter([0, 0, reminders.RUN_SECONDS + 1])  # Start, first batch, then out of time
+    with app.test_request_context('/cron/daily-reminder'):
+        result = timers.send_daily_reminders(clock=lambda: next(ticks))
+    assert result == {'sent': reminders.SEND_WORKERS, 'removed': 0, 'failed': 0, 'left': 2}
+    assert cron(app).get_json() == {'sent': 2, 'removed': 0, 'failed': 0, 'left': 0}  # The catch-up call
+
+
+def test_network_trouble_counts_as_failed_not_a_crash(app, keys, login, monkeypatch, app_ctx):
+    subscribe(login('Ann'))
+
+    def unreachable(**kwargs):
+        raise ConnectionError('no route to host')
+    monkeypatch.setattr(timers, 'webpush', unreachable)
+    assert cron(app).get_json() == {'sent': 0, 'removed': 0, 'failed': 1, 'left': 0}
+    assert PushSubscription.query.one().last_sent is None

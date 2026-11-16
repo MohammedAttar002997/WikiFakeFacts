@@ -158,6 +158,7 @@ class RoundReport(db.Model):
     comment = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
     status = db.Column(db.String(10), nullable=True)  # None (open), 'checked' or 'hidden', set on /admin
+    fingerprint = db.Column(db.String(40), nullable=True, index=True)  # hidden_rounds.fingerprint of the round
     handled_at = db.Column(db.DateTime, nullable=True)
 
 class HiddenRound(db.Model):

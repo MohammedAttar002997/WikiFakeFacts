@@ -1052,9 +1052,10 @@ def report_round():
         flash(_("You're going a bit fast. Please wait a few minutes and try again."), "warning")
         return redirect(back)
     explanations = json.loads(quiz_session.explanations_json or '[]')
+    statements = json.loads(quiz_session.questions_json)[index]
     db.session.add(RoundReport(
         user_id=user.id, quiz_session_id=quiz_session.id, round_index=index, topic=quiz_session.topic[:100],
-        statements_json=json.dumps(json.loads(quiz_session.questions_json)[index]),
+        statements_json=json.dumps(statements), fingerprint=hidden_rounds.fingerprint(statements),
         explanation=explanations[index] if index < len(explanations) else None, source_url=quiz_session.source_url,
         reason=reason, comment=(request.form.get('comment') or '').strip()[:300] or None, created_at=utcnow()))
     db.session.commit()
@@ -1688,15 +1689,20 @@ def history():
 
 # ---------- Practice your mistakes (rules in practice.py) ----------------------------------------------------------
 
-def practice_pool(user):
-    """The rounds `user` still has to practice (see practice.mistakes)."""
-    def as_game(q):
-        return (json.loads(q.questions_json), json.loads(q.answers_json or '[]'),
-                json.loads(q.explanations_json or '[]'), json.loads(q.quotes_json or '[]'))
-    finished = (QuizSession.query.filter_by(user_id=user.id, is_completed=True)
-                .order_by(QuizSession.id.desc()).limit(practice_rules.GAMES_LOOKED_AT).all())
-    games = [as_game(q) for q in finished if not q.practice]
-    practice_games = [as_game(q) for q in finished if q.practice]
+def practice_pool(user, with_details=False):
+    """The rounds `user` still has to practice (see practice.mistakes). Pages that only show how many read just
+    the rounds and answers; starting a practice quiz (with_details) also needs the explanations and quotes."""
+    columns = [QuizSession.practice, QuizSession.questions_json, QuizSession.answers_json]
+    if with_details:
+        columns += [QuizSession.explanations_json, QuizSession.quotes_json]
+    rows = (db.session.query(*columns).filter(QuizSession.user_id == user.id, QuizSession.is_completed.is_(True))
+            .order_by(QuizSession.id.desc()).limit(practice_rules.GAMES_LOOKED_AT).all())
+
+    def as_game(row):
+        details = (json.loads(row[3] or '[]'), json.loads(row[4] or '[]')) if with_details else (None, None)
+        return (json.loads(row[1]), json.loads(row[2] or '[]')) + details
+    games = [as_game(r) for r in rows if not r[0]]
+    practice_games = [as_game(r) for r in rows if r[0]]
     return practice_rules.mistakes(games, practice_games, hidden_fingerprints())
 
 
@@ -1705,7 +1711,7 @@ def practice_mistakes():
     user = current_user()
     if not user:
         return redirect(url_for('index'))
-    found = practice_pool(user)
+    found = practice_pool(user, with_details=True)
     if not found:
         flash(_("No mistakes to practice right now. Nice work!"), "success")
         return redirect(url_for('history'))
