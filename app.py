@@ -42,6 +42,7 @@ from admin_stats import dashboard as admin_dashboard
 import ready_pool
 import hidden_rounds
 import reminders
+import practice as practice_rules
 from py_vapid import Vapid
 from pywebpush import WebPushException, webpush
 
@@ -287,7 +288,7 @@ def create_quiz_session(user, topic, difficulty, questions_count, language_name,
 
 def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, daily_challenge_id=None,
                       time_limit=None, challenge_of_id=None, rematch_for_id=None, quotes=None, source_url=None,
-                      event_week=None):
+                      event_week=None, is_practice=False):
     """Save already-generated questions as the player's current quiz."""
     quiz_session = QuizSession(
         user_id=user.id,
@@ -306,6 +307,7 @@ def save_quiz_session(user, topic, difficulty, quiz_data, explanations, source, 
         challenge_of_id=challenge_of_id,
         rematch_for_id=rematch_for_id,
         event_week=event_week,
+        practice=True if is_practice else None,
         # A rematch is played through its share link, so it needs one even if its results page is never shown
         share_code=secrets.token_urlsafe(8) if rematch_for_id else None
     )
@@ -1825,6 +1827,10 @@ def quiz():
 
             if quiz_session.current_question_index >= quiz_session.total_questions:
                 quiz_session.is_completed = True
+                if quiz_session.practice:
+                    # Practice earns no score, badges or leaderboard points: the player had seen the answers
+                    db.session.commit()
+                    return redirect(url_for('results'))
 
                 # Save final score
                 percentage = (quiz_session.score / quiz_session.total_questions) * 100
@@ -1859,7 +1865,7 @@ def quiz():
     return render_template('quiz.html', 
                            question_num=quiz_session.current_question_index + 1,
                            total_questions=quiz_session.total_questions,
-                           topic=quiz_session.topic,
+                           topic=_('Practice') if quiz_session.practice else quiz_session.topic,
                            options=options,
                            time_limit=quiz_session.time_limit,
                            seconds_left=max(0, round(seconds_left(quiz_session))) if quiz_session.time_limit else None,
@@ -1879,6 +1885,7 @@ def results():
 
     percentage = (quiz_session.score / quiz_session.total_questions) * 100
     opponent = challenge_opponent(quiz_session)
+    is_practice = bool(quiz_session.practice)
     # Only the player who played the quiz can report its rounds
     user = current_user()
     owner = user if user and user.id == quiz_session.user_id else None
@@ -1890,8 +1897,10 @@ def results():
                            topic=quiz_session.topic,
                            is_daily=quiz_session.daily_challenge_id is not None,
                            is_event=quiz_session.event_week is not None,
-                           share=share_details(quiz_session),
+                           share=None if is_practice else share_details(quiz_session),
                            challenge=challenge_comparison(quiz_session),
+                           is_practice=is_practice,
+                           practice_left=len(practice_pool(user)) if user else 0,
                            review=build_answer_review(quiz_session, opponent),
                            versus=versus_details(quiz_session, opponent),
                            source_url=quiz_session.source_url,
@@ -2183,7 +2192,37 @@ def history():
         'score': s.score,
         'total': s.total_questions,
     } for i, s in enumerate(scores)]
-    return render_template('history.html', scores=list(reversed(scores)), chart_points=chart_points)
+    return render_template('history.html', scores=list(reversed(scores)), chart_points=chart_points,
+                           practice_left=len(practice_pool(user)))
+
+
+# ---------- Practice your mistakes (rules in practice.py) ----------------------------------------------------------
+
+def practice_pool(user):
+    """The rounds `user` still has to practice (see practice.mistakes)."""
+    def as_game(q):
+        return (json.loads(q.questions_json), json.loads(q.answers_json or '[]'),
+                json.loads(q.explanations_json or '[]'), json.loads(q.quotes_json or '[]'))
+    finished = (QuizSession.query.filter_by(user_id=user.id, is_completed=True)
+                .order_by(QuizSession.id.desc()).limit(practice_rules.GAMES_LOOKED_AT).all())
+    games = [as_game(q) for q in finished if not q.practice]
+    practice_games = [as_game(q) for q in finished if q.practice]
+    return practice_rules.mistakes(games, practice_games, hidden_fingerprints())
+
+
+@app.route('/practice/mistakes', methods=['POST'])
+def practice_mistakes():
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    found = practice_pool(user)
+    if not found:
+        flash(_("No mistakes to practice right now. Nice work!"), "success")
+        return redirect(url_for('history'))
+    rounds, explanations, quotes = practice_rules.choose(found)
+    save_quiz_session(user, 'Practice', 'Practice', rounds, explanations, _('Your mistakes'), quotes=quotes,
+                      is_practice=True)
+    return redirect(url_for('quiz'))
 
 
 @app.route('/review/<int:quiz_session_id>')

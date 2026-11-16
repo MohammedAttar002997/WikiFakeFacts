@@ -11,6 +11,8 @@
             <p>{{ _("Every quiz you've played, newest first.") }}</p>
         </div>
 
+        {% include "_practice_card.html" %}
+
         {% if scores %}
         <div class="wf-card wf-card-pad mb-4">
             <div class="section-label mb-1"><i class="bi bi-graph-up text-brand fs-4"></i>{{ _('Score per quiz') }}</div>

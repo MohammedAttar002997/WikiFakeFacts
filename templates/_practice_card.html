@@ -1,0 +1,14 @@
+{# "Practice your mistakes" offer; needs practice_left (rounds still to practice). Shown only when there are some. #}
+{% if practice_left %}
+<div class="wf-card wf-card-pad mb-4 practice-card">
+    <div class="practice-icon"><i class="bi bi-bullseye"></i></div>
+    <div class="flex-grow-1 min-w-0">
+        <div class="fw-bold">{{ _('Practice your mistakes') }}</div>
+        <div class="small text-muted">{{ _n('{n} round you got wrong is waiting for another try. No AI, no score.', '{n} rounds you got wrong are waiting for another try. No AI, no score.', practice_left) }}</div>
+    </div>
+    <form action="{{ url_for('practice_mistakes') }}" method="POST" class="flex-shrink-0">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <button type="submit" class="btn btn-primary"><i class="bi bi-play-fill me-1"></i>{{ _('Practice') }}</button>
+    </form>
+</div>
+{% endif %}

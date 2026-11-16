@@ -1276,6 +1276,14 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .chip-danger { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
 
+/* ---------- Practice your mistakes (history and results) --------------------- */
+.practice-card { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; text-align: start; }
+.practice-card > .flex-grow-1 { flex: 1 1 14rem; }
+.practice-card .btn { min-height: 44px; }
+.practice-icon { width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; flex-shrink: 0;
+    background: var(--wf-brand-soft); color: var(--wf-brand); font-size: 1.25rem; }
+@media (max-width: 576px) { .practice-card form, .practice-card .btn { width: 100%; } }
+
 /* ---------- Daily-challenge reminder (daily page) ------------------------------ */
 .reminder-card { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 .reminder-card[hidden] { display: none; }

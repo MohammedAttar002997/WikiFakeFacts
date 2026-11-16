@@ -509,5 +509,12 @@
   "Done! We'll remind you on days you haven't played yet.": "تم! سنذكّرك في الأيام التي لم تلعب فيها بعد.",
   "Notifications are blocked for this site. Allow them in your browser settings to get reminders.": "الإشعارات محظورة لهذا الموقع. اسمح بها في إعدادات المتصفح لتصلك التذكيرات.",
   "This browser can't show reminders. On iPhone, add WikiFakeFact to your Home Screen first.": "لا يستطيع هذا المتصفح عرض التذكيرات. على iPhone، أضف WikiFakeFact إلى الشاشة الرئيسية أولًا.",
-  "Something went wrong. Please try again.": "حدث خطأ ما. يُرجى المحاولة مرة أخرى."
+  "Something went wrong. Please try again.": "حدث خطأ ما. يُرجى المحاولة مرة أخرى.",
+  "Practice your mistakes": "تدرّب على أخطائك",
+  "{n} round you got wrong is waiting for another try. No AI, no score.": "جولة واحدة أخطأت فيها ({n}) تنتظر محاولة أخرى. بلا ذكاء اصطناعي وبلا نقاط.",
+  "{n} rounds you got wrong are waiting for another try. No AI, no score.": "{n} جولات أخطأت فيها تنتظر محاولة أخرى. بلا ذكاء اصطناعي وبلا نقاط.",
+  "Practice": "تدرّب",
+  "Your mistakes": "أخطاؤك",
+  "No mistakes to practice right now. Nice work!": "لا توجد أخطاء للتدرّب عليها الآن. أحسنت!",
+  "Rounds you got right won't come back. Practice doesn't count toward your score.": "الجولات التي أصبت فيها لن تعود. التدريب لا يُحتسب في نقاطك."
 }
