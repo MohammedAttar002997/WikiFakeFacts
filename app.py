@@ -4,7 +4,6 @@ import os
 import json
 import random
 import secrets
-import time
 import traceback
 from datetime import timedelta
 
@@ -24,10 +23,9 @@ from flask_wtf.csrf import CSRFError, CSRFProtect
 from urllib.parse import urlparse
 from alembic.migration import MigrationContext
 from alembic.operations import Operations
-from alembic.script import ScriptDirectory
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
-                    UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport, ReadyQuiz,
-                    QuizDemand, HiddenRound, PushSubscription, CronRun)
+                    UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport, ReadyQuiz, HiddenRound,
+                    PushSubscription)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
@@ -36,17 +34,11 @@ from content_extractor import (ContentError, extract_text_from_upload, extract_t
                                validate_content_length)
 from chatbot import QUICK_HELP, get_chatbot_response
 from badges import BADGES, award_badges, compute_streaks, player_streaks
-import live
 from rating import rank as rank_players
 from og_card import result_card
-from admin_stats import dashboard as admin_dashboard
 import ready_pool
 import hidden_rounds
-import reminders
 import practice as practice_rules
-import health
-from py_vapid import Vapid
-from pywebpush import WebPushException, webpush
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -167,7 +159,7 @@ def forget_cached_player():
 def inject_player():
     me = current_user()
     donation_url = app.config.get('DONATION_URL') or ''
-    return {'me': me, 'challenge_news': count_challenge_news(me) if me else 0, 'is_admin': is_admin(me),
+    return {'me': me, 'challenge_news': count_challenge_news(me) if me else 0, 'is_admin': admin_views.is_admin(me),
             'donation_url': donation_url if donation_url.startswith('https://') else None}
 
 
@@ -838,98 +830,8 @@ def try_round():
     return render_template('try.html', challenge=challenge, options=options)
 
 
-def is_admin(user):
-    """Whether `user` is one of the ADMIN_USERS (names compared case-insensitively)."""
-    names = {n.strip().casefold() for n in (app.config.get('ADMIN_USERS') or '').split(',') if n.strip()}
-    return bool(user) and user.username.casefold() in names
-
-
-_code_migrations = None
-
-
-def code_migrations():
-    """({revision: down_revision} of the migrations shipped with this code, its newest revision), read once."""
-    global _code_migrations
-    if _code_migrations is None:
-        scripts = ScriptDirectory.from_config(migrate.get_config())
-        revisions = {s.revision: s.down_revision for s in scripts.walk_revisions()}
-        _code_migrations = (revisions, health.migration_head(revisions))
-    return _code_migrations
-
-
-def site_health():
-    """What /health reports and /admin warns about (rules in health.py)."""
-    revisions, head = code_migrations()
-    with db.engine.connect() as conn:
-        database = MigrationContext.configure(conn).get_current_revision()
-    active = {'refill'} if app.config.get('CRON_SECRET') else set()
-    if active and push_ready():
-        active.add('daily-reminder')
-    try:
-        last_runs = {r.name: r.last_run for r in CronRun.query}
-    except Exception:
-        db.session.rollback()  # No cron_run table yet: that's a missing migration, which the banner already says
-        last_runs = {}
-    return {'database': database, 'code': head, 'schema': health.schema_state(database, head, set(revisions)),
-            'late_timers': health.late_timers(utcnow(), last_runs, active)}
-
-
-@app.route('/health')
-def health_check():
-    """Which migration the database and the code are at. Public on purpose: revision names reveal nothing, and the
-    pull-request check (.github/workflows/migration-applied.yml) reads it to see whether a migration was applied."""
-    status = site_health()
-    response = jsonify(database=status['database'], code=status['code'], schema=status['schema'])
-    response.headers['Cache-Control'] = 'no-store'
-    return response
-
-
-@app.route('/admin')
-def admin():
-    """Numbers for the site's owner. Anyone else, signed in or not, gets a plain 404, as if it didn't exist."""
-    user = current_user()
-    if not is_admin(user):
-        abort(404)
-    status = site_health()
-    try:
-        stats = admin_dashboard(utcnow())
-    except Exception as error:
-        # With a migration missing, the numbers can fail too; the page still shows what's wrong
-        save_error(error)
-        if status['schema'] != 'behind':
-            raise
-        return render_template('admin.html', stats=None, peak=1, health=status)
-    peak = max([n for _, n in stats['per_day']] + [1])
-    return render_template('admin.html', stats=stats, peak=peak, health=status)
-
-
-REPORT_ACTIONS = {'hide': 'hidden', 'check': 'checked', 'reopen': None}
-
-
 def hidden_fingerprints():
     return {f for (f,) in db.session.query(HiddenRound.fingerprint)}
-
-
-@app.route('/admin/reports/<int:report_id>/<action>', methods=['POST'])
-def admin_report_action(report_id, action):
-    """Hide a reported round for good, mark its report as checked, or undo either. Every report of the same round
-    (several players may report it) changes with it."""
-    report = db.session.get(RoundReport, report_id)
-    if not is_admin(current_user()) or not report or action not in REPORT_ACTIONS:
-        abort(404)
-    statements = json.loads(report.statements_json)
-    fingerprint = hidden_rounds.fingerprint(statements)
-    status = REPORT_ACTIONS[action]
-    for same in RoundReport.query.all():
-        if hidden_rounds.fingerprint(json.loads(same.statements_json)) == fingerprint:
-            same.status, same.handled_at = status, utcnow() if status else None
-    hidden = HiddenRound.query.filter_by(fingerprint=fingerprint).first()
-    if status == 'hidden' and not hidden:
-        db.session.add(HiddenRound(fingerprint=fingerprint, topic=report.topic, statements_json=report.statements_json))
-    elif status != 'hidden' and hidden:
-        db.session.delete(hidden)
-    db.session.commit()
-    return redirect(url_for('admin', _anchor='reports'))
 
 
 @app.route('/sw.js')
@@ -1158,70 +1060,6 @@ def report_round():
     db.session.commit()
     flash(_("Thanks! We'll check this round."), "success")
     return redirect(back)
-
-
-@app.cli.command('reports')
-@click.option('-n', '--limit', default=20, show_default=True, help='How many to show.')
-def reports_command(limit):
-    """Show the newest rounds players reported as wrong."""
-    reports = RoundReport.query.order_by(RoundReport.id.desc()).limit(limit).all()
-    if not reports:
-        click.echo('No reports.')
-    for r in reports:
-        user = db.session.get(User, r.user_id)
-        facts = json.loads(r.statements_json)
-        fake = next((s for s, real in facts.items() if real is False), '?')
-        click.echo(f'{r.created_at:%Y-%m-%d %H:%M} UTC  {user.username if user else "?"}  [{r.reason}]  {r.topic}'
-                   f'  ({r.status or "open"})')
-        click.echo(f'    Fake: {fake}')
-        for statement, real in facts.items():
-            if real:
-                click.echo(f'    True: {statement}')
-        if r.explanation:
-            click.echo(f'    Why:  {r.explanation}')
-        if r.comment:
-            click.echo(f'    Comment: {r.comment}')
-        if r.source_url:
-            click.echo(f'    Source: {r.source_url}')
-
-
-@app.cli.command('errors')
-@click.option('-n', '--limit', default=20, show_default=True, help='How many to show.')
-@click.option('--full', is_flag=True, help='Also show where in the code each one happened.')
-def errors_command(limit, full):
-    """Show the newest unexpected errors."""
-    print_errors(limit, full)
-
-
-@app.cli.command('reset-pin')
-@click.argument('username')
-@click.option('--pin', help='New 4-digit PIN (random if omitted).')
-def reset_pin_command(username, pin):
-    """Set a new PIN for a player who forgot theirs, and print it."""
-    user = User.query.filter(func.lower(User.username) == username.strip().lower()).first()
-    if not user:
-        raise click.ClickException(f'No player called "{username}".')
-    if pin is None:
-        pin = f'{secrets.randbelow(10000):04d}'
-    elif not (len(pin) == 4 and pin.isdigit()):
-        raise click.ClickException('The PIN must be 4 digits.')
-    user.pin_hash = generate_password_hash(pin)
-    db.session.commit()
-    click.echo(f'New PIN for {user.username}: {pin}')
-
-
-@app.cli.command('delete-player')
-@click.argument('username')
-@click.option('--yes', is_flag=True, help="Don't ask for confirmation.")
-def delete_player_command(username, yes):
-    """Delete a player and all their data."""
-    user = User.query.filter(func.lower(User.username) == username.strip().lower()).first()
-    if not user:
-        raise click.ClickException(f'No player called "{username}".')
-    if not yes:
-        click.confirm(f'Delete {user.username} and all their scores, quizzes, uploads and badges?', abort=True)
-    delete_player_data(user)
-    click.echo(f'Deleted {username}.')
 
 
 RECENT_QUIZZES_FOR_DIFFICULTY = 5
@@ -1476,113 +1314,6 @@ def quiz_settings_from_form():
             category_name, category_id == SURPRISE)
 
 
-# ---------- Ready-made quizzes (rules in ready_pool.py) ------------------------------------------------------------
-
-def note_demand(kind):
-    """Remember that someone just asked for this kind of quiz, so the refill keeps some ready."""
-    row = QuizDemand.query.filter_by(**kind._asdict()).first()
-    if row:
-        row.last_wanted = utcnow()
-    else:
-        db.session.add(QuizDemand(**kind._asdict(), last_wanted=utcnow()))
-    try:
-        db.session.commit()
-    except IntegrityError:
-        db.session.rollback()  # Someone else asked for the same kind at the same moment; their row will do
-
-
-def take_ready_quiz(kind, any_category=False):
-    """Hand one ready quiz of this kind to the caller (of any category for "Surprise me"), or None if none is left.
-    Two players asking at once can't get the same one: a quiz is only theirs if marking it as used succeeded."""
-    query = ReadyQuiz.query.filter_by(difficulty=kind.difficulty, rounds=kind.rounds, language=kind.language,
-                                      used_at=None)
-    if any_category:
-        query = query.order_by(func.random())
-    else:
-        query = query.filter_by(category=kind.category).order_by(ReadyQuiz.id)
-    for candidate in query.limit(5).all():
-        taken = ReadyQuiz.query.filter_by(id=candidate.id, used_at=None).update(
-            {ReadyQuiz.used_at: utcnow()}, synchronize_session=False)
-        db.session.commit()
-        if taken:
-            db.session.refresh(candidate)
-            return candidate
-    return None
-
-
-def ready_stock():
-    """{Kind: ready quizzes nobody has taken yet}."""
-    rows = (db.session.query(ReadyQuiz.category, ReadyQuiz.difficulty, ReadyQuiz.rounds, ReadyQuiz.language,
-                             func.count(ReadyQuiz.id))
-            .filter(ReadyQuiz.used_at.is_(None))
-            .group_by(ReadyQuiz.category, ReadyQuiz.difficulty, ReadyQuiz.rounds, ReadyQuiz.language).all())
-    return {ready_pool.Kind(*row[:4]): row[4] for row in rows}
-
-
-def made_ahead_since(moment):
-    return ReadyQuiz.query.filter(ReadyQuiz.created_at >= moment).count()
-
-
-def make_ready_quiz(kind):
-    """Have the AI make one quiz of this kind and put it in stock."""
-    topic = random.choice(TOPICS[kind.category])
-    quiz = get_ai_response(kind.rounds, topic, kind.difficulty, kind.language)
-    db.session.add(ReadyQuiz(**kind._asdict(), topic=topic[:100], source=quiz.source, source_url=quiz.source_url,
-                             questions_json=json.dumps(quiz.rounds), explanations_json=json.dumps(quiz.explanations),
-                             quotes_json=json.dumps(quiz.quotes)))
-    db.session.commit()
-
-
-def refill_ready_quizzes(clock=time.monotonic):
-    """Make the quizzes ready_pool.refill_plan asks for, until RUN_SECONDS have passed. Returns a summary."""
-    started, now = clock(), utcnow()
-    day_ago = now - timedelta(days=1)
-    # Taken quizzes are kept 2 days, long enough for the daily cap to count them, then forgotten
-    ReadyQuiz.query.filter(ReadyQuiz.used_at < now - timedelta(days=2)).delete()
-    db.session.commit()
-    wanted = [(ready_pool.Kind(d.category, d.difficulty, d.rounds, d.language), d.last_wanted)
-              for d in QuizDemand.query.filter(QuizDemand.last_wanted >= now - timedelta(days=ready_pool.WANTED_DAYS))
-              if d.category in TOPICS]  # Skips a category that was renamed or removed since
-    plan = ready_pool.refill_plan(wanted, ready_stock(), made_ahead_since(day_ago))
-    made = 0
-    for kind in plan:
-        # Checked again before each quiz: the two timers may run at the same time
-        if clock() - started > ready_pool.RUN_SECONDS or made_ahead_since(day_ago) >= ready_pool.DAILY_CAP:
-            break
-        try:
-            make_ready_quiz(kind)
-            made += 1
-        except Exception as error:
-            # Saved for /admin; stop here rather than pay for more calls that may fail the same way
-            db.session.rollback()
-            save_error(error)
-            return {'made': made, 'planned': len(plan), 'error': describe_error(error)}
-    return {'made': made, 'planned': len(plan), 'in_stock': sum(ready_stock().values())}
-
-
-def record_cron_run(name, result):
-    """Remember that timer `name` just ran (for the overdue warning on /admin) and pass its result on."""
-    row = db.session.get(CronRun, name) or CronRun(name=name)
-    row.last_run, row.last_result = utcnow(), json.dumps(result)[:300]
-    db.session.add(row)
-    db.session.commit()
-    return result
-
-
-def require_cron_secret():
-    """401 unless the request carries CRON_SECRET as a Bearer token (Vercel's cron sends it by itself)."""
-    secret = app.config.get('CRON_SECRET') or ''
-    if not secret or not hmac.compare_digest(request.headers.get('Authorization', ''), f'Bearer {secret}'):
-        abort(401)
-
-
-@app.route('/cron/refill')
-def cron_refill():
-    """Called by the timers (vercel.json, .github/workflows/refill.yml)."""
-    require_cron_secret()
-    return jsonify(record_cron_run('refill', refill_ready_quizzes()))
-
-
 @app.route('/start_quiz', methods=['POST'])
 def start_quiz():
     user = current_user()
@@ -1594,12 +1325,12 @@ def start_quiz():
         return redirect(url_for('setup'))
     topic, difficulty_text, questions_count, language_name, category, surprise = settings
     kind = ready_pool.Kind(category, difficulty_text, questions_count, language_name)
-    note_demand(kind)
+    timers.note_demand(kind)
 
     try:
         time_limit = TIMED_ROUND_SECONDS if request.form.get('timed') else None
         # A quiz made ahead of time starts at once; without one, the AI makes it now (about 20 seconds)
-        ready = take_ready_quiz(kind, any_category=surprise)
+        ready = timers.take_ready_quiz(kind, any_category=surprise)
         if ready:
             quiz_session = save_quiz_session(
                 user, ready.topic, difficulty_text, json.loads(ready.questions_json),
@@ -1614,211 +1345,6 @@ def start_quiz():
     except Exception as e:
         report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
         return redirect(url_for('setup'))
-
-
-# ---------- Live head-to-head (rules in live.py) --------------------------------------------------------------------
-# Both players' pages ask /live/<code>/state every LIVE_POLL_MS; there are no websockets on Vercel's functions.
-LIVE_POLL_MS = 1500
-
-
-def live_state(row):
-    """The match as live.py works on it."""
-    return {'state': row.state, 'rounds': len(json.loads(row.questions_json)), 'current_round': row.current_round,
-            'round_started_at': row.round_started_at, 'questions': json.loads(row.questions_json),
-            'answers': json.loads(row.answers_json)}
-
-
-def store_live(row, state, **extra):
-    """Write the match back unless another request changed it since `row` was read. True if written."""
-    written = db.session.execute(
-        update(LiveMatch).where(LiveMatch.id == row.id, LiveMatch.version == row.version).values(
-            state=state['state'], current_round=state['current_round'], round_started_at=state['round_started_at'],
-            answers_json=json.dumps(state['answers']), version=row.version + 1, **extra)
-    ).rowcount == 1
-    db.session.commit()
-    return written
-
-
-def current_live(code, now):
-    """(row, state) of the match moved on to `now`, or (None, None). Retries when another request wrote first."""
-    for _attempt in range(3):
-        row = LiveMatch.query.filter_by(code=code).first()
-        if not row:
-            return None, None
-        db.session.refresh(row)
-        state = live_state(row)
-        if not live.advance(state, now, created_at=row.created_at) or store_live(row, state):
-            db.session.refresh(row)
-            return row, state
-    return row, live_state(row)
-
-
-def live_role(row, user):
-    if user and user.id == row.host_id:
-        return 'host'
-    if user and user.id == row.guest_id:
-        return 'guest'
-    return None
-
-
-def save_live_scores(row, state):
-    """Once a match ends, add it to both players' games, like any finished quiz (history, stats, leaderboard,
-    badges). Only the first request to get here does it."""
-    claimed = db.session.execute(update(LiveMatch).where(LiveMatch.id == row.id, LiveMatch.scores_saved.is_(False))
-                                 .values(scores_saved=True)).rowcount == 1
-    db.session.commit()
-    if not claimed:
-        return
-    rounds = state['rounds']
-    for role, user_id in (('host', row.host_id), ('guest', row.guest_id)):
-        entries = state['answers'][role]
-        correct = sum(1 for e in entries if e and e['correct'])
-        quiz = QuizSession(user_id=user_id, topic=row.topic, difficulty=row.difficulty,
-                           questions_json=row.questions_json, explanations_json=row.explanations_json,
-                           quotes_json=row.quotes_json, source_url=row.source_url,
-                           answers_json=json.dumps([e['pick'] if e else None for e in entries]),
-                           total_questions=rounds, current_question_index=rounds, score=correct, is_completed=True)
-        db.session.add(quiz)
-        db.session.flush()
-        db.session.add(Score(user_id=user_id, topic=row.topic, difficulty=row.difficulty, score=correct,
-                             total_questions=rounds, percentage=correct / rounds * 100, quiz_session_id=quiz.id))
-    db.session.commit()
-    for user_id in (row.host_id, row.guest_id):
-        award_badges(db.session.get(User, user_id))
-
-
-def live_payload(row, state, role, now):
-    """What a player's page needs to show the match right now."""
-    phase, seconds = live.phase(state, now)
-    totals = live.visible_totals(state, now)
-    names = {'host': db.session.get(User, row.host_id).username,
-             'guest': db.session.get(User, row.guest_id).username if row.guest_id else None}
-    index = state['current_round']
-    payload = {'phase': phase, 'seconds': seconds, 'round': index + 1, 'rounds': state['rounds'], 'you': role,
-               'players': {r: {'name': names[r], 'points': totals[r]['points'], 'correct': totals[r]['correct'],
-                               'answered': bool(live.answer_of(state, r, index))} for r in live.ROLES}}
-    explanations = json.loads(row.explanations_json or '[]')
-
-    def round_result(i):
-        facts = state['questions'][i]
-        return {'fake': next(s for s, real in facts.items() if real is False),
-                'explanation': explanations[i] if i < len(explanations) else None,
-                'answers': {r: live.answer_of(state, r, i) for r in live.ROLES}}
-
-    if phase in ('question', 'reveal'):
-        # Same order for both players, different every round
-        payload['options'] = random.Random(f'{row.code}:{index}').sample(list(state['questions'][index]), 4)
-        mine = live.answer_of(state, role, index) if role else None
-        payload['your_pick'] = mine['pick'] if mine else None
-    if phase == 'reveal':
-        payload['result'] = round_result(index)
-    if phase == 'finished':
-        payload['winner'] = live.winner(state)
-        payload['summary'] = [round_result(i) for i in range(state['rounds'])]
-    return payload
-
-
-@app.route('/live/new', methods=['POST'])
-def live_new():
-    """Make a live match from the setup page's choices and show its invite link."""
-    user = current_user()
-    if not user:
-        return redirect(url_for('index'))
-    settings = quiz_settings_from_form()
-    if not settings or not quiz_generation_allowed(user):
-        return redirect(url_for('setup'))
-    topic, difficulty, rounds, language_name, _category, _surprise = settings
-    try:
-        quiz = get_ai_response(rounds, topic, difficulty, language_name)
-    except Exception as e:
-        report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
-        return redirect(url_for('setup'))
-    row = LiveMatch(code=secrets.token_urlsafe(9), host_id=user.id, topic=topic[:100], difficulty=difficulty,
-                    language=language_name, source=quiz.source, source_url=quiz.source_url,
-                    questions_json=json.dumps(quiz.rounds), explanations_json=json.dumps(quiz.explanations),
-                    quotes_json=json.dumps(quiz.quotes), state='waiting', current_round=0,
-                    answers_json=json.dumps({'host': [], 'guest': []}), version=0, scores_saved=False,
-                    created_at=utcnow())
-    db.session.add(row)
-    db.session.commit()
-    return redirect(url_for('live_match', code=row.code))
-
-
-@app.route('/live/<code>')
-def live_match(code):
-    row, state = current_live(code, utcnow())
-    if not row:
-        abort(404)
-    user = current_user()
-    if not user:
-        # Back here after signing in
-        session['next_url'] = url_for('live_match', code=code)
-        flash(_("Sign in to play this live match."), "info")
-        return redirect(url_for('index'))
-    role = live_role(row, user)
-    can_join = role is None and row.guest_id is None and state['state'] == 'waiting'
-    if role is None and not can_join:
-        flash(_("This match is already full."), "warning")
-        return redirect(url_for('setup'))
-    return render_template('live.html', match=row, role=role, can_join=can_join, poll_ms=LIVE_POLL_MS,
-                           host_name=db.session.get(User, row.host_id).username,
-                           invite_url=url_for('live_match', code=code, _external=True))
-
-
-@app.route('/live/<code>/join', methods=['POST'])
-def live_join(code):
-    user = current_user()
-    if not user:
-        return redirect(url_for('live_match', code=code))
-    now = utcnow()
-    row, state = current_live(code, now)
-    if not row:
-        abort(404)
-    if live_role(row, user) is None and state['state'] == 'waiting':
-        live.start(state, now)
-        # Only if nobody joined in the meantime
-        db.session.execute(update(LiveMatch).where(
-            LiveMatch.id == row.id, LiveMatch.guest_id.is_(None), LiveMatch.state == 'waiting',
-            LiveMatch.host_id != user.id).values(
-            guest_id=user.id, state=state['state'], current_round=0, round_started_at=state['round_started_at'],
-            version=row.version + 1))
-        db.session.commit()
-    return redirect(url_for('live_match', code=code))
-
-
-@app.route('/live/<code>/state')
-def live_status(code):
-    now = utcnow()
-    row, state = current_live(code, now)
-    if not row:
-        return jsonify(error='not_found'), 404
-    role = live_role(row, current_user())
-    if role is None and not (row.guest_id is None and state['state'] == 'waiting'):
-        return jsonify(error='forbidden'), 403
-    if state['state'] == 'finished' and not row.scores_saved:
-        save_live_scores(row, state)
-    return jsonify(live_payload(row, state, role, now))
-
-
-@app.route('/live/<code>/answer', methods=['POST'])
-def live_answer(code):
-    data = request.get_json(silent=True) or {}
-    round_number = data.get('round')
-    if not isinstance(round_number, int) or not isinstance(data.get('option'), str):
-        return jsonify(ok=False), 400
-    user = current_user()
-    for _attempt in range(3):
-        now = utcnow()
-        row, state = current_live(code, now)
-        role = live_role(row, user) if row else None
-        if not role:
-            return jsonify(ok=False), 403
-        entry = live.record_answer(state, role, round_number - 1, data['option'], now)
-        if not entry:
-            return jsonify(ok=False)
-        if store_live(row, state):
-            return jsonify(ok=True)
-    return jsonify(ok=False)
 
 
 def claim_round(quiz_session, round_index):
@@ -2060,102 +1586,7 @@ def daily():
                  .all())
     return render_template('daily.html', topic=daily_topic(date), date=date, attempt=attempt,
                            attempt_score=attempt_score, standings=standings, rounds=DAILY_ROUNDS,
-                           difficulty=DAILY_DIFFICULTY, push_key=push_ready() and app.config['VAPID_PUBLIC_KEY'])
-
-
-# ---------- Daily-challenge reminders (rules in reminders.py) ------------------------------------------------------
-
-def push_ready():
-    return bool(app.config.get('VAPID_PUBLIC_KEY') and app.config.get('VAPID_PRIVATE_KEY'))
-
-
-@app.route('/push/subscribe', methods=['POST'])
-def push_subscribe():
-    """Store the browser's push subscription for the signed-in player (JSON from PushSubscription.toJSON())."""
-    user = current_user()
-    if not user or not push_ready():
-        abort(404)
-    if over_limit('push', user.id):
-        return jsonify(ok=False), 429
-    data = request.get_json(silent=True) or {}
-    endpoint, keys = data.get('endpoint'), data.get('keys') or {}
-    p256dh, auth = keys.get('p256dh'), keys.get('auth')
-    if (not reminders.valid_endpoint(endpoint) or not isinstance(p256dh, str) or not isinstance(auth, str)
-            or not 0 < len(p256dh) <= 200 or not 0 < len(auth) <= 100):
-        return jsonify(ok=False), 400
-    row = PushSubscription.query.filter_by(endpoint=endpoint).first() or PushSubscription(endpoint=endpoint)
-    # The same device may change hands: it belongs to whoever switched it on last
-    row.user_id, row.p256dh, row.auth = user.id, p256dh, auth
-    row.language = session.get('language', 'en')[:5]
-    db.session.add(row)
-    db.session.commit()
-    extra = (PushSubscription.query.filter_by(user_id=user.id).order_by(PushSubscription.id.desc())
-             .offset(reminders.MAX_PER_PLAYER).all())
-    for old in extra:
-        db.session.delete(old)
-    db.session.commit()
-    return jsonify(ok=True)
-
-
-@app.route('/push/unsubscribe', methods=['POST'])
-def push_unsubscribe():
-    user = current_user()
-    if not user:
-        abort(404)
-    endpoint = (request.get_json(silent=True) or {}).get('endpoint')
-    PushSubscription.query.filter_by(user_id=user.id, endpoint=endpoint).delete()
-    db.session.commit()
-    return jsonify(ok=True)
-
-
-def finished_daily_today(date):
-    """Ids of players who finished the given day's challenge, in any language."""
-    return {uid for (uid,) in db.session.query(QuizSession.user_id)
-            .join(DailyChallenge, QuizSession.daily_challenge_id == DailyChallenge.id)
-            .filter(DailyChallenge.date == date, QuizSession.is_completed.is_(True))}
-
-
-def send_push(subscription, message):
-    """Send `message` (a dict) to one device. Returns the push service's error status, or None if it worked."""
-    try:
-        webpush(subscription_info={'endpoint': subscription.endpoint,
-                                   'keys': {'p256dh': subscription.p256dh, 'auth': subscription.auth}},
-                data=json.dumps(message), vapid_private_key=Vapid.from_string(app.config['VAPID_PRIVATE_KEY']),
-                vapid_claims={'sub': app.config['VAPID_SUBJECT']}, ttl=6 * 3600, timeout=10)
-        return None
-    except WebPushException as error:
-        return error.response.status_code if error.response is not None else 0
-
-
-def send_daily_reminders():
-    date = today_utc()
-    topic = daily_topic(date)
-    sent = removed = failed = 0
-    for subscription in reminders.due(PushSubscription.query.all(), finished_daily_today(date), date):
-        lang = subscription.language
-        status = send_push(subscription, {
-            'title': _("Today's challenge is ready", lang=lang),
-            'body': _("{topic}: three true facts and one fake. Can you spot it?", lang=lang).format(topic=topic),
-            'url': url_for('daily')})
-        if status is None:
-            subscription.last_sent = date
-            sent += 1
-        elif reminders.gone(status):
-            db.session.delete(subscription)
-            removed += 1
-        else:
-            failed += 1
-        db.session.commit()
-    return {'sent': sent, 'removed': removed, 'failed': failed}
-
-
-@app.route('/cron/daily-reminder')
-def cron_daily_reminder():
-    """Called once a day by Vercel's cron (vercel.json)."""
-    require_cron_secret()
-    if not push_ready():
-        return jsonify(record_cron_run('daily-reminder', {'sent': 0, 'note': 'VAPID keys not set'}))
-    return jsonify(record_cron_run('daily-reminder', send_daily_reminders()))
+                           difficulty=DAILY_DIFFICULTY, push_key=timers.push_ready() and app.config['VAPID_PUBLIC_KEY'])
 
 
 @app.route('/daily/start', methods=['POST'])
@@ -2629,3 +2060,7 @@ if __name__ == '__main__':
     with app.app_context():
         init_database()
     app.run(debug=os.environ.get('FLASK_DEBUG') == '1', port=int(os.environ.get('PORT', 5003)))
+
+
+# Routes that live in their own modules register on `app` when imported, so this stays at the end of the file
+from views import admin as admin_views, live as live_views, timers  # noqa: E402,F401

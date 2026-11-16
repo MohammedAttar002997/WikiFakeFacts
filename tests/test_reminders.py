@@ -7,6 +7,7 @@ from pywebpush import WebPushException
 
 import app as app_module
 import reminders
+from views import timers
 from app import db
 from make_vapid_keys import make_keys
 from models import DailyChallenge, PushSubscription, QuizSession, User
@@ -131,7 +132,7 @@ def sent(monkeypatch):
         if endpoint in log.fail:
             raise WebPushException('push failed', response=SimpleNamespace(status_code=log.fail[endpoint]))
         log.append((endpoint, json.loads(data)))
-    monkeypatch.setattr(app_module, 'webpush', fake_webpush)
+    monkeypatch.setattr(timers, 'webpush', fake_webpush)
     return log
 
 
@@ -187,5 +188,5 @@ def test_the_real_signing_works_with_the_generated_keys(app, keys, monkeypatch, 
     monkeypatch.setattr(pywebpush.requests, 'post', fake_post)
     browser_key = make_keys()[0]  # Any valid P-256 public key stands in for the browser's
     subscription = SimpleNamespace(endpoint=FCM, p256dh=browser_key, auth='c2VjcmV0c2VjcmV0MTIzNA')
-    assert app_module.send_push(subscription, {'title': 'Hi'}) is None
+    assert timers.send_push(subscription, {'title': 'Hi'}) is None
     assert captured['url'] == FCM and captured['headers']['Authorization'].startswith('vapid t=')
