@@ -498,5 +498,6 @@
   "{pct}% average": "{pct}% de média",
   "{rounds} rounds at {difficulty}": "{rounds} rodadas no nível {difficulty}",
   "{score} correct": "{score} acertos",
-  "{theme} · {points} points": "{theme} · {points} pontos"
+  "{theme} · {points} points": "{theme} · {points} pontos",
+  "A round of this quiz turned out to be wrong, so it can't be replayed. Try a new quiz instead!": "Uma rodada deste quiz estava errada, por isso ele não pode ser jogado de novo. Experimente um quiz novo!"
 }

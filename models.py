@@ -156,6 +156,16 @@ class RoundReport(db.Model):
     reason = db.Column(db.String(20), nullable=False)  # 'fake_is_true', 'real_is_false' or 'other'
     comment = db.Column(db.String(300), nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+    status = db.Column(db.String(10), nullable=True)  # None (open), 'checked' or 'hidden', set on /admin
+    handled_at = db.Column(db.DateTime, nullable=True)
+
+class HiddenRound(db.Model):
+    """A round the owner hid from /admin after a report; it's never served again (rules in hidden_rounds.py)."""
+    id = db.Column(db.Integer, primary_key=True)
+    fingerprint = db.Column(db.String(40), unique=True, nullable=False)
+    topic = db.Column(db.String(100), nullable=False)
+    statements_json = db.Column(db.Text, nullable=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
 class ReadyQuiz(db.Model):
     """A quiz made ahead of time by /cron/refill (rules in ready_pool.py), waiting for the first player who asks for

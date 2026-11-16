@@ -11,8 +11,8 @@ from datetime import timedelta
 from sqlalchemy import func
 
 from badges import TOPIC_CATEGORY
-from models import (ChatbotSession, CustomContent, DailyChallenge, ErrorLog, LiveMatch, QuizSession, ReadyQuiz,
-                    RoundReport, Score, User, db)
+from models import (ChatbotSession, CustomContent, DailyChallenge, ErrorLog, HiddenRound, LiveMatch, QuizSession,
+                    ReadyQuiz, RoundReport, Score, User, db)
 
 CHART_DAYS = 30
 
@@ -76,25 +76,29 @@ def dashboard(now):
     topics = Counter(t for (t,) in month)
     categories = Counter(TOPIC_CATEGORY.get(t, 'Custom quizzes') for (t,) in month)
 
-    reports = []
-    for r in RoundReport.query.order_by(RoundReport.id.desc()).limit(20):
+    def describe(r):
         facts = json.loads(r.statements_json)
         user = db.session.get(User, r.user_id)
-        reports.append({'report': r, 'user': user.username if user else '?',
-                        'fake': next((s for s, real in facts.items() if real is False), '?'),
-                        'true': [s for s, real in facts.items() if real]})
+        return {'report': r, 'user': user.username if user else '?',
+                'fake': next((s for s, real in facts.items() if real is False), '?'),
+                'true': [s for s, real in facts.items() if real]}
+
+    open_reports = RoundReport.query.filter(RoundReport.status.is_(None))
+    reports = [describe(r) for r in open_reports.order_by(RoundReport.id.desc()).limit(20)]
+    handled = [describe(r) for r in RoundReport.query.filter(RoundReport.status.isnot(None))
+               .order_by(RoundReport.handled_at.desc(), RoundReport.id.desc()).limit(10)]
 
     live = dict(db.session.query(LiveMatch.state, func.count(LiveMatch.id))
                 .filter(since(LiveMatch.created_at, now, 30)).group_by(LiveMatch.state).all())
 
     return {
         'totals': {'players': count(User.query), 'games': count(Score.query),
-                   'reports': count(RoundReport.query), 'errors_7d': count(ErrorLog.query.filter(
+                   'reports': count(open_reports), 'hidden_rounds': count(HiddenRound.query), 'errors_7d': count(ErrorLog.query.filter(
                        since(ErrorLog.created_at, now, 7)))},
         'games': games, 'players': players, 'signups': signups, 'ai': ai, 'chats': chats,
         'per_day': games_per_day(now),
         'top_topics': topics.most_common(10), 'categories': categories.most_common(),
-        'live': live, 'reports': reports,
+        'live': live, 'reports': reports, 'handled_reports': handled,
         'ready_in_stock': count(ReadyQuiz.query.filter(ReadyQuiz.used_at.is_(None))),
         'errors': ErrorLog.query.order_by(ErrorLog.id.desc()).limit(10).all(),
     }
