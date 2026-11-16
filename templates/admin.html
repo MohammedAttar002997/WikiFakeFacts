@@ -18,7 +18,7 @@
             <div class="stat-tile"><div class="value">{{ t.games }}</div><div class="label">Games played</div></div>
             <div class="stat-tile"><div class="value">{{ stats.players['7 days'] }}</div><div class="label">Active, 7 days</div></div>
             <div class="stat-tile"><div class="value">{{ stats.ai['30 days'].total }}</div><div class="label">AI quizzes, 30 days</div></div>
-            <div class="stat-tile"><div class="value{% if t.reports %} text-warning{% endif %}">{{ t.reports }}</div><div class="label">Reported rounds</div></div>
+            <div class="stat-tile"><div class="value{% if t.reports %} text-warning{% endif %}">{{ t.reports }}</div><div class="label">Open reports</div></div>
             <div class="stat-tile"><div class="value{% if t.errors_7d %} text-danger{% endif %}">{{ t.errors_7d }}</div><div class="label">Errors, 7 days</div></div>
         </div>
 
@@ -83,19 +83,48 @@
             </div>
         </div>
 
-        <div class="wf-card wf-card-pad mb-4">
-            <div class="section-label"><i class="bi bi-flag-fill text-brand fs-4"></i>Reported rounds <span class="text-muted small fw-normal ms-2">newest 20</span></div>
+        {% macro report_action(report, action, label, style) %}
+        <form method="post" action="{{ url_for('admin_report_action', report_id=report.id, action=action) }}" class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-sm {{ style }}">{{ label }}</button>
+        </form>
+        {% endmacro %}
+        {% macro report_body(item) %}
+        <div class="small text-muted">{{ item.report.created_at.strftime('%Y-%m-%d %H:%M') }} UTC · {{ item.user }} · <span class="chip">{{ item.report.reason.replace('_', ' ') }}</span> · {{ item.report.topic }}</div>
+        <div class="mt-1"><strong>Fake:</strong> {{ item.fake }}</div>
+        <ul class="small mb-1">{% for s in item.true %}<li>{{ s }}</li>{% endfor %}</ul>
+        {% if item.report.explanation %}<div class="small"><strong>Why:</strong> {{ item.report.explanation }}</div>{% endif %}
+        {% if item.report.comment %}<div class="small"><strong>Comment:</strong> {{ item.report.comment }}</div>{% endif %}
+        {% if item.report.source_url %}<a class="small" href="{{ item.report.source_url }}" target="_blank" rel="noopener noreferrer">Source</a>{% endif %}
+        {% endmacro %}
+        <div class="wf-card wf-card-pad mb-4" id="reports">
+            <div class="section-label"><i class="bi bi-flag-fill text-brand fs-4"></i>Open reports <span class="text-muted small fw-normal ms-2">newest 20</span></div>
             {% for item in stats.reports %}
             <div class="admin-report">
-                <div class="small text-muted">{{ item.report.created_at.strftime('%Y-%m-%d %H:%M') }} UTC · {{ item.user }} · <span class="chip">{{ item.report.reason.replace('_', ' ') }}</span> · {{ item.report.topic }}</div>
-                <div class="mt-1"><strong>Fake:</strong> {{ item.fake }}</div>
-                <ul class="small mb-1">{% for s in item.true %}<li>{{ s }}</li>{% endfor %}</ul>
-                {% if item.report.explanation %}<div class="small"><strong>Why:</strong> {{ item.report.explanation }}</div>{% endif %}
-                {% if item.report.comment %}<div class="small"><strong>Comment:</strong> {{ item.report.comment }}</div>{% endif %}
-                {% if item.report.source_url %}<a class="small" href="{{ item.report.source_url }}" target="_blank" rel="noopener noreferrer">Source</a>{% endif %}
+                {{ report_body(item) }}
+                <div class="admin-report-actions">
+                    {{ report_action(item.report, 'hide', 'Hide this round', 'btn-outline-danger') }}
+                    {{ report_action(item.report, 'check', 'Mark as checked', 'btn-outline-secondary') }}
+                </div>
             </div>
-            {% else %}<p class="text-muted mb-0">No reports yet.</p>{% endfor %}
+            {% else %}<p class="text-muted mb-0">No open reports.</p>{% endfor %}
+            <p class="small text-muted mt-3 mb-0"><strong>Hide this round</strong>: it's left out of daily challenges and the guest round from now on, and quizzes that contain it can't be replayed as a challenge. <strong>Mark as checked</strong>: the round was fine; the report just leaves this list. Both apply to every report of the same round.</p>
         </div>
+
+        {% if stats.handled_reports %}
+        <details class="wf-card wf-card-pad mb-4">
+            <summary class="section-label mb-0"><i class="bi bi-check2-square text-brand fs-4"></i>Handled reports <span class="text-muted small fw-normal ms-2">newest 10 · {{ t.hidden_rounds }} round{{ '' if t.hidden_rounds == 1 else 's' }} hidden</span></summary>
+            {% for item in stats.handled_reports %}
+            <div class="admin-report">
+                <div class="mb-1"><span class="chip {{ 'chip-danger' if item.report.status == 'hidden' else '' }}">{{ item.report.status }}</span> <span class="small text-muted">{{ item.report.handled_at.strftime('%Y-%m-%d %H:%M') if item.report.handled_at else '' }}</span></div>
+                {{ report_body(item) }}
+                <div class="admin-report-actions">
+                    {{ report_action(item.report, 'reopen', 'Undo', 'btn-outline-secondary') }}
+                </div>
+            </div>
+            {% endfor %}
+        </details>
+        {% endif %}
 
         <div class="wf-card wf-card-pad">
             <div class="section-label"><i class="bi bi-bug-fill text-brand fs-4"></i>Recent errors <span class="text-muted small fw-normal ms-2">newest 10</span></div>

@@ -1271,6 +1271,10 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 .admin-list li > span:last-child { float: inline-end; }
 .admin-report { padding: .85rem 0; border-bottom: 1px solid var(--wf-border); }
 .admin-report:last-child { border-bottom: 0; }
+.admin-report-actions { display: flex; flex-wrap: wrap; gap: .5rem; margin-top: .6rem; }
+.admin-report-actions .btn { min-height: 44px; }
+details.wf-card > summary { cursor: pointer; list-style-position: inside; }
+.chip-danger { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
 
 /* ---------- Install app (footer) --------------------------------------------- */
 .wf-install { color: var(--wf-muted); text-decoration: none; font-size: inherit; min-height: 44px; }

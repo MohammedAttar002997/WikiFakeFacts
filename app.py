@@ -26,7 +26,7 @@ from alembic.migration import MigrationContext
 from alembic.operations import Operations
 from models import (db, utcnow, User, Score, QuizSession, CustomContent, ChatbotSession, PlayerAnalysis, DailyChallenge,
                     UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport, ReadyQuiz,
-                    QuizDemand)
+                    QuizDemand, HiddenRound)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
@@ -40,6 +40,7 @@ from rating import rank as rank_players
 from og_card import result_card
 from admin_stats import dashboard as admin_dashboard
 import ready_pool
+import hidden_rounds
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -772,13 +773,16 @@ def pick_guest_round(language_name):
     """(daily challenge, round index) for a visitor to try without signing in: a round of a past daily challenge
     in their language (English if there's none), so it costs no AI call and spoils nothing about today's.
     None when no challenge has been played yet."""
-    today = today_utc()
+    today, hidden = today_utc(), hidden_fingerprints()
     for language in dict.fromkeys([language_name, 'English']):
         challenges = (DailyChallenge.query.filter(DailyChallenge.language == language, DailyChallenge.date < today)
                       .order_by(DailyChallenge.date.desc()).limit(GUEST_ROUND_DAYS).all())
-        if challenges:
-            challenge = random.choice(challenges)
-            return challenge, random.randrange(len(json.loads(challenge.questions_json)))
+        # Every round of those days, except ones hidden after a report
+        rounds = [(challenge, i) for challenge in challenges
+                  for i, statements in enumerate(json.loads(challenge.questions_json))
+                  if hidden_rounds.fingerprint(statements) not in hidden]
+        if rounds:
+            return random.choice(rounds)
     return None
 
 
@@ -836,6 +840,35 @@ def admin():
     stats = admin_dashboard(utcnow())
     peak = max([n for _, n in stats['per_day']] + [1])
     return render_template('admin.html', stats=stats, peak=peak)
+
+
+REPORT_ACTIONS = {'hide': 'hidden', 'check': 'checked', 'reopen': None}
+
+
+def hidden_fingerprints():
+    return {f for (f,) in db.session.query(HiddenRound.fingerprint)}
+
+
+@app.route('/admin/reports/<int:report_id>/<action>', methods=['POST'])
+def admin_report_action(report_id, action):
+    """Hide a reported round for good, mark its report as checked, or undo either. Every report of the same round
+    (several players may report it) changes with it."""
+    report = db.session.get(RoundReport, report_id)
+    if not is_admin(current_user()) or not report or action not in REPORT_ACTIONS:
+        abort(404)
+    statements = json.loads(report.statements_json)
+    fingerprint = hidden_rounds.fingerprint(statements)
+    status = REPORT_ACTIONS[action]
+    for same in RoundReport.query.all():
+        if hidden_rounds.fingerprint(json.loads(same.statements_json)) == fingerprint:
+            same.status, same.handled_at = status, utcnow() if status else None
+    hidden = HiddenRound.query.filter_by(fingerprint=fingerprint).first()
+    if status == 'hidden' and not hidden:
+        db.session.add(HiddenRound(fingerprint=fingerprint, topic=report.topic, statements_json=report.statements_json))
+    elif status != 'hidden' and hidden:
+        db.session.delete(hidden)
+    db.session.commit()
+    return redirect(url_for('admin', _anchor='reports'))
 
 
 @app.route('/sw.js')
@@ -1077,7 +1110,8 @@ def reports_command(limit):
         user = db.session.get(User, r.user_id)
         facts = json.loads(r.statements_json)
         fake = next((s for s, real in facts.items() if real is False), '?')
-        click.echo(f'{r.created_at:%Y-%m-%d %H:%M} UTC  {user.username if user else "?"}  [{r.reason}]  {r.topic}')
+        click.echo(f'{r.created_at:%Y-%m-%d %H:%M} UTC  {user.username if user else "?"}  [{r.reason}]  {r.topic}'
+                   f'  ({r.status or "open"})')
         click.echo(f'    Fake: {fake}')
         for statement, real in facts.items():
             if real:
@@ -1914,6 +1948,10 @@ def take_challenge(code):
     if attempt:
         session['quiz_session_id'] = attempt.id
         return redirect(url_for('quiz'))
+    # Both players' answers are compared round by round, so a replay can't just leave a wrong round out
+    if hidden_rounds.has_hidden(json.loads(original.questions_json), hidden_fingerprints()):
+        flash(_("A round of this quiz turned out to be wrong, so it can't be replayed. Try a new quiz instead!"), "info")
+        return redirect(url_for('setup'))
 
     save_quiz_session(user, original.topic, original.difficulty, json.loads(original.questions_json),
                       json.loads(original.explanations_json or '[]'), _('Challenge'),
@@ -1962,11 +2000,14 @@ def daily_start():
     try:
         language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
         challenge = get_daily_challenge(date, language_name)
-        save_quiz_session(user, challenge.topic, DAILY_DIFFICULTY, json.loads(challenge.questions_json),
-                          json.loads(challenge.explanations_json), challenge.source,
-                          daily_challenge_id=challenge.id,
-                          quotes=json.loads(challenge.quotes_json) if challenge.quotes_json else None,
-                          source_url=challenge.source_url)
+        # A round hidden after a report is left out, so later players get a shorter quiz instead of a wrong round
+        rounds, explanations, quotes = hidden_rounds.visible_rounds(
+            json.loads(challenge.questions_json), json.loads(challenge.explanations_json),
+            json.loads(challenge.quotes_json) if challenge.quotes_json else None, hidden_fingerprints())
+        if not rounds:
+            raise ValueError("Every round of today's daily challenge was hidden")
+        save_quiz_session(user, challenge.topic, DAILY_DIFFICULTY, rounds, explanations, challenge.source,
+                          daily_challenge_id=challenge.id, quotes=quotes, source_url=challenge.source_url)
         return redirect(url_for('quiz'))
     except IntegrityError:
         # A second click started the same attempt at the same moment; continue that one
