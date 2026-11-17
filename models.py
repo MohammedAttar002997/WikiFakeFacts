@@ -20,6 +20,7 @@ class User(db.Model):
     avatar_updated_at = db.Column(db.DateTime, nullable=True)  # Set while there's a photo; versions its URL
     challenges_seen_at = db.Column(db.DateTime, nullable=True)  # Last visit to /challenges; newer challengers are new
     tour_done_at = db.Column(db.DateTime, nullable=True)  # Finished or skipped Finn's tour; None: show it on /setup
+    finn_outfit = db.Column(db.String(100), nullable=True)  # What their Finn wears, like 'hat=navy;scarf=blue' (outfits.py)
     scores = db.relationship('Score', backref='user', lazy=True)
 
 class Score(db.Model):

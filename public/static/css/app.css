@@ -1351,6 +1351,21 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .finn-sweat { opacity: 0; transform-origin: 104px 40px; }
 .finn-sparkles path { opacity: 0; transform-origin: center; transform-box: fill-box; }
 
+/* His outfit (outfits.py): colours come from variables set on the <svg>, with the classic look as the fallback;
+   the one accessory to show is named by an extra-… class */
+.finn .finn-hat { fill: var(--finn-hat, #8d6238); }
+.finn .finn-hat-brim { fill: var(--finn-hat-brim, #6f4a2b); }
+.finn .finn-hat-band { stroke: var(--finn-hat-band, #5a3a20); }
+.finn .finn-scarf { fill: var(--finn-scarf, #d6453d); }
+.finn .finn-scarf-dark { fill: var(--finn-scarf-dark, #b83a33); }
+.finn .finn-coat { fill: var(--finn-coat, #8a5a33); }
+.finn .finn-coat-dark { fill: var(--finn-coat-dark, #7a4e2b); }
+.finn .finn-coat-light { fill: var(--finn-coat-light, #a8743f); }
+.finn .finn-coat-stroke { stroke: var(--finn-coat, #8a5a33); }
+.finn .finn-extra { display: none; }
+.finn.extra-glasses .finn-extra-glasses, .finn.extra-bowtie .finn-extra-bowtie,
+.finn.extra-pencil .finn-extra-pencil, .finn.extra-star .finn-extra-star { display: inline; }
+
 /* Talking (the tour): the smile gives way to a moving mouth */
 .finn.is-talking .finn-mouth-smile { opacity: 0; }
 .finn.is-talking .finn-mouth-open { opacity: 1; animation: finn-talk .18s ease-in-out infinite alternate; }
@@ -1431,6 +1446,20 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
     .finn-sparkles path { opacity: 0 !important; }
     .finn.mood-worried .finn-sweat { opacity: 1; }
 }
+
+/* Finn's wardrobe on the account page */
+.wardrobe { display: grid; gap: 1rem; }
+.wardrobe-preview { width: 9rem; margin: 0 auto; }
+@media (min-width: 640px) { .wardrobe { grid-template-columns: 11rem 1fr; align-items: start; }
+    .wardrobe-preview { position: sticky; top: 5.5rem; width: 100%; } }
+.wardrobe-items { display: grid; gap: .5rem; grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr)); }
+.wardrobe-item { display: flex; align-items: center; gap: .6rem; min-height: 48px; padding: .5rem .75rem; cursor: pointer;
+    border-radius: .9rem; border: 2px solid var(--wf-border); background: var(--wf-surface); }
+.wardrobe-item:has(input:checked) { border-color: var(--wf-brand); background: var(--wf-brand-soft); }
+.wardrobe-item:has(input:focus-visible) { outline: 3px solid var(--wf-brand); outline-offset: 2px; }
+.wardrobe-item.is-locked { cursor: not-allowed; opacity: .7; }
+.wardrobe-swatch { flex-shrink: 0; width: 1.5rem; height: 1.5rem; border-radius: 50%; border: 2px solid var(--wf-border); }
+.wardrobe-item .bi { flex-shrink: 0; width: 1.5rem; text-align: center; color: var(--wf-muted); }
 
 /* Finn on a page (the finn macro) and just his face (finn_face): avatars in the help chat and on its button */
 .finn-holder { width: 8rem; margin: 0 auto .75rem; }

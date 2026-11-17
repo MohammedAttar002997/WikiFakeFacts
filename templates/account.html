@@ -51,6 +51,40 @@
             </form>
         </div>
 
+        {# Finn's wardrobe (outfits.py): what this player's Finn wears everywhere; badges unlock the items #}
+        <form action="{{ url_for('change_finn_outfit') }}" method="POST" class="wf-card wf-card-pad mb-4" id="finn">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <div class="section-label"><i class="bi bi-palette-fill text-brand fs-4"></i>{{ _("Finn's wardrobe") }}</div>
+            <p class="text-muted">{{ _('Dress your Finn. He wears this wherever you meet him. Badges unlock new items.') }}</p>
+            <div class="wardrobe">
+                <div class="wardrobe-preview" id="wardrobePreview">{% include "_finn.html" %}</div>
+                <div class="wardrobe-slots">
+                    {% for slot in wardrobe.slots %}
+                    <fieldset class="mb-3">
+                        <legend class="small fw-black text-uppercase text-muted mb-2">{{ _(slot.name) }}</legend>
+                        <div class="wardrobe-items">
+                            {% for item in slot['items'] %}
+                            <label class="wardrobe-item{% if not item.unlocked %} is-locked{% endif %}">
+                                <input type="radio" class="visually-hidden" name="{{ slot.key }}" value="{{ item.key }}"
+                                       data-style="{{ item.style }}" {% if item.worn %}checked{% endif %} {% if not item.unlocked %}disabled{% endif %}>
+                                {% if item.colours %}<span class="wardrobe-swatch" style="background: {{ item.colours.values()|first }}"></span>
+                                {% else %}<i class="bi {{ 'bi-lock-fill' if not item.unlocked else 'bi-check2' if slot.key != 'extra' else 'bi-stars' }}" aria-hidden="true"></i>{% endif %}
+                                <span>
+                                    <span class="d-block fw-bold">{{ _(item.name) }}</span>
+                                    {% if not item.unlocked %}<span class="d-block small text-muted"><i class="bi bi-lock-fill me-1" aria-hidden="true"></i>{{ _('Earn the badge: {badge}').format(badge=item.badge.icon ~ ' ' ~ _(item.badge.name)) }}</span>{% endif %}
+                                </span>
+                            </label>
+                            {% endfor %}
+                        </div>
+                    </fieldset>
+                    {% endfor %}
+                </div>
+            </div>
+            <div class="d-flex justify-content-end mt-2">
+                <button type="submit" class="btn btn-primary"><i class="bi bi-check-lg me-1"></i>{{ _('Save the look') }}</button>
+            </div>
+        </form>
+
         <form action="{{ url_for('change_name') }}" method="POST" class="wf-card wf-card-pad mb-4">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <div class="section-label"><i class="bi bi-pencil-fill text-brand fs-4"></i>{{ _('Change name') }}</div>
@@ -114,4 +148,25 @@
         <p class="small text-muted text-center mt-4">{{ _('Forgot your PIN? Ask the person who runs this game to reset it.') }}</p>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // Finn's wardrobe: show the picked items on the preview at once (saved only with the button)
+    (function () {
+        const form = document.getElementById('finn');
+        const finn = form && form.querySelector('#wardrobePreview .finn');
+        if (!finn) return;
+        const EXTRAS = ['glasses', 'bowtie', 'pencil', 'star'];
+        function dress() {
+            const styles = [];
+            form.querySelectorAll('input[type="radio"]:checked').forEach(input => {
+                if (input.dataset.style) styles.push(input.dataset.style);
+                if (input.name === 'extra') EXTRAS.forEach(e => finn.classList.toggle('extra-' + e, e === input.value));
+            });
+            finn.setAttribute('style', styles.join(';'));
+        }
+        form.addEventListener('change', () => { dress(); window.finnMood(finn, 'happy'); });
+    })();
+</script>
 {% endblock %}

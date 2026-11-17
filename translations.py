@@ -89,6 +89,8 @@ def dynamic_strings():
         strings |= {name, detail.rstrip(')')}
     for badge in BADGES:
         strings |= {badge['name'], badge['description']}
+    import outfits
+    strings |= set(outfits.SLOT_NAMES.values()) | {item[1] for items in outfits.SLOTS.values() for item in items}
     from chatbot import QUICK_HELP
     strings |= {suggestion['question'] for suggestion in QUICK_HELP}
     return strings
