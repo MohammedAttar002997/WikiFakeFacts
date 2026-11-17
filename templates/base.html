@@ -109,7 +109,7 @@
                     {% set active = request.path == href or (href != '/' and request.path.startswith(href))
                                     or (href == '/daily' and (request.path.startswith('/event') or request.path.startswith('/fakes') or request.path.startswith('/f/'))) %}
                     <li class="nav-item">
-                        <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}{% if href == '/analysis' %} data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis"{% endif %}>
+                        <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}" data-tour="nav-{{ href.strip('/') or 'home' }}"{% if active %} aria-current="page"{% endif %}{% if href == '/analysis' %} data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis"{% endif %}>
                             <i class="bi {{ icon }}"></i>{{ label }}
                         </a>
                     </li>
@@ -156,7 +156,7 @@
 
     {# Not on the help page itself, nor during a round, where it covered the answers on phones #}
     {% if request.path not in ('/chatbot', '/quiz', '/try') and not request.path.startswith('/live/') %}
-    <a href="/chatbot" class="chatbot-fab" title="{{ _('Need help? Ask the assistant') }}" aria-label="{{ _('Open help assistant') }}">
+    <a href="/chatbot" class="chatbot-fab" data-tour="help" title="{{ _('Need help? Ask the assistant') }}" aria-label="{{ _('Open help assistant') }}">
         <i class="bi bi-chat-dots-fill"></i>
     </a>
     {% endif %}
@@ -169,6 +169,7 @@
         {% endif %}
         {% if is_admin %}<span class="d-none d-xl-inline">&middot; <a href="{{ url_for('admin') }}" class="wf-donate"><i class="bi bi-speedometer2" aria-hidden="true"></i> Admin</a></span>{% endif %}
         {# Shown by app.js only when the browser offers to install the app #}
+        {% if me %}&middot; <a href="{{ url_for('setup', tour=1) }}" class="wf-donate"><i class="bi bi-signpost-2" aria-hidden="true"></i> {{ _('Take the tour') }}</a>{% endif %}
         <span id="installApp" hidden>&middot; <button type="button" class="btn btn-link wf-install p-0 align-baseline">
             <i class="bi bi-download" aria-hidden="true"></i> {{ _('Install app') }}</button></span>
     </footer>
@@ -199,6 +200,8 @@
         }|tojson }};
     </script>
     <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    {# Finn's first-visit tour (setup page only; see render_setup) #}
+    {% if show_tour %}{% include "_tour.html" %}{% endif %}
     {% block scripts %}{% endblock %}
 </body>
 </html>

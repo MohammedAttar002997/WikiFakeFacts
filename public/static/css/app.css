@@ -1285,6 +1285,52 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .chip-danger { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
 
+/* ---------- Finn and the first-visit tour (_finn.html, _tour.html, tour.js) ----- */
+.finn { width: 100%; height: auto; overflow: visible; animation: finn-bob 3.2s ease-in-out infinite; }
+.finn * { transform-box: view-box; }
+.finn-eyes { transform-origin: 71px 57px; animation: finn-blink 4.5s infinite; }
+.finn-tail { transform-origin: 95px 122px; animation: finn-wag 1.8s ease-in-out infinite; }
+.finn-glass { transform-origin: 89px 115px; animation: finn-glass 3.2s ease-in-out infinite; }
+.finn-mouth-open { opacity: 0; transform-origin: 71px 84px; }
+.finn.is-talking .finn-mouth { opacity: 0; }
+.finn.is-talking .finn-mouth-open { animation: finn-talk .18s ease-in-out infinite alternate; }
+@keyframes finn-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
+@keyframes finn-blink { 0%, 90%, 96%, 100% { transform: scaleY(1); } 93% { transform: scaleY(.1); } }
+@keyframes finn-wag { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(9deg); } }
+@keyframes finn-glass { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-6deg); } }
+@keyframes finn-talk { from { opacity: 1; transform: scaleY(.4); } to { opacity: 1; transform: scaleY(1.15); } }
+@media (prefers-reduced-motion: reduce) {
+    .finn, .finn-eyes, .finn-tail, .finn-glass, .finn.is-talking .finn-mouth-open { animation: none; }
+}
+
+.tour { position: fixed; inset: 0; z-index: 1080; }
+.tour[hidden] { display: none; }
+.tour-shade { position: absolute; inset: 0; }
+.tour.is-centered .tour-shade { background: rgba(15, 10, 30, .62); }
+.tour-spot { position: fixed; border-radius: 1rem; box-shadow: 0 0 0 9999px rgba(15, 10, 30, .62);
+    outline: 3px solid var(--wf-brand); outline-offset: 2px; pointer-events: none;
+    transition: top .3s ease, left .3s ease, width .3s ease, height .3s ease; }
+.tour-panel { position: fixed; inset-inline: 16px; bottom: calc(16px + env(safe-area-inset-bottom)); display: flex;
+    align-items: flex-end; gap: .25rem; max-width: 30rem; margin-inline: auto; }
+.tour.is-centered .tour-panel { bottom: 50%; transform: translateY(50%); }
+.tour-finn { flex: 0 0 92px; margin-bottom: -6px; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, .25)); }
+.tour-bubble { position: relative; flex: 1 1 auto; min-width: 0; padding: 1rem 1.1rem; border-radius: 1.2rem;
+    background: var(--wf-surface); color: var(--wf-text); border: 2px solid var(--wf-border);
+    box-shadow: 0 18px 40px rgba(0, 0, 0, .28); }
+.tour-bubble::before { content: ""; position: absolute; inset-inline-start: -11px; bottom: 34px; border: 10px solid transparent;
+    border-inline-end-color: var(--wf-surface); border-inline-start: 0; }
+.tour-title { font-size: 1.15rem; font-weight: 900; margin: 0; }
+.tour-text { min-height: 4.5em; margin: .5rem 0 .6rem; font-size: 1rem; line-height: 1.5; }
+.tour-icon { min-width: 44px; min-height: 44px; color: var(--wf-muted); }
+.tour-dots { display: flex; flex-wrap: wrap; gap: 5px; margin-bottom: .6rem; }
+.tour-dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--wf-border); }
+.tour-dots span.is-on { width: 20px; border-radius: 4px; background: var(--wf-brand); }
+.tour-bubble .btn { min-height: 44px; }
+@media (min-width: 900px) {
+    .tour-panel { inset-inline: auto 32px; bottom: 32px; margin: 0; width: 30rem; }
+    .tour-finn { flex-basis: 120px; }
+}
+
 /* ---------- Classroom mode (board and student screen) ----------------------- */
 .class-code { font-size: clamp(2.6rem, 12vw, 5.5rem); font-weight: 900; letter-spacing: .12em; line-height: 1.1;
     color: var(--wf-brand); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }

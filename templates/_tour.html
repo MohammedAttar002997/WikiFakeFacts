@@ -1,0 +1,47 @@
+{# The first-visit tour with Finn (tour.js), shown on the setup page after a new player's first sign-in, or when the
+   footer's "Take the tour" link adds ?tour=1. Each step points at an element with data-tour="…"; when that element
+   isn't visible (the navbar folds away on phones) Finn just says his line in the middle of the screen. #}
+{% set tour_steps = [
+    {'target': None, 'title': _("Hi, I'm Finn!"), 'text': _("I'm a detective fox, and I'll show you around WikiFakeFact. It takes a minute.")},
+    {'target': None, 'title': _('How it works'), 'text': _('Every round shows four statements from a Wikipedia article. Three are true and one is a fake. Your job: find the fake!')},
+    {'target': 'category', 'title': _('Pick a topic'), 'text': _('Choose what you want to play about. Not sure? Surprise me picks one for you.')},
+    {'target': 'length', 'title': _('Length and difficulty'), 'text': _('Choose how many rounds and how hard. I suggest a level based on your last games.')},
+    {'target': 'start', 'title': _('Three ways to play'), 'text': _('Play on your own, live against a friend, or run a game for a whole class on a big screen.')},
+    {'target': 'daily', 'title': _('Daily challenge'), 'text': _('A new quiz every day, the same for everyone. Play daily to keep your streak!')},
+    {'target': 'nav-daily', 'title': _('Challenges'), 'text': _('Here you also find the weekly event and fakes written by other players. You can write your own and see who it fools.')},
+    {'target': 'nav-leaderboard', 'title': _('Leaderboard'), 'text': _('See how you rank against the other detectives.')},
+    {'target': 'nav-analysis', 'title': _('My Progress'), 'text': _('Your scores over time, and a coach that tells you what to practice next.')},
+    {'target': 'help', 'title': _('Need help?'), 'text': _('The help assistant answers questions about the game anytime.')},
+    {'target': None, 'title': _('Good luck, detective!'), 'text': _('That was the tour. You can watch it again anytime from the link at the bottom of the page.')},
+] %}
+<div class="tour" id="tour" hidden data-done-url="{{ url_for('tour_done') }}">
+    <div class="tour-shade" data-tour-shade></div>
+    <div class="tour-spot" data-tour-spot hidden></div>
+    <div class="tour-panel" role="dialog" aria-modal="true" aria-labelledby="tourTitle" aria-describedby="tourText">
+        <div class="tour-finn">{% include "_finn.html" %}</div>
+        <div class="tour-bubble">
+            <div class="d-flex align-items-start gap-2">
+                <div class="flex-grow-1 min-w-0">
+                    <div class="tour-step small fw-bold text-brand" data-tour-count></div>
+                    <h2 class="tour-title" id="tourTitle" data-tour-title></h2>
+                </div>
+                <button type="button" class="btn btn-sm tour-icon" data-tour-voice aria-pressed="false"
+                        title="{{ _('Read aloud') }}" aria-label="{{ _('Read aloud') }}"><i class="bi bi-volume-mute-fill"></i></button>
+                <button type="button" class="btn btn-sm tour-icon" data-tour-skip title="{{ _('Close the tour') }}" aria-label="{{ _('Close the tour') }}"><i class="bi bi-x-lg"></i></button>
+            </div>
+            <p class="tour-text" id="tourText" data-tour-typed aria-hidden="true"></p>
+            <p class="visually-hidden" aria-live="polite" data-tour-said></p>
+            <div class="tour-dots" data-tour-dots aria-hidden="true"></div>
+            <div class="d-flex align-items-center justify-content-between gap-2">
+                <button type="button" class="btn btn-link btn-sm text-muted px-0" data-tour-skip>{{ _('Skip the tour') }}</button>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-tour-back>{{ _('Back') }}</button>
+                    <button type="button" class="btn btn-primary" data-tour-next
+                            data-next-label="{{ _('Next') }}" data-done-label="{{ _("Let's play!") }}"></button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>window.WF_TOUR = {{ {'steps': tour_steps, 'count': _('Finn · {n} of {total}')}|tojson }};</script>
+<script src="{{ url_for('static', filename='js/tour.js') }}" defer></script>
