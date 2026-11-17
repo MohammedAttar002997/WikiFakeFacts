@@ -1,8 +1,10 @@
 {# Finn, the detective fox: the tour guide (tour.js), the loading screen and the quiz's companion. Plain SVG, brought
    to life with CSS (app.css, "Finn"): he breathes, blinks, glances around, twitches an ear and wags his tail, and his
    pupils follow the pointer (app.js). A mood class on the <svg> changes his face and body: mood-happy, mood-sad,
-   mood-wow, mood-worried, mood-think, mood-search; is-talking moves his mouth. Decorative: words are always in text. #}
-<svg class="finn" viewBox="0 0 150 172" aria-hidden="true" focusable="false">
+   mood-wow, mood-worried, mood-think, mood-search; is-talking moves his mouth. Decorative: words are always in text.
+   Two optional variables (see the finn and finn_face macros in _macros.html): finn_mood starts him in a mood without
+   JavaScript, and finn_face crops the picture to his head, for avatars. #}
+<svg class="finn{% if finn_mood %} mood-{{ finn_mood }}{% endif %}" viewBox="{{ '29 8 84 88' if finn_face else '0 0 150 172' }}" aria-hidden="true" focusable="false">
     <ellipse class="finn-shadow" cx="71" cy="163" rx="36" ry="5.5" fill="#000" fill-opacity=".18"/>
     <g class="finn-all">
         <g class="finn-tail">

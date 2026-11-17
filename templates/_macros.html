@@ -9,6 +9,10 @@
 {% set DIFFICULTY_EMOJI = {'1': '🧒', '2': '🧑‍🎓', '3': '🧠'} %}
 
 {# A player's photo, or the first letter of their name on a colored circle. size: '', 'sm', 'lg' or 'xl' #}
+{# Finn the fox, whole (centred in a block) or just his face (an inline avatar), optionally in a mood #}
+{% macro finn(mood='', class='') %}<div class="finn-holder {{ class }}">{% with finn_mood=mood, finn_face=false %}{% include "_finn.html" %}{% endwith %}</div>{% endmacro %}
+{% macro finn_face(mood='', class='') %}<span class="finn-face {{ class }}">{% with finn_mood=mood, finn_face=true %}{% include "_finn.html" %}{% endwith %}</span>{% endmacro %}
+
 {% macro avatar(user, size='', class='') %}
 {% set classes = ['avatar', 'avatar-' ~ size if size, class]|select|join(' ') %}
 {% if user.avatar_updated_at %}
