@@ -1410,15 +1410,23 @@ def quiz():
         selected_option = request.form.get('option')
         round_index = quiz_session.current_question_index
         current_q = questions[round_index]
+        # The quiz page sends answers in the background and shows the result on the round itself (the FAKE stamp);
+        # it gets JSON back. Without JavaScript the form posts as before and the result is a message on the next page
+        reveal = request.headers.get('X-Requested-With') == 'fetch'
+
+        def answered(endpoint, **result):
+            return jsonify(next=url_for(endpoint), **result) if reveal else redirect(url_for(endpoint))
         # Timed mode: the browser submits when the countdown ends; the server also checks the clock, so a late
         # answer (or one sent with JavaScript turned off) can't beat the timer
         timed_out = bool(quiz_session.time_limit) and (
             request.form.get('timeout') == '1' or seconds_left(quiz_session) <= -TIMER_GRACE_SECONDS)
         if not selected_option and not timed_out:
+            if reveal:
+                return jsonify(error=_("Please select an option.")), 400
             flash(_("Please select an option."), "warning")
         elif not claim_round(quiz_session, round_index):
             # Another request (a double click, or the timer firing during a click) already answered this round
-            return redirect(url_for('quiz'))
+            return answered('quiz')
         else:
             pick = None if timed_out else selected_option
             # The options were shuffled in the template, we need to check the value
@@ -1432,12 +1440,14 @@ def quiz():
             correct_answer = next(k for k, v in current_q.items() if v is False)
             if is_correct:
                 quiz_session.score += 1
-                flash(_("Correct! You found the fake fact."), "success")
+                message, category = _("Correct! You found the fake fact."), "success"
             elif timed_out:
-                flash(_("Time's up! The fake fact was:") + " " + correct_answer, "danger")
+                message, category = _("Time's up! The fake fact was:") + " " + correct_answer, "danger"
             else:
-                # Find the correct answer to show the user
-                flash(_("Incorrect. The fake fact was:") + " " + correct_answer, "danger")
+                message, category = _("Incorrect. The fake fact was:") + " " + correct_answer, "danger"
+            if not reveal:
+                flash(message, category)
+            result = {'correct': is_correct, 'timed_out': timed_out, 'fake': correct_answer, 'message': message}
 
             quiz_session.round_started_at = None
 
@@ -1446,7 +1456,7 @@ def quiz():
                 if quiz_session.practice:
                     # Practice earns no score, badges or leaderboard points: the player had seen the answers
                     db.session.commit()
-                    return redirect(url_for('results'))
+                    return answered('results', **result)
 
                 # Save final score
                 percentage = (quiz_session.score / quiz_session.total_questions) * 100
@@ -1463,10 +1473,10 @@ def quiz():
                 db.session.commit()
 
                 flash_new_badges(db.session.get(User, quiz_session.user_id))
-                return redirect(url_for('results'))
+                return answered('results', **result)
 
             db.session.commit()
-            return redirect(url_for('quiz'))
+            return answered('quiz', **result)
 
     # The round's clock starts the first time it's shown; reloading the page doesn't restart it
     if quiz_session.time_limit and quiz_session.round_started_at is None:

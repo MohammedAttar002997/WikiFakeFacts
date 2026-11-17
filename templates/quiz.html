@@ -31,12 +31,13 @@
             {% endif %}
 
             <div class="quiz-question">
-                <div class="q-icon">🕵️</div>
+                {# Finn watches the round: thinking, worried when time runs low, happy or sad at the answer #}
+                <div class="quiz-finn" id="quizFinn">{% include "_finn.html" %}</div>
                 <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
                 <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
             </div>
 
-            <form action="/quiz" method="POST" id="quizForm">
+            <form action="/quiz" method="POST" id="quizForm" data-fake-label="{{ _('Fake') }}" data-true-label="{{ _('True') }}">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {% if time_limit %}<input type="hidden" name="timeout" id="timeoutField" value="0">{% endif %}
                 <div class="row g-3 mb-4">
@@ -63,6 +64,11 @@
                     </button>
                 </div>
             </form>
+            {# After answering: the result, on the round itself (the statements get their FAKE / TRUE stamps) #}
+            <div class="quiz-reveal" id="quizReveal" hidden>
+                <div class="flex-grow-1 min-w-0 fw-bold" role="status" aria-live="assertive" data-reveal-text></div>
+                <a class="btn btn-primary btn-lg px-4 flex-shrink-0" data-reveal-next href="{{ url_for('quiz') }}">{{ _('Continue') }} <i class="bi bi-arrow-right ms-1"></i></a>
+            </div>
         </div>
     </div>
 </div>
@@ -75,9 +81,69 @@
         const submit = document.getElementById('submitAnswer');
         const inputs = Array.from(form.querySelectorAll('input[name="option"]'));
 
-        let sent = false;
+        const finn = document.querySelector('#quizFinn .finn');
+        const revealBox = document.getElementById('quizReveal');
+        let sent = false, interval = null, leaving = null;
+        window.finnMood(finn, 'think');
         inputs.forEach(input => input.addEventListener('change', () => { submit.disabled = false; }));
-        form.addEventListener('submit', () => { sent = true; submit.disabled = true; });
+
+        // The answer goes to the server in the background, so the result can be shown on the round itself
+        async function send(timedOut) {
+            sent = true;
+            submit.disabled = true;
+            const body = new FormData(form);
+            if (timedOut) body.set('timeout', '1');
+            let response, data;
+            try {
+                response = await fetch(form.action, { method: 'POST', body, headers: { 'X-Requested-With': 'fetch', Accept: 'application/json' } });
+                data = await response.json();
+            } catch (e) {
+                // No connection or an unexpected answer: send the form the plain way, as without JavaScript
+                if (timedOut) { document.getElementById('timeoutField').value = '1'; inputs.forEach(i => { i.required = false; }); }
+                form.submit();
+                return;
+            }
+            if (data.error) { sent = false; submit.disabled = false; return; }
+            if (!('fake' in data)) { location.href = data.next; return; }  // Already answered (a double click)
+            reveal(data);
+        }
+
+        function stamp(label, text, kind) {
+            const mark = document.createElement('span');
+            mark.className = 'stamp is-' + kind;
+            mark.textContent = text;
+            label.classList.add('is-stamped', 'is-' + kind);
+            label.appendChild(mark);
+        }
+
+        function reveal(data) {
+            clearInterval(interval);
+            const timer = document.getElementById('quizTimer');
+            if (timer) timer.classList.remove('is-low');
+            inputs.forEach(input => {
+                const label = form.querySelector(`label[for="${input.id}"]`);
+                if (input.value === data.fake) stamp(label, form.dataset.fakeLabel, 'fake');
+                else if (input.checked) stamp(label, form.dataset.trueLabel, 'true');
+                input.disabled = true;
+            });
+            window.finnMood(finn, data.correct ? 'happy' : (data.timed_out ? 'wow' : 'sad'));
+            form.querySelector('.kbd-hint') && form.querySelector('.kbd-hint').classList.add('invisible');
+            submit.hidden = true;
+            revealBox.hidden = false;
+            revealBox.classList.add(data.correct ? 'is-good' : 'is-bad');
+            revealBox.querySelector('[data-reveal-text]').textContent = data.message;
+            const next = revealBox.querySelector('[data-reveal-next]');
+            next.href = data.next;
+            next.focus();
+            // Moves on by itself, with longer to read after a miss; Continue goes at once
+            leaving = setTimeout(() => { location.href = data.next; }, data.correct ? 2600 : 4200);
+            next.addEventListener('click', () => clearTimeout(leaving));
+        }
+
+        form.addEventListener('submit', e => {
+            e.preventDefault();
+            if (!sent) send(false);
+        });
 
         // Timed mode: count down, then submit the round as timed out
         const timer = document.getElementById('quizTimer');
@@ -92,6 +158,7 @@
                 bar.style.width = (left / limit * 100) + '%';
                 count.textContent = Math.ceil(left);
                 timer.classList.toggle('is-low', left <= 5);
+                if (!sent) window.finnMood(finn, left <= 5 ? 'worried' : 'think');
                 const whole = Math.ceil(left);
                 if ((whole === 10 || whole === 5) && announce.dataset.said !== String(whole)) {
                     announce.dataset.said = whole;
@@ -100,12 +167,9 @@
                 if (left > 0) return;
                 clearInterval(interval);
                 if (sent) return;  // The player's answer is already on its way
-                sent = true;
-                document.getElementById('timeoutField').value = '1';
-                inputs.forEach(input => { input.required = false; });
-                form.submit();
+                send(true);
             };
-            const interval = setInterval(tick, 200);
+            interval = setInterval(tick, 200);
             tick();
         }
 
@@ -117,7 +181,7 @@
                 inputs[index].checked = true;
                 inputs[index].focus();
                 submit.disabled = false;
-            } else if (key === 'enter' && !submit.disabled) {
+            } else if (key === 'enter' && !submit.disabled && !sent) {
                 e.preventDefault();
                 form.requestSubmit(submit);
             }

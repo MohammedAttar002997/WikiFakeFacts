@@ -504,6 +504,35 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 }
 .answer-input:checked + .answer .pick { opacity: 1; transform: scale(1); }
 .answer-input:focus-visible + .answer { outline: 3px solid var(--opt); outline-offset: 2px; }
+/* Finn above the statements, and the result shown on the round: rubber stamps and a result bar */
+.quiz-finn { width: 6.5rem; margin: 0 auto .25rem; }
+.answer .stamp { position: absolute; inset-inline-end: .7rem; top: 50%; padding: .05rem .6rem; border: 3px solid currentColor;
+    border-radius: .45rem; font-weight: 900; font-size: 1.15rem; letter-spacing: .14em; text-transform: uppercase;
+    color: #e11d48; background: color-mix(in srgb, var(--wf-surface) 88%, transparent); pointer-events: none;
+    transform: translateY(-50%) rotate(-12deg); animation: stamp-in .38s cubic-bezier(.2, 1.5, .4, 1) both; }
+.answer .stamp.is-true { color: #059669; }
+.answer.is-stamped { cursor: default; animation: tile-thunk .28s ease-out .14s; }
+.answer.is-stamped:hover { transform: none; }
+.answer.is-stamped .pick { display: none; }
+/* The second selector outranks the picked tile's own colours (.answer-input:checked + .answer) */
+.answer.is-fake, .answer-input:checked + .answer.is-fake { border-color: #e11d48;
+    background: color-mix(in srgb, #e11d48 9%, var(--wf-surface)); box-shadow: 0 5px 0 0 #e11d48; }
+.answer.is-true, .answer-input:checked + .answer.is-true { border-color: #059669;
+    background: color-mix(in srgb, #059669 9%, var(--wf-surface)); box-shadow: 0 5px 0 0 #059669; }
+.answer.is-stamped .text { padding-inline-end: 4.5rem; }
+@keyframes stamp-in { 0% { opacity: 0; transform: translateY(-50%) rotate(-12deg) scale(2.8); }
+    60% { opacity: 1; transform: translateY(-50%) rotate(-12deg) scale(.9); }
+    100% { opacity: 1; transform: translateY(-50%) rotate(-12deg) scale(1); } }
+@keyframes tile-thunk { 0% { transform: translateY(0); } 35% { transform: translateY(4px) rotate(-.6deg); } 100% { transform: translateY(0); } }
+.quiz-reveal { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-top: 1rem; padding: .9rem 1.1rem;
+    border-radius: 1rem; border: 2px solid var(--wf-border); animation: pop-in .3s ease both; }
+.quiz-reveal[hidden] { display: none; }
+.quiz-reveal.is-good { border-color: #059669; background: color-mix(in srgb, #059669 10%, var(--wf-surface)); }
+.quiz-reveal.is-bad { border-color: #e11d48; background: color-mix(in srgb, #e11d48 8%, var(--wf-surface)); }
+.quiz-reveal .btn { min-height: 44px; }
+@media (max-width: 576px) { .quiz-reveal .btn { width: 100%; } }
+@media (prefers-reduced-motion: reduce) { .answer .stamp, .answer.is-stamped, .quiz-reveal { animation: none; } }
+
 .kbd-hint { font-size: .85rem; color: var(--wf-muted); }
 .kbd-hint kbd {
     background: var(--wf-surface-2);
@@ -949,6 +978,14 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     50% { transform: rotate(10deg) scale(1.08); }
 }
 .loading-tip { min-height: 3em; color: var(--wf-muted); transition: opacity .3s ease; }
+.loading-finn { width: 9rem; margin: 0 auto .75rem; }
+.loading-dots { display: flex; justify-content: center; gap: .45rem; }
+.loading-dots span { width: .6rem; height: .6rem; border-radius: 50%; background: var(--wf-brand);
+    animation: loading-dot 1s ease-in-out infinite; }
+.loading-dots span:nth-child(2) { animation-delay: .15s; }
+.loading-dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes loading-dot { 0%, 100% { transform: translateY(0); opacity: .45; } 40% { transform: translateY(-.45rem); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) { .loading-dots span { animation: none; } }
 
 /* ---------- Practice card / answer review --------------------------------- */
 .practice-card { display: flex; align-items: center; gap: 1.25rem; border-inline-start: 5px solid #f59e0b; }
@@ -1285,24 +1322,117 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .chip-danger { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
 
-/* ---------- Finn and the first-visit tour (_finn.html, _tour.html, tour.js) ----- */
-.finn { width: 100%; height: auto; overflow: visible; animation: finn-bob 3.2s ease-in-out infinite; }
+/* ---------- Finn the detective fox (_finn.html) -------------------------------
+   Idle: he breathes, bobs, blinks (twice now and then), glances around, twitches an ear and wags his tail.
+   Pupils follow the pointer through --look-x / --look-y (app.js). A mood class changes face and body. */
+.finn { width: 100%; height: auto; overflow: visible; }
 .finn * { transform-box: view-box; }
-.finn-eyes { transform-origin: 71px 57px; animation: finn-blink 4.5s infinite; }
+.finn-all { animation: finn-bob 3.4s ease-in-out infinite; }
+.finn-shadow { transform-origin: 71px 163px; animation: finn-shadow 3.4s ease-in-out infinite; }
+.finn-body { transform-origin: 71px 155px; animation: finn-breathe 3.4s ease-in-out infinite; }
+.finn-head { transform-origin: 71px 92px; animation: finn-tilt 7s ease-in-out infinite; transition: transform .25s ease; }
+.finn-eyes { transform-origin: 71px 57px; animation: finn-blink 5.2s infinite; transition: transform .2s ease; }
+.finn-pupils { transform: translate(calc(var(--look-x, 0px) + var(--mood-x, 0px)), calc(var(--look-y, 0px) + var(--mood-y, 0px)));
+    transition: transform .12s ease-out; }
+.finn-glance { animation: finn-glance 9s ease-in-out infinite; }
+.finn.is-watching .finn-glance { animation: none; }  /* Following the pointer instead of glancing about */
+.finn-ear { transition: transform .3s ease; }
+.finn-ear-l { transform-origin: 52px 44px; animation: finn-twitch 6.5s ease-in-out infinite; }
+.finn-ear-r { transform-origin: 90px 44px; }
+.finn-brow { transition: transform .25s ease; }
+.finn-brow-l { transform-origin: 56px 46px; }
+.finn-brow-r { transform-origin: 86px 46px; }
 .finn-tail { transform-origin: 95px 122px; animation: finn-wag 1.8s ease-in-out infinite; }
-.finn-glass { transform-origin: 89px 115px; animation: finn-glass 3.2s ease-in-out infinite; }
-.finn-mouth-open { opacity: 0; transform-origin: 71px 84px; }
-.finn.is-talking .finn-mouth { opacity: 0; }
-.finn.is-talking .finn-mouth-open { animation: finn-talk .18s ease-in-out infinite alternate; }
-@keyframes finn-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-5px); } }
-@keyframes finn-blink { 0%, 90%, 96%, 100% { transform: scaleY(1); } 93% { transform: scaleY(.1); } }
+.finn-glass { transform-origin: 89px 115px; animation: finn-glass 3.4s ease-in-out infinite; }
+.finn-arm { transform-origin: 53px 112px; transition: transform .3s ease; }
+.finn-mouth { opacity: 0; transition: opacity .12s ease; }
+.finn-mouth-smile { opacity: 1; }
+.finn-mouth-open { transform-origin: 71px 84px; }
+.finn-sweat { opacity: 0; transform-origin: 104px 40px; }
+.finn-sparkles path { opacity: 0; transform-origin: center; transform-box: fill-box; }
+
+/* Talking (the tour): the smile gives way to a moving mouth */
+.finn.is-talking .finn-mouth-smile { opacity: 0; }
+.finn.is-talking .finn-mouth-open { opacity: 1; animation: finn-talk .18s ease-in-out infinite alternate; }
+
+/* Happy: a grin, raised brows, a wave, two hops and sparkles */
+.finn.mood-happy .finn-mouth-smile, .finn.mood-happy .finn-mouth-open { opacity: 0; }
+.finn.mood-happy .finn-mouth-grin { opacity: 1; }
+.finn.mood-happy .finn-brow { transform: translateY(-2.5px); }
+.finn.mood-happy .finn-eyes { transform: scaleY(.82); }
+.finn.mood-happy .finn-all { animation: finn-hop .5s cubic-bezier(.3, 1.6, .6, 1) 2; }
+.finn.mood-happy .finn-arm { transform: rotate(150deg); animation: finn-wave .35s ease-in-out 4 alternate; }
+.finn.mood-happy .finn-tail { animation-duration: .5s; }
+.finn.mood-happy .finn-sparkles path { animation: finn-sparkle .9s ease-out both; }
+.finn.mood-happy .finn-sparkles path:nth-child(2) { animation-delay: .15s; }
+.finn.mood-happy .finn-sparkles path:nth-child(3) { animation-delay: .3s; }
+
+/* Sad: a frown, worried brows, drooping ears, eyes down, tail still */
+.finn.mood-sad .finn-mouth-smile, .finn.mood-sad .finn-mouth-open { opacity: 0; }
+.finn.mood-sad .finn-mouth-frown { opacity: 1; }
+.finn.mood-sad .finn-brow-l { transform: rotate(-16deg) translateY(1px); }
+.finn.mood-sad .finn-brow-r { transform: rotate(16deg) translateY(1px); }
+.finn.mood-sad .finn-ear-l { transform: rotate(-24deg); animation: none; }
+.finn.mood-sad .finn-ear-r { transform: rotate(24deg); }
+.finn.mood-sad { --mood-y: 1.8px; }
+.finn.mood-sad .finn-head { transform: translateY(3px) rotate(-3deg); animation: none; }
+.finn.mood-sad .finn-tail { animation: none; transform: rotate(16deg); }
+
+/* Surprised (time ran out): round mouth, wide eyes, brows up */
+.finn.mood-wow .finn-mouth-smile, .finn.mood-wow .finn-mouth-open { opacity: 0; }
+.finn.mood-wow .finn-mouth-o { opacity: 1; }
+.finn.mood-wow .finn-brow { transform: translateY(-3.5px); }
+.finn.mood-wow .finn-eyes { transform: scale(1.12); animation: none; }
+.finn.mood-wow .finn-all { animation: finn-startle .35s ease-out 1; }
+
+/* Worried (the timer is running low): a sweat drop, a tremble, quick glances */
+.finn.mood-worried .finn-mouth-smile { opacity: 0; }
+.finn.mood-worried .finn-mouth-o { opacity: 1; }
+.finn.mood-worried .finn-brow-l { transform: rotate(-12deg); }
+.finn.mood-worried .finn-brow-r { transform: rotate(12deg); }
+.finn.mood-worried .finn-sweat { animation: finn-sweat 1.1s ease-in infinite; }
+.finn.mood-worried .finn-all { animation: finn-tremble .22s linear infinite; }
+.finn.mood-worried .finn-glance { animation: finn-glance 1.6s ease-in-out infinite; }
+
+/* Thinking (the question is open): one brow up, the glass held closer */
+.finn.mood-think .finn-brow-l { transform: translateY(1.5px) rotate(6deg); }
+.finn.mood-think .finn-brow-r { transform: translateY(-2.5px) rotate(-8deg); }
+
+/* Searching (the loading screen): the glass sweeps back and forth and his eyes follow it */
+.finn.mood-search .finn-glass { animation: finn-search 1.8s ease-in-out infinite; }
+.finn.mood-search .finn-glance { animation: finn-search-eyes 1.8s ease-in-out infinite; }
+.finn.mood-search .finn-brow-r { transform: translateY(-2px) rotate(-6deg); }
+.finn.mood-search .finn-head { animation: finn-search-head 1.8s ease-in-out infinite; }
+
+@keyframes finn-bob { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes finn-shadow { 0%, 100% { transform: scaleX(1); } 50% { transform: scaleX(.9); } }
+@keyframes finn-breathe { 0%, 100% { transform: scale(1, 1); } 50% { transform: scale(1.025, .985); } }
+@keyframes finn-tilt { 0%, 40%, 100% { transform: rotate(0); } 50%, 90% { transform: rotate(-3.5deg); } }
+@keyframes finn-blink { 0%, 44%, 48%, 88%, 91%, 94%, 100% { transform: scaleY(1); } 46%, 89.5%, 92.5% { transform: scaleY(.08); } }
+@keyframes finn-glance { 0%, 22%, 60%, 100% { transform: translate(0, 0); } 28%, 40% { transform: translate(-2px, .4px); }
+    66%, 80% { transform: translate(2px, -.6px); } }
+@keyframes finn-twitch { 0%, 70%, 78%, 100% { transform: rotate(0); } 72% { transform: rotate(-12deg); } 75% { transform: rotate(5deg); } }
 @keyframes finn-wag { 0%, 100% { transform: rotate(-7deg); } 50% { transform: rotate(9deg); } }
 @keyframes finn-glass { 0%, 100% { transform: rotate(0); } 50% { transform: rotate(-6deg); } }
-@keyframes finn-talk { from { opacity: 1; transform: scaleY(.4); } to { opacity: 1; transform: scaleY(1.15); } }
+@keyframes finn-talk { from { transform: scaleY(.4); } to { transform: scaleY(1.15); } }
+@keyframes finn-hop { 0%, 100% { transform: translateY(0); } 45% { transform: translateY(-13px); } }
+@keyframes finn-wave { from { transform: rotate(140deg); } to { transform: rotate(165deg); } }
+@keyframes finn-sparkle { 0% { opacity: 0; transform: scale(.2) rotate(0); } 40% { opacity: 1; transform: scale(1.25) rotate(40deg); }
+    100% { opacity: 0; transform: scale(.7) rotate(90deg); } }
+@keyframes finn-startle { 0% { transform: translateY(0); } 40% { transform: translateY(-7px); } 100% { transform: translateY(0); } }
+@keyframes finn-sweat { 0% { opacity: 0; transform: translateY(-2px) scale(.6); } 25% { opacity: 1; transform: translateY(0) scale(1); }
+    100% { opacity: 0; transform: translateY(12px) scale(.9); } }
+@keyframes finn-tremble { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-.8px); } 75% { transform: translateX(.8px); } }
+@keyframes finn-search { 0%, 100% { transform: rotate(-30deg); } 50% { transform: rotate(8deg); } }
+@keyframes finn-search-eyes { 0%, 100% { transform: translate(-1.6px, -1px); } 50% { transform: translate(2.2px, .4px); } }
+@keyframes finn-search-head { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(3deg); } }
 @media (prefers-reduced-motion: reduce) {
-    .finn, .finn-eyes, .finn-tail, .finn-glass, .finn.is-talking .finn-mouth-open { animation: none; }
+    .finn *, .finn { animation: none !important; }
+    .finn-sparkles path { opacity: 0 !important; }
+    .finn.mood-worried .finn-sweat { opacity: 1; }
 }
 
+/* ---------- The first-visit tour (_tour.html, tour.js) ------------------------- */
 .tour { position: fixed; inset: 0; z-index: 1080; }
 .tour[hidden] { display: none; }
 .tour-shade { position: absolute; inset: 0; }

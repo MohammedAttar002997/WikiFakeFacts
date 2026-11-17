@@ -1,41 +1,86 @@
-{# Finn, the detective fox who guides new players (tour.js). Plain SVG, animated with CSS (app.css, "Finn"): he bobs,
-   blinks, wags his tail, and his mouth moves while the class is-talking is on. Decorative: the bubble carries the words. #}
-<svg class="finn" viewBox="0 0 150 165" aria-hidden="true" focusable="false">
-    <g class="finn-tail">
-        <path d="M92 132 C122 134 140 108 131 84 C124 98 112 106 95 110 Z" fill="#f28c38"/>
-        <path d="M131 84 C138 98 136 114 126 123 C121 112 123 96 131 84 Z" fill="#fff8ee"/>
-    </g>
-    <ellipse cx="58" cy="156" rx="10" ry="4.5" fill="#3b2a1a"/>
-    <ellipse cx="84" cy="156" rx="10" ry="4.5" fill="#3b2a1a"/>
-    <path d="M42 154 L51 102 Q71 92 91 102 L100 154 Z" fill="#8a5a33"/>
-    <path d="M62 101 L71 127 L80 101" fill="none" stroke="#6b4426" stroke-width="3" stroke-linejoin="round"/>
-    <rect x="49" y="129" width="44" height="7" rx="2" fill="#5a3a20"/>
-    <rect x="67" y="128" width="9" height="9" rx="1.5" fill="none" stroke="#d9b36c" stroke-width="2"/>
-    <circle cx="71" cy="143" r="2" fill="#5a3a20"/>
-    <g class="finn-glass">
-        <path d="M89 115 Q106 112 111 98" fill="none" stroke="#8a5a33" stroke-width="8" stroke-linecap="round"/>
-        <line x1="111" y1="97" x2="117" y2="87" stroke="#3b2a1a" stroke-width="4.5" stroke-linecap="round"/>
-        <circle cx="124" cy="76" r="12" fill="#cfe8ff" fill-opacity=".6" stroke="#3b2a1a" stroke-width="3.5"/>
-        <path d="M117 72 Q119 67 124 66" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
-    </g>
-    <g class="finn-head">
-        <path d="M40 48 L45 13 L65 39 Z" fill="#f28c38"/>
-        <path d="M45 41 L47.5 22 L58 38 Z" fill="#4a2c1a"/>
-        <path d="M102 48 L97 13 L77 39 Z" fill="#f28c38"/>
-        <path d="M97 41 L94.5 22 L84 38 Z" fill="#4a2c1a"/>
-        <path d="M36 54 Q36 31 71 31 Q106 31 106 54 Q106 80 71 94 Q36 80 36 54 Z" fill="#f28c38"/>
-        <path d="M46 64 Q59 61 71 76 Q83 61 96 64 Q92 84 71 92 Q50 84 46 64 Z" fill="#fff8ee"/>
-        <g class="finn-eyes">
-            <ellipse cx="57" cy="57" rx="5" ry="6.2" fill="#2b1d12"/>
-            <ellipse cx="85" cy="57" rx="5" ry="6.2" fill="#2b1d12"/>
-            <circle cx="58.8" cy="54.6" r="1.7" fill="#fff"/>
-            <circle cx="86.8" cy="54.6" r="1.7" fill="#fff"/>
+{# Finn, the detective fox: the tour guide (tour.js), the loading screen and the quiz's companion. Plain SVG, brought
+   to life with CSS (app.css, "Finn"): he breathes, blinks, glances around, twitches an ear and wags his tail, and his
+   pupils follow the pointer (app.js). A mood class on the <svg> changes his face and body: mood-happy, mood-sad,
+   mood-wow, mood-worried, mood-think, mood-search; is-talking moves his mouth. Decorative: words are always in text. #}
+<svg class="finn" viewBox="0 0 150 172" aria-hidden="true" focusable="false">
+    <ellipse class="finn-shadow" cx="71" cy="163" rx="36" ry="5.5" fill="#000" fill-opacity=".18"/>
+    <g class="finn-all">
+        <g class="finn-tail">
+            <path d="M92 132 C122 134 140 108 131 84 C124 98 112 106 95 110 Z" fill="#f28c38"/>
+            <path d="M104 127 C118 122 128 108 129 96 C123 106 114 112 101 115 Z" fill="#e0782a"/>
+            <path d="M131 84 C138 98 136 114 126 123 C121 112 123 96 131 84 Z" fill="#fff8ee"/>
         </g>
-        <ellipse cx="71" cy="76" rx="5.2" ry="3.6" fill="#2b1d12"/>
-        <path class="finn-mouth" d="M65 82 Q71 87.5 77 82" fill="none" stroke="#2b1d12" stroke-width="2.2" stroke-linecap="round"/>
-        <ellipse class="finn-mouth-open" cx="71" cy="84.5" rx="4" ry="3.2" fill="#7a2a1a"/>
-        <ellipse cx="71" cy="35" rx="31" ry="7" fill="#6f4a2b"/>
-        <path d="M47 35 Q49 14 71 12 Q93 14 95 35 Z" fill="#8d6238"/>
-        <path d="M48 30 Q71 24 94 30" fill="none" stroke="#5a3a20" stroke-width="4"/>
+        <g class="finn-body">
+            <ellipse cx="58" cy="157" rx="10.5" ry="5" fill="#3b2a1a"/>
+            <ellipse cx="84" cy="157" rx="10.5" ry="5" fill="#3b2a1a"/>
+            <path d="M42 155 L51 103 Q71 93 91 103 L100 155 Z" fill="#8a5a33"/>
+            <path d="M80 99 Q88 100 91 103 L100 155 L84 155 Z" fill="#7a4e2b"/>
+            <path d="M58 100 L71 128 L64 100 Z" fill="#a8743f"/>
+            <path d="M84 100 L71 128 L78 100 Z" fill="#a8743f"/>
+            <rect x="48" y="130" width="46" height="7" rx="2" fill="#5a3a20"/>
+            <rect x="66.5" y="129" width="9" height="9" rx="1.5" fill="none" stroke="#e1b866" stroke-width="2"/>
+            <circle cx="71" cy="145" r="2" fill="#5a3a20"/>
+            {# Scarf #}
+            <path d="M53 99 Q71 110 89 99 Q90 105 88 108 Q71 117 54 108 Q52 105 53 99 Z" fill="#d6453d"/>
+            <path d="M62 110 L58 126 L66 124 L68 112 Z" fill="#b83a33"/>
+            <g class="finn-arm">
+                <path d="M53 112 Q44 122 46 134" fill="none" stroke="#8a5a33" stroke-width="8" stroke-linecap="round"/>
+                <circle cx="46" cy="136" r="5" fill="#f28c38"/>
+            </g>
+        </g>
+        <g class="finn-glass">
+            <path d="M89 115 Q106 112 111 98" fill="none" stroke="#8a5a33" stroke-width="8" stroke-linecap="round"/>
+            <circle cx="111" cy="97" r="5" fill="#f28c38"/>
+            <line x1="112" y1="96" x2="117" y2="87" stroke="#3b2a1a" stroke-width="4.5" stroke-linecap="round"/>
+            <circle cx="124" cy="76" r="12" fill="#cfe8ff" fill-opacity=".55" stroke="#3b2a1a" stroke-width="3.5"/>
+            <path d="M117 72 Q119 67 124 66" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+        </g>
+        <g class="finn-head">
+            <g class="finn-ear finn-ear-l">
+                <path d="M40 48 L45 13 L65 39 Z" fill="#f28c38"/>
+                <path d="M45 41 L47.5 22 L58 38 Z" fill="#4a2c1a"/>
+            </g>
+            <g class="finn-ear finn-ear-r">
+                <path d="M102 48 L97 13 L77 39 Z" fill="#f28c38"/>
+                <path d="M97 41 L94.5 22 L84 38 Z" fill="#4a2c1a"/>
+            </g>
+            <path d="M36 54 Q36 31 71 31 Q106 31 106 54 Q106 80 71 94 Q36 80 36 54 Z" fill="#f28c38"/>
+            <path d="M46 64 Q59 61 71 76 Q83 61 96 64 Q92 84 71 92 Q50 84 46 64 Z" fill="#fff8ee"/>
+            <circle cx="46.5" cy="70" r="5" fill="#ff8d6b" fill-opacity=".45"/>
+            <circle cx="95.5" cy="70" r="5" fill="#ff8d6b" fill-opacity=".45"/>
+            <g class="finn-eyes">
+                <ellipse cx="57" cy="57" rx="6.6" ry="7.6" fill="#fff"/>
+                <ellipse cx="85" cy="57" rx="6.6" ry="7.6" fill="#fff"/>
+                <g class="finn-pupils"><g class="finn-glance">
+                    <circle cx="57.6" cy="57.8" r="3.9" fill="#2b1d12"/>
+                    <circle cx="85.6" cy="57.8" r="3.9" fill="#2b1d12"/>
+                    <circle cx="59" cy="56" r="1.4" fill="#fff"/>
+                    <circle cx="87" cy="56" r="1.4" fill="#fff"/>
+                </g></g>
+            </g>
+            <path class="finn-brow finn-brow-l" d="M50 46.5 Q56 43.5 62 46.5" fill="none" stroke="#8a4a14" stroke-width="2.4" stroke-linecap="round"/>
+            <path class="finn-brow finn-brow-r" d="M80 46.5 Q86 43.5 92 46.5" fill="none" stroke="#8a4a14" stroke-width="2.4" stroke-linecap="round"/>
+            <ellipse cx="71" cy="76" rx="5.2" ry="3.6" fill="#2b1d12"/>
+            <ellipse cx="69.6" cy="75" rx="1.6" ry=".9" fill="#fff" fill-opacity=".5"/>
+            {# One mouth shows at a time (app.css) #}
+            <path class="finn-mouth finn-mouth-smile" d="M65 82 Q71 87.5 77 82" fill="none" stroke="#2b1d12" stroke-width="2.2" stroke-linecap="round"/>
+            <ellipse class="finn-mouth finn-mouth-open" cx="71" cy="84.5" rx="4" ry="3.2" fill="#7a2a1a"/>
+            <g class="finn-mouth finn-mouth-grin">
+                <path d="M63 81 Q71 93 79 81 Z" fill="#7a2a1a"/>
+                <path d="M67.5 86.5 Q71 90 74.5 86.5 Q71 85 67.5 86.5 Z" fill="#f06a6a"/>
+            </g>
+            <ellipse class="finn-mouth finn-mouth-o" cx="71" cy="85" rx="3" ry="3.8" fill="#7a2a1a"/>
+            <path class="finn-mouth finn-mouth-frown" d="M65.5 87 Q71 82 76.5 87" fill="none" stroke="#2b1d12" stroke-width="2.2" stroke-linecap="round"/>
+            <ellipse cx="71" cy="35" rx="31" ry="7" fill="#6f4a2b"/>
+            <path d="M47 35 Q49 14 71 12 Q93 14 95 35 Z" fill="#8d6238"/>
+            <path d="M71 12 Q93 14 95 35 L80 35 Q82 20 71 12 Z" fill="#7d5530"/>
+            <path d="M48 30 Q71 24 94 30" fill="none" stroke="#5a3a20" stroke-width="4"/>
+            <path class="finn-sweat" d="M104 40 Q108 47 104 50 Q100 47 104 40 Z" fill="#8fd3ff"/>
+        </g>
+        <g class="finn-sparkles" fill="#ffd34d">
+            <path d="M22 40 l2.2 5 l5 2.2 l-5 2.2 l-2.2 5 l-2.2 -5 l-5 -2.2 l5 -2.2 Z"/>
+            <path d="M120 22 l1.8 4 l4 1.8 l-4 1.8 l-1.8 4 l-1.8 -4 l-4 -1.8 l4 -1.8 Z"/>
+            <path d="M30 88 l1.4 3.2 l3.2 1.4 l-3.2 1.4 l-1.4 3.2 l-1.4 -3.2 l-3.2 -1.4 l3.2 -1.4 Z"/>
+        </g>
     </g>
 </svg>

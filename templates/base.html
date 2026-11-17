@@ -176,10 +176,11 @@
 
     <div class="loading-overlay" id="loadingOverlay" role="status" aria-live="polite">
         <div class="loading-card">
-            <div class="loading-dice"><i class="bi bi-magic"></i></div>
+            {# Finn searches with his magnifying glass while the quiz is made (mood-search, set by app.js) #}
+            <div class="loading-finn">{% include "_finn.html" %}</div>
             <h3 class="fw-black mb-2" data-loading-title>{{ _('Generating your quiz…') }}</h3>
             <p class="loading-tip" id="loadingTip"></p>
-            <div class="spinner-border text-brand" aria-hidden="true"></div>
+            <div class="loading-dots" aria-hidden="true"><span></span><span></span><span></span></div>
         </div>
     </div>
 
