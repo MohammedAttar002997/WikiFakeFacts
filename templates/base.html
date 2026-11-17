@@ -157,7 +157,8 @@
     {# Not on the help page itself, nor during a round, where it covered the answers on phones #}
     {% if request.path not in ('/chatbot', '/quiz', '/try') and not request.path.startswith('/live/') %}
     <a href="/chatbot" class="chatbot-fab" data-tour="help" title="{{ _('Need help? Ask the assistant') }}" aria-label="{{ _('Open help assistant') }}">
-        <i class="bi bi-chat-dots-fill"></i>
+        {% with finn_mood='', finn_face=true %}{% include "_finn.html" %}{% endwith %}
+        <i class="bi bi-chat-dots-fill chatbot-fab-badge" aria-hidden="true"></i>
     </a>
     {% endif %}
 

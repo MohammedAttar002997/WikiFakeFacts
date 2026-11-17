@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import avatar %}
+{% from "_macros.html" import avatar, finn %}
 
 {# The community feed of player-written fakes (views/fakes.py). #}
 {% block title %}{{ _('Player fakes') }} · WikiFakeFact{% endblock %}
@@ -68,6 +68,7 @@
         </div>
         {% else %}
         <div class="wf-card wf-card-pad text-center">
+            {{ finn('think') }}
             <p class="text-muted mb-3">{{ _('No player fakes yet. Be the first!') }}</p>
             <a href="{{ url_for('setup') }}" class="btn btn-primary"><i class="bi bi-play-fill me-1"></i>{{ _('Play a quiz first') }}</a>
         </div>

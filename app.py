@@ -1525,7 +1525,7 @@ def results():
                            is_event=quiz_session.event_week is not None,
                            share=None if is_practice else share_details(quiz_session),
                            challenge=challenge_comparison(quiz_session),
-                           is_practice=is_practice,
+                           is_practice=is_practice, case_no=quiz_session.id,
                            practice_left=len(practice_pool(user)) if user else 0,
                            review=build_answer_review(quiz_session, opponent),
                            versus=versus_details(quiz_session, opponent),

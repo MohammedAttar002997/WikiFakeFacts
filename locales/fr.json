@@ -146,7 +146,6 @@
   "Support this project": "Soutenir ce projet",
   "Hard": "Difficile",
   "Help": "Aide",
-  "Hi! I'm your WikiFakeFact assistant. How can I help you navigate the app today?": "Bonjour ! Je suis votre assistant WikiFakeFact. Comment puis-je vous aider aujourd'hui ?",
   "Home": "Accueil",
   "How can I see my progress?": "Comment voir ma progression ?",
   "How can we help?": "Comment pouvons-nous vous aider ?",
@@ -430,7 +429,6 @@
   "Who took the challenge": "Qui a relevé le défi",
   "Who took your challenges": "Qui a relevé vos défis",
   "Why it's fake:": "Pourquoi c'est faux :",
-  "WikiFakeFact Assistant": "Assistant WikiFakeFact",
   "WikiFakeFact Players": "Joueurs WikiFakeFact",
   "Writing your personal learning path…": "Rédaction de votre parcours d'apprentissage…",
   "You": "Vous",
@@ -648,5 +646,10 @@
   "Share your first player fake.": "Partagez votre premier faux.",
   "Master faker": "Maître faussaire",
   "Fool 10 players with your fakes.": "Trompez 10 joueurs avec vos faux.",
-  "True": "Vrai"
+  "True": "Vrai",
+  "Hi! I'm Finn, your WikiFakeFact guide. What would you like to know?": "Bonjour ! Je suis Finn, votre guide WikiFakeFact. Que souhaitez-vous savoir ?",
+  "Case file No. {n}": "Dossier n° {n}",
+  "Case solved": "Affaire résolue",
+  "Case closed": "Affaire classée",
+  "They got away": "Ils ont filé"
 }

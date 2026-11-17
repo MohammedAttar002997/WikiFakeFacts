@@ -2,11 +2,12 @@
 
 {% block title %}{{ _('Help') }} · WikiFakeFact{% endblock %}
 
+{% from "_macros.html" import finn_face %}
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="page-head">
-            <span class="eyebrow"><i class="bi bi-robot"></i> {{ _('Assistant') }}</span>
+            <span class="eyebrow"><i class="bi bi-chat-heart-fill"></i> {{ _('Assistant') }}</span>
             <h1>{{ _('How can we help?') }}</h1>
             <p>{{ _('Ask anything about playing WikiFakeFact.') }}</p>
         </div>
@@ -15,17 +16,17 @@
             <div class="col-lg-8">
                 <div class="chat-shell">
                     <div class="chat-header">
-                        <div class="avatar avatar-sm"><i class="bi bi-robot"></i></div>
+                        {{ finn_face(class='finn-face-lg') }}
                         <div>
-                            <div class="fw-black">{{ _('WikiFakeFact Assistant') }}</div>
+                            <div class="fw-black">Finn</div>
                             <div class="status"><i class="bi bi-circle-fill" style="font-size: .5rem;"></i> {{ _('Online') }}</div>
                         </div>
                     </div>
 
                     <div id="chatMessages" class="chat-messages" aria-live="polite">
                         <div class="chat-message assistant">
-                            <div class="bot-avatar"><i class="bi bi-robot"></i></div>
-                            <div class="message-content assistant">👋 {{ _("Hi! I'm your WikiFakeFact assistant. How can I help you navigate the app today?") }}</div>
+                            <div class="bot-avatar">{{ finn_face() }}</div>
+                            <div class="message-content assistant">👋 {{ _("Hi! I'm Finn, your WikiFakeFact guide. What would you like to know?") }}</div>
                         </div>
                     </div>
 
@@ -37,6 +38,9 @@
                         </button>
                     </form>
                 </div>
+                {# Copied for each of Finn's messages by the script below #}
+                <template id="finnAvatar"><div class="bot-avatar">{{ finn_face() }}</div></template>
+                <template id="finnThinking"><div class="bot-avatar">{{ finn_face('think') }}</div></template>
             </div>
 
             <div class="col-lg-4">
@@ -120,17 +124,17 @@
         sendButton.disabled = state;
     }
 
-    function messageRow(sender) {
+    function messageRow(sender, thinking) {
         const row = document.createElement('div');
         row.className = `chat-message ${sender}`;
         if (sender === 'assistant') {
-            row.innerHTML = '<div class="bot-avatar"><i class="bi bi-robot"></i></div>';
+            row.appendChild(document.getElementById(thinking ? 'finnThinking' : 'finnAvatar').content.cloneNode(true));
         }
         return row;
     }
 
     function addTypingIndicator() {
-        const row = messageRow('assistant');
+        const row = messageRow('assistant', true);
         row.insertAdjacentHTML('beforeend',
             '<div class="message-content assistant typing"><span></span><span></span><span></span></div>');
         row.querySelector('.typing').setAttribute('aria-label', {{ _('Assistant is typing')|tojson }});

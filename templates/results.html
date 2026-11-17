@@ -1,20 +1,24 @@
 {% extends "base.html" %}
-{% from "_macros.html" import rematch_button %}
+{% from "_macros.html" import rematch_button, finn %}
 
 {% block title %}{{ _('Game Results') }} · WikiFakeFact{% endblock %}
 
 {% block content %}
+{# Finn's mood, his verdict, the ring colour and the stamp on the case file #}
 {% if percentage >= 80 %}
-    {% set verdict = ('🏆', _('Fact-checking legend!'), '#10b981') %}
+    {% set verdict = ('happy', _('Fact-checking legend!'), '#10b981', _('Case solved'), 'good') %}
 {% elif percentage >= 50 %}
-    {% set verdict = ('🎉', _('Nice detective work!'), '#f59e0b') %}
+    {% set verdict = ('', _('Nice detective work!'), '#f59e0b', _('Case closed'), 'ok') %}
 {% else %}
-    {% set verdict = ('💪', _("Keep practicing — you'll get them next time!"), '#ef4444') %}
+    {% set verdict = ('sad', _("Keep practicing — you'll get them next time!"), '#ef4444', _('They got away'), 'bad') %}
 {% endif %}
 <div class="row justify-content-center">
     <div class="col-lg-7">
-        <div class="wf-card wf-card-pad text-center">
-            <div class="display-3 mb-2">{{ verdict[0] }}</div>
+        {# The results as a detective's case file: a folder tab with the case number, Finn's verdict and a stamp #}
+        <div class="case-tab"><i class="bi bi-folder2-open me-1" aria-hidden="true"></i>{{ _('Case file No. {n}').format(n=case_no) }}</div>
+        <div class="wf-card wf-card-pad text-center case-file">
+            <div class="case-stamp is-{{ verdict[4] }}">{{ verdict[3] }}</div>
+            {{ finn(verdict[0], 'case-finn') }}
             <h1 class="fw-black mb-1">{% if is_practice %}{{ _('Practice your mistakes') }}{% else %}{{ _('Game Results') }}{% endif %}</h1>
             <p class="lead text-muted mb-4">
                 {% set who %}<strong class="text-body">{{ me.username }}</strong>{% endset %}
