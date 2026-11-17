@@ -59,6 +59,7 @@
         if (!overlay) return;
         const tips = tipSets[tipSet] || tipSets.quiz;
         overlay.querySelector('[data-loading-title]').textContent = message;
+        window.finnMood(overlay.querySelector('.finn'), 'search');
         let i = 0;
         tipEl.textContent = tips[0];
         tipTimer = setInterval(() => {
@@ -128,6 +129,34 @@
     // Daily-challenge reminders (daily page): switch push notifications on or off for this device
     const reminderCard = document.querySelector('[data-push]');
     if (reminderCard) setUpReminders(reminderCard).catch(() => { /* the page works without them */ });
+
+    // Finn the fox (_finn.html): his pupils follow the pointer, and pages set his mood with window.finnMood
+    const MOODS = ['happy', 'sad', 'wow', 'worried', 'think', 'search'];
+    window.finnMood = (finn, mood) => {
+        if (!finn) return;
+        MOODS.forEach(m => finn.classList.toggle('mood-' + m, m === mood));
+    };
+    if (window.matchMedia('(pointer: fine)').matches
+            && !window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        let frame = null;
+        document.addEventListener('pointermove', e => {
+            if (frame) return;  // At most once per frame
+            frame = requestAnimationFrame(() => {
+                frame = null;
+                // Looked up each time: the tour's Finn is added to the page after this script runs
+                document.querySelectorAll('.finn').forEach(finn => {
+                    const box = finn.getBoundingClientRect();
+                    if (!box.width) return;  // Not on screen (the loading screen's Finn, say)
+                    // From his eyes (a third of the way down) to the pointer; the further away, the further he looks
+                    const dx = e.clientX - (box.left + box.width * .47), dy = e.clientY - (box.top + box.height * .33);
+                    const distance = Math.hypot(dx, dy) || 1, reach = Math.min(1, distance / 160);
+                    finn.style.setProperty('--look-x', (dx / distance * 2.4 * reach).toFixed(2) + 'px');
+                    finn.style.setProperty('--look-y', (dy / distance * 2 * reach).toFixed(2) + 'px');
+                    finn.classList.add('is-watching');
+                });
+            });
+        }, { passive: true });
+    }
 
     // Help button: on phones it covered whatever the player was reading, so it tucks away while they scroll
     // down and comes back when they scroll up or reach the end of the page
