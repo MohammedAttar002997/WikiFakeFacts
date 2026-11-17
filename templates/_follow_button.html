@@ -1,0 +1,17 @@
+{# Follow / Following for `player` (views/friends.py); `next` is where to come back to. Nothing for yourself or guests. #}
+{% if me and me.id != player.id %}
+{% set followed = is_following(me, player) %}
+<form method="POST" action="{{ url_for('unfollow' if followed else 'follow', user_id=player.id) }}" class="d-inline">
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next or request.path }}">
+    {% if followed %}
+    <button type="submit" class="btn btn-outline-secondary follow-btn{{ ' btn-sm' if small }}" aria-pressed="true">
+        <i class="bi bi-check2 me-1"></i>{{ _('Following') }}
+    </button>
+    {% else %}
+    <button type="submit" class="btn btn-primary follow-btn{{ ' btn-sm' if small }}" aria-pressed="false">
+        <i class="bi bi-person-plus-fill me-1"></i>{{ _('Follow') }}
+    </button>
+    {% endif %}
+</form>
+{% endif %}

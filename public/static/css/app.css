@@ -1447,6 +1447,12 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
     .finn.mood-worried .finn-sweat { opacity: 1; }
 }
 
+/* Friends: the feed of followed players' games */
+.feed-row { display: flex; align-items: center; gap: .75rem; padding: .7rem 0; border-bottom: 1px solid var(--wf-border); }
+.feed-row:last-child { border-bottom: 0; }
+.feed-row .btn, .follow-btn { min-height: 40px; }
+.follow-btn:not(.btn-sm) { min-height: 44px; }
+
 /* Topic pages: the list of a category's topics, in columns on wider screens */
 .topic-list { columns: 1; column-gap: 2rem; }
 @media (min-width: 640px) { .topic-list { columns: 2; } }

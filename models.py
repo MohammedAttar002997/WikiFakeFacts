@@ -289,6 +289,14 @@ class LeagueEntry(db.Model):
     group_no = db.Column(db.Integer, nullable=False, default=0)
     joined_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+class Follow(db.Model):
+    """One player following another (friends.py): one-way, nothing to accept."""
+    __table_args__ = (db.UniqueConstraint('follower_id', 'followed_id', name='uq_follow'),)
+    id = db.Column(db.Integer, primary_key=True)
+    follower_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    followed_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""

@@ -43,7 +43,9 @@ def test_shared_page_lists_challengers(login, shared, app):
     take(login('Alice'), shared, answers(3, 3))
     take(login('Bob'), shared, answers(1, 3))
     html = app.test_client().get(f'/r/{shared}').get_data(as_text=True)
-    assert html.index('Alice') < html.index('Bob')
+    # Compared within the page's body: the random topic in the head can contain a name ("Bobsleigh" did)
+    body = html.split('<body', 1)[1]
+    assert body.index('>Alice<') < body.index('>Bob<')
     assert 'Beat Phoenix' in html and 'Behind Phoenix' in html
 
 

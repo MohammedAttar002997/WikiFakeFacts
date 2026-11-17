@@ -127,6 +127,7 @@ RATE_LIMITS = {
     'fake': (10, timedelta(hours=1)),        # player fakes sent to the AI check, per player
     'suggest': (150, timedelta(minutes=10)),  # topic suggestions while typing, per player
     'topic': (30, timedelta(hours=1)),        # typed topics sent to the AI age check, per player
+    'follow': (60, timedelta(hours=1)),       # players followed, per player
 }
 MAX_CHAT_MESSAGE = 500  # Characters
 MAX_NAME_LENGTH = 30  # For new names; players who signed up before the limit keep theirs
@@ -899,6 +900,7 @@ def delete_player_data(user, chat_id=None):
     fakes_views.delete_player_fakes(user)
     classroom_views.delete_rooms_of(user)
     league_views.forget_player(user)
+    friend_views.forget_player(user)
     for model in (PushSubscription, RoundReport, UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
@@ -2196,3 +2198,4 @@ from views import admin as admin_views, live as live_views, timers, fakes as fak
 from views import classroom as classroom_views  # noqa: E402
 from views import leagues as league_views  # noqa: E402
 from views import topics as topic_views  # noqa: E402,F401
+from views import friends as friend_views  # noqa: E402
