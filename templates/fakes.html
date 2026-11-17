@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+
+{# The community feed of player-written fakes (views/fakes.py). #}
+{% block title %}{{ _('Player fakes') }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        {% include "_challenge_switch.html" %}
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-incognito"></i> {{ _('Community') }}</span>
+            <h1>{{ _('Player fakes') }}</h1>
+            <p>{{ _('Fakes written by players, hidden among three true facts. To write one, finish a quiz and pick a round in its answer review.') }}</p>
+        </div>
+
+        <ul class="nav seg mb-3" aria-label="{{ _('Sort') }}">
+            {% for value, label in [('new', _('Newest')), ('tricky', _('Trickiest'))] %}
+            <li class="nav-item">
+                <a class="nav-link{% if sort == value %} active{% endif %}" href="{{ url_for('fakes_feed', sort=value) }}"{% if sort == value %} aria-current="page"{% endif %}>{{ label }}</a>
+            </li>
+            {% endfor %}
+        </ul>
+
+        {% if fakes %}
+        <div class="d-flex flex-column gap-2">
+            {% for fake in fakes %}
+            {% set author = authors.get(fake.user_id) %}
+            <a class="wf-card fake-row" href="{{ url_for('fake_play', code=fake.code) }}">
+                {% if author %}{{ avatar(author, 'sm') }}{% endif %}
+                <div class="flex-grow-1 min-w-0">
+                    <div class="fw-bold text-truncate">{{ fake.topic }}</div>
+                    <div class="small text-muted text-truncate">{{ _('by {name}').format(name=author.username if author else '?') }}
+                        &middot;
+                        {% if fake.plays %}{{ _('fooled {fooled} of {players}').format(fooled=fake.fooled, players=_n('{n} player', '{n} players', fake.plays)) }}{% else %}{{ _('No one has played it yet') }}{% endif %}
+                    </div>
+                </div>
+                {% if fake.user_id == me_id %}
+                <span class="chip flex-shrink-0">{{ _('Yours') }}</span>
+                {% elif fake.id in played %}
+                <span class="chip flex-shrink-0"><i class="bi bi-check2"></i>{{ _('Played') }}</span>
+                {% else %}
+                <span class="btn btn-primary btn-sm flex-shrink-0"><i class="bi bi-play-fill"></i>{{ _('Play') }}</span>
+                {% endif %}
+            </a>
+            {% endfor %}
+        </div>
+        <div class="d-flex justify-content-between mt-3">
+            {% if page > 1 %}<a class="btn btn-outline-secondary" href="{{ url_for('fakes_feed', sort=sort, page=page - 1) }}"><i class="bi bi-arrow-left me-1"></i>{{ _('Newer') }}</a>{% else %}<span></span>{% endif %}
+            {% if more %}<a class="btn btn-outline-secondary" href="{{ url_for('fakes_feed', sort=sort, page=page + 1) }}">{{ _('Older') }}<i class="bi bi-arrow-right ms-1"></i></a>{% endif %}
+        </div>
+        {% else %}
+        <div class="wf-card wf-card-pad text-center">
+            <p class="text-muted mb-3">{{ _('No player fakes yet. Be the first!') }}</p>
+            <a href="{{ url_for('setup') }}" class="btn btn-primary"><i class="bi bi-play-fill me-1"></i>{{ _('Play a quiz first') }}</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

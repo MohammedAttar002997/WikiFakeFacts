@@ -11,8 +11,8 @@ from datetime import timedelta
 from sqlalchemy import func
 
 from badges import TOPIC_CATEGORY
-from models import (ChatbotSession, CustomContent, DailyChallenge, ErrorLog, HiddenRound, LiveMatch, QuizSession,
-                    ReadyQuiz, RoundReport, Score, User, db)
+from models import (ChatbotSession, CustomContent, DailyChallenge, ErrorLog, HiddenRound, LiveMatch, PlayerFake,
+                    QuizSession, ReadyQuiz, RoundReport, Score, User, db)
 
 CHART_DAYS = 30
 
@@ -99,6 +99,13 @@ def dashboard(now):
         'per_day': games_per_day(now),
         'top_topics': topics.most_common(10), 'categories': categories.most_common(),
         'live': live, 'reports': reports, 'handled_reports': handled,
+        # Player fakes someone reported (still public), and the ones already hidden
+        'player_fakes': {
+            'total': count(PlayerFake.query),
+            'reported': PlayerFake.query.filter(PlayerFake.reports > 0, PlayerFake.status.is_(None))
+                        .order_by(PlayerFake.reports.desc(), PlayerFake.id.desc()).limit(20).all(),
+            'hidden': PlayerFake.query.filter_by(status='hidden').order_by(PlayerFake.id.desc()).limit(10).all(),
+        },
         'ready_in_stock': count(ReadyQuiz.query.filter(ReadyQuiz.used_at.is_(None))),
         'errors': ErrorLog.query.order_by(ErrorLog.id.desc()).limit(10).all(),
     }
