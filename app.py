@@ -35,13 +35,14 @@ from translations import (UI_LANGUAGES, current_language, format_date, template_
 from content_extractor import (ContentError, extract_text_from_upload, extract_text_from_url,
                                validate_content_length)
 from chatbot import QUICK_HELP, get_chatbot_response
-from badges import BADGES, award_badges, compute_streaks, player_streaks
+from badges import BADGES, BADGES_BY_KEY, award_badges, compute_streaks, player_streaks
 from rating import rank as rank_players
 from og_card import result_card
 import ready_pool
 import hidden_rounds
 import practice as practice_rules
 import fake_diff
+import outfits
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -163,8 +164,11 @@ def forget_cached_player():
 def inject_player():
     me = current_user()
     donation_url = app.config.get('DONATION_URL') or ''
+    # What this player's Finn wears, for every page's _finn.html (outfits.py)
+    outfit = outfits.parse(me.finn_outfit) if me and me.finn_outfit else {}
     return {'me': me, 'challenge_news': count_challenge_news(me) if me else 0, 'is_admin': admin_views.is_admin(me),
-            'donation_url': donation_url if donation_url.startswith('https://') else None}
+            'donation_url': donation_url if donation_url.startswith('https://') else None,
+            'finn_style': outfits.style(outfit), 'finn_extra': outfits.extra(outfit)}
 
 
 app.jinja_env.globals.update(template_globals())
@@ -922,7 +926,36 @@ def account():
         'badges': UserBadge.query.filter_by(user_id=user.id).count(),
     }
     return render_template('account.html', user=user, counts=counts, categories=CATEGORIES,
-                           max_name_length=MAX_NAME_LENGTH)
+                           max_name_length=MAX_NAME_LENGTH, wardrobe=finn_wardrobe(user))
+
+
+def finn_wardrobe(user):
+    """The account page's wardrobe: for each slot its items, with whether this player has unlocked each one, which
+    badge unlocks it and how it looks (CSS variables), plus what they're wearing now."""
+    badges = {b.badge for b in UserBadge.query.filter_by(user_id=user.id)}
+    wearing = outfits.allowed(outfits.parse(user.finn_outfit), badges)
+    slots = []
+    for slot, items in outfits.SLOTS.items():
+        slots.append({'key': slot, 'name': outfits.SLOT_NAMES[slot], 'items': [
+            {'key': key, 'name': name, 'unlocked': outfits.unlocked(slot, key, badges),
+             'badge': BADGES_BY_KEY[badge] if badge else None, 'colours': colours,
+             'style': ';'.join(f'{k}:{v}' for k, v in colours.items()), 'worn': wearing[slot] == key}
+            for key, name, badge, colours in items]})
+    return {'slots': slots, 'style': outfits.style(wearing), 'extra': outfits.extra(wearing)}
+
+
+@app.route('/account/finn', methods=['POST'])
+def change_finn_outfit():
+    """Save what the player's Finn wears; items they haven't unlocked fall back to the defaults."""
+    user = current_user()
+    if not user:
+        return redirect(url_for('index'))
+    badges = {b.badge for b in UserBadge.query.filter_by(user_id=user.id)}
+    choice = {slot: request.form.get(slot) for slot in outfits.SLOTS}
+    user.finn_outfit = outfits.serialize(outfits.allowed(choice, badges)) or None
+    db.session.commit()
+    flash(_("Finn's new look is saved."), "success")
+    return redirect(url_for('account', _anchor='finn'))
 
 
 @app.route('/account/photo', methods=['POST'])
