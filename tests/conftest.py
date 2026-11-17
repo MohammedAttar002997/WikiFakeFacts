@@ -64,6 +64,9 @@ def ai(monkeypatch):
     monkeypatch.setattr(app_module, 'get_ai_response', stub.quiz)
     monkeypatch.setattr(app_module, 'get_ai_analysis', stub.analysis)
     monkeypatch.setattr(app_module, 'extract_text_from_url', lambda url: 'Volcanoes erupt magma. ' * 60)
+    # "Any topic" asks Wikipedia; in tests nothing resolves unless a test says so (test_any_topic.py)
+    monkeypatch.setattr(app_module, 'resolve_topic', lambda title: None)
+    monkeypatch.setattr(app_module, 'suggest_topics', lambda query: [])
     return stub
 
 

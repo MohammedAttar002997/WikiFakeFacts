@@ -29,6 +29,7 @@ from models import (db, utcnow, User, Score, QuizSession, CustomContent, Chatbot
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 # Used by views/fakes.py as core.*, so tests stub them here
 from data import article_text, check_player_fake  # noqa: F401
+from data import resolve_topic, suggest_topics
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
                           translate_plural as _n)
@@ -43,6 +44,7 @@ import hidden_rounds
 import practice as practice_rules
 import fake_diff
 import outfits
+import any_topic
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -122,6 +124,7 @@ RATE_LIMITS = {
     'report': (20, timedelta(hours=1)),      # round reports per player
     'push': (20, timedelta(hours=1)),        # reminder switches on/off per player
     'fake': (10, timedelta(hours=1)),        # player fakes sent to the AI check, per player
+    'suggest': (150, timedelta(minutes=10)),  # topic suggestions while typing, per player
 }
 MAX_CHAT_MESSAGE = 500  # Characters
 MAX_NAME_LENGTH = 30  # For new names; players who signed up before the limit keep theirs
@@ -1134,6 +1137,18 @@ def recommend_difficulty(user):
     return {'id': levels[index], 'direction': direction, 'average': round(average), 'count': len(recent)}
 
 
+@app.route('/topics/suggest')
+def topic_suggestions():
+    """Wikipedia's suggestions for the "Any topic" box on the setup page, as the player types."""
+    user = current_user()
+    if not user:
+        abort(404)
+    query = any_topic.clean_query(request.args.get('q'))
+    if len(query) < any_topic.MIN_QUERY or over_limit('suggest', user.id):
+        return jsonify(topics=[])
+    return jsonify(topics=suggest_topics(query))
+
+
 def wants_tour(user):
     """Whether the setup page starts Finn's tour: a player who hasn't seen it yet, or anyone who asked for it again
     (the footer's "Take the tour" link adds ?tour=1)."""
@@ -1357,21 +1372,31 @@ def delete_upload(content_id):
 
 def quiz_settings_from_form():
     """(topic, difficulty, rounds, language name, category name, surprise?) chosen on the setup page, or None after
-    saying what's missing."""
+    saying what's missing. With "Any topic" the topic is the Wikipedia article the player's text resolves to and
+    the category is None."""
     category_id = request.form.get('category')
     length_id = request.form.get('length')
     difficulty_id = request.form.get('difficulty')
     language_code = request.form.get('language', 'en')
     session['language'] = language_code
 
-    if ((category_id not in CATEGORIES and category_id != SURPRISE) or length_id not in GAME_LENGTH_OPTIONS
-            or difficulty_id not in DIFFICULTY_OPTIONS):
+    if ((category_id not in CATEGORIES and category_id not in (SURPRISE, any_topic.ANY_TOPIC))
+            or length_id not in GAME_LENGTH_OPTIONS or difficulty_id not in DIFFICULTY_OPTIONS):
         flash(_("Please select a category, game length, and difficulty."), "warning")
         return None
 
-    # "Surprise me" picks a category first, so each one is as likely however long its list is
-    category_name = random.choice(list(TOPICS)) if category_id == SURPRISE else CATEGORIES[category_id]
-    topic = random.choice(TOPICS[category_name])
+    if category_id == any_topic.ANY_TOPIC:
+        # Only a real Wikipedia article is accepted, so the quiz has a source (any_topic.py)
+        typed = any_topic.clean_query(request.form.get('topic'))
+        topic = resolve_topic(typed) if len(typed) >= any_topic.MIN_QUERY else None
+        if not topic:
+            flash(_("We couldn't find a Wikipedia article for that topic. Pick one of the suggestions."), "warning")
+            return None
+        category_name = None
+    else:
+        # "Surprise me" picks a category first, so each one is as likely however long its list is
+        category_name = random.choice(list(TOPICS)) if category_id == SURPRISE else CATEGORIES[category_id]
+        topic = random.choice(TOPICS[category_name])
     length_text = GAME_LENGTH_OPTIONS.get(length_id)
     questions_count = int(length_text.split("rounds")[0].split("(")[1].strip())
     return (topic, DIFFICULTY_OPTIONS.get(difficulty_id), questions_count, LANGUAGE_OPTIONS.get(language_code, "English"),
@@ -1389,12 +1414,13 @@ def start_quiz():
         return redirect(url_for('setup'))
     topic, difficulty_text, questions_count, language_name, category, surprise = settings
     kind = ready_pool.Kind(category, difficulty_text, questions_count, language_name)
-    timers.note_demand(kind)
+    if category:  # A topic the player typed has no category, so nothing is kept ready for it
+        timers.note_demand(kind)
 
     try:
         time_limit = TIMED_ROUND_SECONDS if request.form.get('timed') else None
         # A quiz made ahead of time starts at once; without one, the AI makes it now (about 20 seconds)
-        ready = timers.take_ready_quiz(kind, any_category=surprise)
+        ready = timers.take_ready_quiz(kind, any_category=surprise) if category else None
         if ready:
             quiz_session = save_quiz_session(
                 user, ready.topic, difficulty_text, json.loads(ready.questions_json),
