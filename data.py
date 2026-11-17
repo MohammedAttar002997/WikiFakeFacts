@@ -52,6 +52,13 @@ class RoundCheck(BaseModel):
 class QuizCheck(BaseModel):
     rounds: list[RoundCheck]
 
+FakeVerdict = Literal['ok', 'true', 'implausible', 'inappropriate', 'off_topic']
+
+class FakeCheck(BaseModel):
+    verdict: FakeVerdict
+    reason: str      # One short sentence for the author when it isn't 'ok'
+    correction: str  # One short sentence saying what is actually true, shown to players after they answer
+
 class TopicInsight(BaseModel):
     topic: str
     strength: str
@@ -254,6 +261,40 @@ def choose_rounds(scored, needed):
     when there's nothing else, so a quiz is never lost to the check."""
     best = sorted(range(len(scored)), key=lambda i: -scored[i][0])[:needed]
     return [scored[i][1] for i in sorted(best)]
+
+
+def article_text(title):
+    """The article a round was made from (Wikipedia, else the saved copy), or '' when neither is available."""
+    content, _ = fetch_wikipedia_article(title)
+    return content or fetch_local_knowledge(title)[0]
+
+
+def check_player_fake(fake, real_facts, topic, content, language="English"):
+    """Ask the AI whether a player's fake can be shared (player_fakes.py): it must be false according to the article
+    (not something the article says), believable next to the three true facts, on topic, and fit for all ages.
+    Raises when the check can't run, so nothing unchecked is ever shared."""
+    if not OPEN_AI_KEY:
+        raise RuntimeError("OpenAI API key is required.")
+    passages = relevant_passages(content, [({fake: False, **{f: True for f in real_facts}}, None, None)]) if content else ''
+    client = OpenAI(api_key=OPEN_AI_KEY)
+    response = client.beta.chat.completions.parse(model=CHECK_MODEL, response_format=FakeCheck, messages=[
+        {"role": "system", "content": (
+            "Players of a quiz game write a fake fact to hide among three true facts about a topic; other players try "
+            "to spot it. You decide whether a submitted fake can be shared, using the source text where it helps. "
+            "Verdicts: 'true' if the source text (or well-known fact) says the statement is true, so it isn't a fake; "
+            "'off_topic' if it isn't about the topic; 'inappropriate' if it is offensive, hateful, sexual, about a "
+            "private person, or contains personal data; 'implausible' if it is obviously absurd or a joke nobody would "
+            "believe; otherwise 'ok'. Be generous with 'ok': a fake only needs to be false, on topic and believable. "
+            f"Write 'reason' (one short sentence to the author, empty for 'ok') and 'correction' (one short sentence "
+            f"saying what is actually true) in {language}.")},
+        {"role": "user", "content": (
+            f"Topic: {topic}\n\nThe three true facts:\n" + "\n".join(f"- {f}" for f in real_facts) +
+            f"\n\nSubmitted fake: {fake}\n\nSource text:\n{passages or '(not available)'}")},
+    ])
+    parsed = response.choices[0].message.parsed
+    if parsed is None:
+        raise ValueError("The fake check returned nothing")
+    return parsed
 
 
 def get_ai_response(questions_count, article_title, difficulty="Medium", language="English", custom_content=None):

@@ -1,0 +1,125 @@
+{% extends "base.html" %}
+
+{# One player fake (views/fakes.py): the question, the answer once given, or the author's view with its link. #}
+{% block title %}{{ _('A fake by {name}').format(name=author.username if author else '?') }} · WikiFakeFact{% endblock %}
+{% block og_title %}{{ _('Can you spot the fake? A fake about {topic} by {name}').format(topic=fake.topic, name=author.username if author else '?') }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="wf-card wf-card-pad">
+            <div class="quiz-top">
+                <div class="quiz-counter"><i class="bi bi-incognito me-1"></i>{{ _('A fake by {name}').format(name=author.username if author else '?') }}</div>
+                <div class="d-flex flex-wrap gap-2">
+                    <span class="chip chip-brand"><i class="bi bi-tag-fill"></i>{{ fake.topic }}</span>
+                    {% if fake.status == 'hidden' %}<span class="chip review-chip-bad">{{ _('Hidden') }}</span>{% endif %}
+                </div>
+            </div>
+
+            {% if answer or is_author %}
+            {% if answer %}
+            <div class="text-center my-3">
+                <div class="display-6">{{ '🕵️' if answer[1] else '😵' }}</div>
+                <h1 class="h3 fw-black">{{ _('You spotted it!') if answer[1] else _('{name} fooled you!').format(name=author.username if author else '?') }}</h1>
+            </div>
+            {% else %}
+            <div class="text-center my-3">
+                <h1 class="h3 fw-black">{{ _('Your fake') }}</h1>
+            </div>
+            {% endif %}
+            <ul class="review-facts list-unstyled mb-3">
+                {% for statement in statements %}
+                {% set is_fake = statement == fake.fake %}
+                {% set picked = answer and statement == answer[0] %}
+                <li class="review-fact{% if is_fake %} is-fake{% elif picked %} is-wrong-pick{% endif %}">
+                    <i class="bi {{ 'bi-incognito' if is_fake else 'bi-patch-check-fill' }}" aria-hidden="true"></i>
+                    <span class="flex-grow-1">{{ statement }}</span>
+                    <span class="review-tags">
+                        {% if is_fake %}<span class="review-tag tag-fake">{{ _('Fake') }}</span>{% endif %}
+                        {% if picked %}<span class="review-tag tag-pick">{{ _('Your pick') }}</span>{% endif %}
+                    </span>
+                </li>
+                {% endfor %}
+            </ul>
+            {% if fake.correction %}<div class="tip"><strong>{{ _("Why it's fake:") }}</strong> {{ fake.correction }}</div>{% endif %}
+            <p class="text-center fw-bold mt-3 mb-1">
+                {% if fake.plays %}{{ _('This fake fooled {fooled} of {players} ({pct}%).').format(fooled=fake.fooled, players=_n('{n} player', '{n} players', fake.plays), pct=fooled_pct) }}{% else %}{{ _('No one has played it yet') }}{% endif %}
+            </p>
+            {% if fake.source_url %}
+            <p class="text-center small mb-0"><a href="{{ fake.source_url }}" target="_blank" rel="noopener noreferrer" class="fw-bold text-decoration-none"><i class="bi bi-wikipedia me-1"></i>{{ _('Read the full article on Wikipedia') }}<i class="bi bi-box-arrow-up-right ms-1"></i></a></p>
+            {% endif %}
+            {% else %}
+            <div class="quiz-question">
+                <div class="q-icon">🕵️</div>
+                <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
+                <p class="text-muted mb-0">{{ _('A player wrote one of these. Three are true. Which one is the fake?') }}</p>
+            </div>
+            <form method="POST" id="quizForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3 mb-4">
+                    {% for option in statements %}
+                    <div class="col-md-6">
+                        <input class="answer-input visually-hidden" type="radio" name="option" id="opt{{ loop.index }}" value="{{ option }}" required>
+                        <label class="answer answer-{{ loop.index }}" for="opt{{ loop.index }}">
+                            <span class="letter">{{ 'ABCD'[loop.index0] }}</span>
+                            <span class="text">{{ option }}</span>
+                            <i class="bi bi-check-circle-fill pick"></i>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary btn-lg px-5" id="submitAnswer" disabled>{{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i></button>
+                </div>
+            </form>
+            {% endif %}
+        </div>
+
+        {% if is_author or answer %}
+        <div class="wf-card wf-card-pad mt-4 share-card">
+            <div class="section-label mb-2"><i class="bi bi-share-fill text-brand fs-4"></i>{{ _('Share this fake') if is_author else _('Challenge your friends') }}</div>
+            <div class="d-flex flex-column flex-sm-row gap-2">
+                <input type="text" class="form-control" id="shareUrl" value="{{ share_url }}" readonly aria-label="{{ _('Share link') }}">
+                <button type="button" class="btn btn-primary flex-shrink-0" id="shareButton"
+                        data-share-text="{{ _('Can you spot the fake? I hid one among three true facts about {topic}.').format(topic=fake.topic) if is_author else _('Can you spot the fake about {topic}?').format(topic=fake.topic) }}"
+                        data-share-url="{{ share_url }}" data-copied-label="{{ _('Link copied!') }}">
+                    <i class="bi bi-share me-1"></i><span>{{ _('Share') }}</span>
+                </button>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="d-flex flex-column flex-sm-row justify-content-center gap-3 mt-4">
+            <a href="{{ url_for('fakes_feed') }}" class="btn btn-outline-primary"><i class="bi bi-incognito me-1"></i>{{ _('More player fakes') }}</a>
+            <a href="{{ url_for('setup') }}" class="btn btn-outline-primary"><i class="bi bi-play-fill me-1"></i>{{ _('Play a quiz') }}</a>
+        </div>
+        {% if my_play and not my_play.reported %}
+        <form method="POST" action="{{ url_for('fake_report', code=fake.code) }}" class="text-center mt-3">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn btn-link btn-sm text-muted"><i class="bi bi-flag me-1"></i>{{ _('Report this fake') }}</button>
+        </form>
+        {% elif my_play %}
+        <p class="report-done small text-muted text-center mt-3 mb-0"><i class="bi bi-flag-fill me-1"></i>{{ _('Reported. Thanks!') }}</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const submit = document.getElementById('submitAnswer');
+        if (submit) document.querySelectorAll('#quizForm input[name="option"]').forEach(input =>
+            input.addEventListener('change', () => { submit.disabled = false; }));
+        // Share link: the native share sheet on phones, the clipboard elsewhere
+        const button = document.getElementById('shareButton');
+        if (!button) return;
+        button.addEventListener('click', async () => {
+            const text = button.dataset.shareText, url = button.dataset.shareUrl;
+            if (navigator.share) { try { await navigator.share({ title: 'WikiFakeFact', text, url }); } catch (e) {} return; }
+            try { await navigator.clipboard.writeText(text + ' ' + url); button.querySelector('span').textContent = button.dataset.copiedLabel; }
+            catch (e) { const input = document.getElementById('shareUrl'); input.focus(); input.select(); }
+        });
+    })();
+</script>
+{% endblock %}

@@ -216,6 +216,34 @@ class CronRun(db.Model):
     last_run = db.Column(db.DateTime, nullable=False)
     last_result = db.Column(db.String(300), nullable=True)
 
+class PlayerFake(db.Model):
+    """A fake a player wrote for a round they played, to hide among its three true facts (player_fakes.py). Public
+    in the feed (/fakes) and by link (/f/<code>) unless the owner hid it from /admin."""
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(16), unique=True, nullable=False)  # Unguessable id in the link
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    topic = db.Column(db.String(100), nullable=False)
+    real_facts_json = db.Column(db.Text, nullable=False)  # The round's three true facts, as a JSON list
+    fake = db.Column(db.String(300), nullable=False)
+    correction = db.Column(db.Text, nullable=True)  # What's actually true, from the AI check
+    source_url = db.Column(db.String(500), nullable=True)
+    status = db.Column(db.String(10), nullable=True)  # None (public) or 'hidden'
+    plays = db.Column(db.Integer, nullable=False, default=0)
+    fooled = db.Column(db.Integer, nullable=False, default=0)  # Plays that picked a true fact
+    reports = db.Column(db.Integer, nullable=False, default=0)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+
+class PlayerFakePlay(db.Model):
+    """A signed-in player's answer to a player fake: one each, so plays and reports can't be repeated."""
+    __table_args__ = (db.UniqueConstraint('fake_id', 'user_id', name='uq_player_fake_play'),)
+    id = db.Column(db.Integer, primary_key=True)
+    fake_id = db.Column(db.Integer, db.ForeignKey('player_fake.id'), nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    picked = db.Column(db.String(300), nullable=False)
+    correct = db.Column(db.Boolean, nullable=False)
+    reported = db.Column(db.Boolean, nullable=False, default=False)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""

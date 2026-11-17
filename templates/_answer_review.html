@@ -74,6 +74,12 @@
                 </figcaption>
             </figure>
             {% endif %}
+            {# Turn the round into a player fake (views/fakes.py); own finished quizzes with a Wikipedia article only #}
+            {% if report_quiz and can_write_fake(report_quiz) and loop.index0 not in reported %}
+            <a href="{{ url_for('fake_new', quiz=report_quiz.id, round=loop.index0) }}" class="d-inline-block small fw-bold text-decoration-none mt-2">
+                <i class="bi bi-incognito me-1"></i>{{ _('Write your own fake for this round') }}
+            </a>
+            {% endif %}
             {# Players can say a round was wrong; only on their own finished quizzes (results and history) #}
             {% if report_quiz %}
             {% set round_index = loop.index0 %}

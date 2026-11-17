@@ -107,7 +107,7 @@
                 <ul class="navbar-nav ms-auto gap-xl-1 mt-2 mt-xl-0">
                     {% for href, icon, label in nav_items %}
                     {% set active = request.path == href or (href != '/' and request.path.startswith(href))
-                                    or (href == '/daily' and request.path.startswith('/event')) %}
+                                    or (href == '/daily' and (request.path.startswith('/event') or request.path.startswith('/fakes') or request.path.startswith('/f/'))) %}
                     <li class="nav-item">
                         <a class="nav-link{% if active %} active{% endif %}" href="{{ href }}"{% if active %} aria-current="page"{% endif %}{% if href == '/analysis' %} data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis"{% endif %}>
                             <i class="bi {{ icon }}"></i>{{ label }}

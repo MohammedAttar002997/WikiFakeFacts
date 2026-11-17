@@ -27,6 +27,8 @@ from models import (db, utcnow, User, Score, QuizSession, CustomContent, Chatbot
                     UserBadge, PinAttempt, RateLimit, ErrorLog, LiveMatch, RoundReport, ReadyQuiz, HiddenRound,
                     PushSubscription)
 from data import get_ai_response, get_ai_analysis, AIAnalysis
+# Used by views/fakes.py as core.*, so tests stub them here
+from data import article_text, check_player_fake  # noqa: F401
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
                           translate_plural as _n)
@@ -118,6 +120,7 @@ RATE_LIMITS = {
     'signup': (10, timedelta(hours=1)),      # new accounts per address
     'report': (20, timedelta(hours=1)),      # round reports per player
     'push': (20, timedelta(hours=1)),        # reminder switches on/off per player
+    'fake': (10, timedelta(hours=1)),        # player fakes sent to the AI check, per player
 }
 MAX_CHAT_MESSAGE = 500  # Characters
 MAX_NAME_LENGTH = 30  # For new names; players who signed up before the limit keep theirs
@@ -884,6 +887,7 @@ def delete_player_data(user, chat_id=None):
     if own_quiz_ids:
         ReadyQuiz.query.filter(ReadyQuiz.quiz_session_id.in_(own_quiz_ids)).update(
             {ReadyQuiz.quiz_session_id: None}, synchronize_session=False)
+    fakes_views.delete_player_fakes(user)
     for model in (PushSubscription, RoundReport, UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
@@ -2077,4 +2081,4 @@ if __name__ == '__main__':
 
 
 # Routes that live in their own modules register on `app` when imported, so this stays at the end of the file
-from views import admin as admin_views, live as live_views, timers  # noqa: E402,F401
+from views import admin as admin_views, live as live_views, timers, fakes as fakes_views  # noqa: E402,F401
