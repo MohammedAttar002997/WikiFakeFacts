@@ -58,7 +58,7 @@
                         </label>
                     </div>
                     <div class="col-6 col-md-4 col-lg-3">
-                        <input class="tile-input" type="radio" name="category" id="catTopic" value="topic" required>
+                        <input class="tile-input" type="radio" name="category" id="catTopic" value="topic" required{% if prefill_topic %} checked{% endif %}>
                         <label class="tile" for="catTopic">
                             <i class="bi bi-check-circle-fill tile-check"></i>
                             <span class="tile-emoji">🔎</span>
@@ -72,7 +72,7 @@
                         <input type="text" class="form-control form-control-lg" id="topicInput" name="topic" list="topicOptions"
                                maxlength="80" autocomplete="off" spellcheck="false"
                                placeholder="{{ _('For example: Black hole, Taylor Swift, Berlin…') }}"
-                               data-suggest-url="{{ url_for('topic_suggestions') }}">
+                               data-suggest-url="{{ url_for('topic_suggestions') }}"{% if prefill_topic %} value="{{ prefill_topic }}"{% endif %}>
                         <datalist id="topicOptions"></datalist>
                         <div class="form-text">{{ _('Pick a suggestion or type the exact name of a Wikipedia article.') }}</div>
                     </div>

@@ -709,5 +709,17 @@
   "Diamond": "Diamant",
   "We couldn't check that topic right now. Please try again in a moment.": "Nous n'avons pas pu vérifier ce sujet pour le moment. Veuillez réessayer dans un instant.",
   "This topic can't be played here. Try another one.": "Ce sujet ne peut pas être joué ici. Essayez-en un autre.",
-  "This topic is for older players. Choose a harder level or another topic.": "Ce sujet est destiné à des joueurs plus âgés. Choisissez un niveau plus difficile ou un autre sujet."
+  "This topic is for older players. Choose a harder level or another topic.": "Ce sujet est destiné à des joueurs plus âgés. Choisissez un niveau plus difficile ou un autre sujet.",
+  "{topic}: spot the fake fact": "{topic} : repérez le faux",
+  "Breadcrumb": "Fil d'Ariane",
+  "Three facts about {topic} are true and one is fake. Can you spot it?": "Trois faits sur {topic} sont vrais et un est faux. Saurez-vous le repérer ?",
+  "Nobody has played {topic} yet. Be the first!": "Personne n'a encore joué à {topic}. Soyez le premier !",
+  "Want more? Play a full quiz about {topic}.": "Envie de plus ? Jouez un quiz complet sur {topic}.",
+  "Play a full quiz": "Jouer un quiz complet",
+  "Free: pick a name and a PIN, no email needed.": "Gratuit : choisissez un nom et un code PIN, sans e-mail.",
+  "More topics in {category}": "Plus de sujets en {category}",
+  "Every topic": "Tous les sujets",
+  "Pick a topic to play a sample round: three true facts from Wikipedia and one fake.": "Choisissez un sujet pour jouer une manche d’essai : trois faits vrais de Wikipédia et un faux.",
+  "{n} topic": "{n} sujet",
+  "{n} topics": "{n} sujets"
 }

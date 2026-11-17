@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+
+{# Every topic page, by category (views/topics.py): links for players browsing and for search engines crawling. #}
+{% from "_macros.html" import CATEGORY_EMOJI %}
+{% block title %}{{ _(category) ~ ' · ' if category }}{{ _('Topics') }} · WikiFakeFact{% endblock %}
+{% block head_extra %}<link rel="canonical" href="{{ url_for('topics_index', category_slug=category_slug, _external=True) if category else url_for('topics_index', _external=True) }}">{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        {% if category %}
+        <nav aria-label="{{ _('Breadcrumb') }}" class="small mb-2"><a href="{{ url_for('topics_index') }}" class="text-decoration-none">{{ _('Topics') }}</a></nav>
+        {% endif %}
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-collection-fill"></i> {{ _('Topics') }}</span>
+            <h1>{% if category %}<span aria-hidden="true">{{ CATEGORY_EMOJI.get(category, '❓') }}</span> {{ _(category) }}{% else %}{{ _('Every topic') }}{% endif %}</h1>
+            <p>{{ _('Pick a topic to play a sample round: three true facts from Wikipedia and one fake.') }}</p>
+        </div>
+        {% if category %}
+        <ul class="topic-list list-unstyled">
+            {% for topic in topics %}<li><a href="{{ topic_url(topic) }}">{{ topic }}</a></li>{% endfor %}
+        </ul>
+        {% else %}
+        <div class="row g-3">
+            {% for name, slug, count in categories %}
+            <div class="col-6 col-md-4 col-lg-3">
+                <a class="tile tile-link" href="{{ url_for('topics_index', category_slug=slug) }}">
+                    <span class="tile-emoji">{{ CATEGORY_EMOJI.get(name, '❓') }}</span>
+                    <span class="tile-title">{{ _(name) }}</span>
+                    <span class="tile-sub">{{ _n('{n} topic', '{n} topics', count) }}</span>
+                </a>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

@@ -709,5 +709,17 @@
   "Diamond": "الماسي",
   "We couldn't check that topic right now. Please try again in a moment.": "تعذّر التحقق من هذا الموضوع الآن. يُرجى المحاولة بعد قليل.",
   "This topic can't be played here. Try another one.": "لا يمكن اللعب بهذا الموضوع هنا. جرّب موضوعًا آخر.",
-  "This topic is for older players. Choose a harder level or another topic.": "هذا الموضوع للاعبين الأكبر سنًا. اختر مستوى أصعب أو موضوعًا آخر."
+  "This topic is for older players. Choose a harder level or another topic.": "هذا الموضوع للاعبين الأكبر سنًا. اختر مستوى أصعب أو موضوعًا آخر.",
+  "{topic}: spot the fake fact": "{topic}: اكتشف الحقيقة المزيفة",
+  "Breadcrumb": "مسار التنقل",
+  "Three facts about {topic} are true and one is fake. Can you spot it?": "ثلاث حقائق عن {topic} صحيحة وواحدة مزيفة. هل يمكنك اكتشافها؟",
+  "Nobody has played {topic} yet. Be the first!": "لم يلعب أحد {topic} بعد. كن الأول!",
+  "Want more? Play a full quiz about {topic}.": "تريد المزيد؟ العب اختبارًا كاملًا عن {topic}.",
+  "Play a full quiz": "العب اختبارًا كاملًا",
+  "Free: pick a name and a PIN, no email needed.": "مجانًا: اختر اسمًا ورمز PIN، دون بريد إلكتروني.",
+  "More topics in {category}": "مواضيع أخرى في {category}",
+  "Every topic": "كل المواضيع",
+  "Pick a topic to play a sample round: three true facts from Wikipedia and one fake.": "اختر موضوعًا لتلعب جولة تجريبية: ثلاث حقائق صحيحة من ويكيبيديا وواحدة مزيفة.",
+  "{n} topic": "موضوع واحد ({n})",
+  "{n} topics": "{n} مواضيع"
 }
