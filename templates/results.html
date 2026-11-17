@@ -63,6 +63,11 @@
             <a href="/analysis" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis" class="d-inline-block mt-3 fw-bold text-decoration-none">
                 <i class="bi bi-graph-up-arrow me-1"></i>{{ _('See my progress') }}
             </a>
+            {% if league_points is not none %}
+            <a href="{{ url_for('league') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
+                <i class="bi bi-trophy-fill me-1"></i>{{ _('+{n} league points').format(n=league_points) }}
+            </a>
+            {% endif %}
             <a href="{{ url_for('history') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
                 <i class="bi bi-clock-history me-1"></i>{{ _('Quiz history') }}
             </a>

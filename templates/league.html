@@ -1,0 +1,91 @@
+{% extends "base.html" %}
+
+{# The weekly league (views/leagues.py): the player's group this week, with who is moving up and down. #}
+{% block title %}{{ _('League') }} · WikiFakeFact{% endblock %}
+{% from "_macros.html" import avatar, finn %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        {% include "_challenge_switch.html" %}
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-trophy-fill"></i> {{ _n('{n} day left this week', '{n} days left this week', days_left) }}</span>
+            <h1>{{ _('Weekly league') }}</h1>
+            <p>{{ _('Every finished game this week earns league points. On Sunday night the top players of each group move up a league and the last ones move down.') }}</p>
+        </div>
+
+        {# The ladder of leagues, with the player's one marked #}
+        <ol class="league-ladder list-unstyled mb-4" aria-label="{{ _('Leagues') }}">
+            {% for name in tiers %}
+            <li class="league-step{% if loop.index0 == tier %} is-mine{% endif %}"{% if loop.index0 == tier %} aria-current="true"{% endif %}>
+                <span class="league-icon" aria-hidden="true">{{ icons[loop.index0] }}</span>
+                <span class="fw-black">{{ _(name) }}</span>
+            </li>
+            {% endfor %}
+        </ol>
+
+        {% if last and last.result != 'stay' %}
+        <div class="alert {{ 'alert-success' if last.result == 'up' else 'alert-warning' }} wf-alert" role="status">
+            <i class="bi {{ 'bi-arrow-up-circle-fill' if last.result == 'up' else 'bi-arrow-down-circle-fill' }} alert-icon"></i>
+            <div>{{ (_('Last time you finished #{rank} of {size} in {league} and moved up. Welcome to {new}!') if last.result == 'up' else _('Last time you finished #{rank} of {size} in {league} and moved down to {new}. Win it back this week!')).format(rank=last.rank, size=last.size, league=_(tiers[last.tier]), new=_(tiers[tier])) }}</div>
+        </div>
+        {% endif %}
+
+        {% if not me %}
+        <div class="wf-card wf-card-pad text-center">
+            {{ finn('think') }}
+            <p class="lead mb-3">{{ _("Sign in and finish a game to join this week's league.") }}</p>
+            <a href="/" class="btn btn-primary btn-lg"><i class="bi bi-person-fill me-1"></i>{{ _('Sign in to play') }}</a>
+        </div>
+        {% elif not entry %}
+        <div class="wf-card wf-card-pad text-center">
+            {{ finn('think') }}
+            <p class="lead mb-1">{{ _('You are in the {league} league this week.').format(league=icons[tier] ~ ' ' ~ _(tiers[tier])) }}</p>
+            <p class="text-muted mb-3">{{ _('Finish any game to join a group and start earning points.') }}</p>
+            <a href="{{ url_for('setup') }}" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-1"></i>{{ _('Play now') }}</a>
+        </div>
+        {% else %}
+        <div class="wf-card p-3 p-md-4">
+            <div class="section-label px-1"><span class="fs-4" aria-hidden="true">{{ icons[tier] }}</span>{{ _('{league} league · your group').format(league=_(tiers[tier])) }}</div>
+            <div class="d-flex flex-column gap-2">
+                {% for row in table %}
+                {% set is_me = row.user.id == me.id %}
+                {# A line where the promotion zone ends and where the demotion zone starts #}
+                {% if down and loop.index == table|length - down + 1 %}
+                <div class="league-line is-down"><i class="bi bi-arrow-down" aria-hidden="true"></i>{{ _('Moving down') }}</div>
+                {% endif %}
+                <div class="rank-row{% if is_me %} rank-row-me{% endif %}{% if row.result == 'up' %} league-up{% elif row.result == 'down' %} league-down{% endif %}">
+                    <div class="rank">{{ row.rank }}</div>
+                    {{ avatar(row.user, 'sm') }}
+                    <div class="who">
+                        <a class="fw-bold text-reset text-decoration-none" href="{{ url_for('player_profile', user_id=row.user.id) }}">{{ row.user.username }}</a>{% if is_me %} <span class="text-brand small fw-bold">{{ _('(you)') }}</span>{% endif %}
+                        {% if row.result == 'up' %}<div class="meta text-success"><i class="bi bi-arrow-up" aria-hidden="true"></i> {{ _('Moving up') }}</div>{% elif row.result == 'down' %}<div class="meta text-danger"><i class="bi bi-arrow-down" aria-hidden="true"></i> {{ _('Moving down') }}</div>{% endif %}
+                    </div>
+                    <div class="score">
+                        <div class="pct"><span dir="ltr">{{ row.points }}</span></div>
+                        <div class="meta">{{ _('points') }}</div>
+                    </div>
+                </div>
+                {% if up and loop.index == up and not loop.last %}
+                <div class="league-line is-up"><i class="bi bi-arrow-up" aria-hidden="true"></i>{{ _('Moving up') }}</div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% if table|length < 2 %}
+            <p class="text-muted text-center small mt-3 mb-0">{{ _('You are the first in this group. Others join as they play this week.') }}</p>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <div class="wf-card wf-card-pad mt-4">
+            <div class="section-label"><i class="bi bi-info-circle-fill text-brand fs-4"></i>{{ _('How the league works') }}</div>
+            <ul class="mb-0">
+                <li>{{ _('Each correct answer earns {easy} points on Easy, {medium} on Medium and {hard} on Hard.').format(easy=points['Easy (Ages 7-12)'], medium=points['Medium (Ages 13-17)'], hard=points['Hard (Ages 18-99)']) }}</li>
+                <li>{{ _('Groups have up to {n} players of the same league. You join one with your first finished game of the week.').format(n=group_size) }}</li>
+                <li>{{ _('At the end of the week the top quarter of each group moves up and the bottom quarter moves down.') }}</li>
+                <li>{{ _('Practice quizzes and class games earn no league points.') }}</li>
+            </ul>
+        </div>
+    </div>
+</div>
+{% endblock %}
