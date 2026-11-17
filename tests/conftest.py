@@ -67,6 +67,7 @@ def ai(monkeypatch):
     # "Any topic" asks Wikipedia; in tests nothing resolves unless a test says so (test_any_topic.py)
     monkeypatch.setattr(app_module, 'resolve_topic', lambda title: None)
     monkeypatch.setattr(app_module, 'suggest_topics', lambda query: [])
+    monkeypatch.setattr(app_module, 'check_topic_audience', lambda title: 'children')
     return stub
 
 

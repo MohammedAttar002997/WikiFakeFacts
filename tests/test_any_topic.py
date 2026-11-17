@@ -134,3 +134,91 @@ def test_a_live_match_can_use_a_typed_topic(login, wikipedia, ai, app_ctx):
     from models import LiveMatch
     login('Ann').post('/live/new', data={**START, 'topic': 'Black hole'})
     assert LiveMatch.query.one().topic == 'Black hole'
+
+
+# ---------- The age check -----------------------------------------------------------------------------------------
+
+EASY, MEDIUM, HARD = 'Easy (Ages 7-12)', 'Medium (Ages 13-17)', 'Hard (Ages 18-99)'
+
+
+@pytest.mark.parametrize('audience, playable', [
+    ('children', {EASY, MEDIUM, HARD}),
+    ('teens', {MEDIUM, HARD}),
+    ('adults', {HARD}),
+    ('never', set()),
+    ('something new', set()),  # An answer we don't know is treated as the strictest
+])
+def test_who_may_play_a_topic(audience, playable):
+    assert {d for d in (EASY, MEDIUM, HARD) if any_topic.allowed(audience, d)} == playable
+
+
+def test_an_unknown_difficulty_is_treated_as_the_youngest():
+    assert any_topic.allowed('children', 'Medium') and not any_topic.allowed('teens', 'Medium')
+
+
+@pytest.fixture
+def rated(monkeypatch, wikipedia):
+    """The AI rates every topic `rated.audience`; set .error to make the check fail."""
+    class Rating:
+        audience, error, calls = 'children', None, []
+
+        def __call__(self, title):
+            self.calls.append(title)
+            if self.error:
+                raise self.error
+            return self.audience
+    rating = Rating()
+    rating.calls = []
+    monkeypatch.setattr(app_module, 'check_topic_audience', rating)
+    return rating
+
+
+@pytest.mark.parametrize('audience, difficulty, made', [
+    ('teens', '1', False), ('teens', '2', True), ('adults', '2', False), ('adults', '3', True), ('never', '3', False),
+])
+def test_the_difficulty_decides_whether_a_rated_topic_is_played(login, rated, ai, app_ctx, audience, difficulty, made):
+    rated.audience = audience
+    response = login('Ann').post('/start_quiz', data={**START, 'difficulty': difficulty, 'topic': 'Black hole'})
+    assert response.headers['Location'].endswith('/quiz' if made else '/setup')
+    assert bool(ai.quiz_calls) is made and rated.calls == ['Black hole']
+
+
+def test_the_player_is_told_why(login, rated):
+    client = login('Ann')
+    rated.audience = 'adults'
+    client.post('/start_quiz', data={**START, 'topic': 'Black hole'})
+    assert 'for older players' in client.get('/setup').get_data(as_text=True)
+    rated.audience = 'never'
+    client.post('/start_quiz', data={**START, 'difficulty': '3', 'topic': 'Black hole'})
+    assert "can&#39;t be played here" in client.get('/setup').get_data(as_text=True)
+
+
+def test_a_failing_check_plays_nothing(login, rated, ai, app_ctx):
+    from models import ErrorLog
+    rated.error = RuntimeError('OpenAI is down')
+    client = login('Ann')
+    response = client.post('/start_quiz', data={**START, 'topic': 'Black hole'})
+    assert response.headers['Location'].endswith('/setup') and ai.quiz_calls == []
+    assert "couldn&#39;t check that topic" in client.get('/setup').get_data(as_text=True)
+    assert ErrorLog.query.count() == 1
+
+
+def test_categories_skip_the_check(login, rated, ai):
+    login('Ann').post('/start_quiz', data={**START, 'category': '1'})
+    assert rated.calls == [] and len(ai.quiz_calls) == 1
+
+
+def test_classes_and_live_matches_are_checked_too(login, rated, ai, app_ctx):
+    from models import LiveMatch
+    rated.audience = 'adults'
+    login('Teacher').post('/class/new', data={**START, 'topic': 'Black hole'})
+    login('Ann').post('/live/new', data={**START, 'topic': 'Black hole'})
+    assert ClassRoom.query.count() == 0 and LiveMatch.query.count() == 0 and ai.quiz_calls == []
+
+
+def test_typed_topics_are_rate_limited(login, rated, ai, monkeypatch):
+    monkeypatch.setitem(app_module.RATE_LIMITS, 'topic', (1, app_module.timedelta(hours=1)))
+    client = login('Ann')
+    client.post('/start_quiz', data={**START, 'topic': 'Black hole'})
+    client.post('/start_quiz', data={**START, 'topic': 'Black hole'})
+    assert rated.calls == ['Black hole'] and len(ai.quiz_calls) == 1
