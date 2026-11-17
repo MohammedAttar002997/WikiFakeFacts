@@ -554,7 +554,6 @@
   "The AI checks that it is really false, on topic and friendly before anyone sees it. Everyone can play it in the community feed.": "L'IA vérifie qu'il est vraiment faux, dans le sujet et correct avant que quiconque le voie. Tout le monde peut le jouer dans le fil de la communauté.",
   "The AI's fake was:": "Le faux de l'IA était :",
   "The three true facts": "Les trois faits vrais",
-  "This fake can't be shared. Try changing a different detail.": "Ce faux ne peut pas être partagé. Essayez de changer un autre détail.",
   "This fake fooled {fooled} of {players} ({pct}%).": "Ce faux a trompé {fooled} sur {players} ({pct} %).",
   "Trickiest": "Les plus trompeurs",
   "We couldn't check your fake right now. Please try again in a moment.": "Nous n'avons pas pu vérifier votre faux pour le moment. Veuillez réessayer dans un instant.",
@@ -608,5 +607,9 @@
   "You're in!": "Vous êtes inscrit !",
   "Your teacher will see it on the board. No account needed, and it is deleted after the game.": "Votre enseignant le verra au tableau. Aucun compte requis, et il est supprimé après la partie.",
   "{answered} of {players} answered": "{answered} sur {players} ont répondu",
-  "{score} points": "{score} points"
+  "{score} points": "{score} points",
+  "The AI thinks this is actually true, so it can't be the fake. Change a detail so it becomes false.": "L'IA pense que c'est vrai, donc ce ne peut pas être le faux. Changez un détail pour le rendre faux.",
+  "This is not about the same topic as the true facts. Write a fake about the same subject.": "Cela ne porte pas sur le même sujet que les faits vrais. Écrivez un faux sur le même sujet.",
+  "This is too easy to spot. Make it believable: change a number, a date or a name.": "C'est trop facile à repérer. Rendez-le crédible : changez un nombre, une date ou un nom.",
+  "This fake can't be shared. Keep it friendly.": "Ce faux ne peut pas être partagé. Restez correct."
 }

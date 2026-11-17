@@ -27,6 +27,11 @@ PROBLEMS = {
     'too_long': lambda: _('Your fake is too long. Keep it under 200 characters.'),
     'same_as_real': lambda: _("That's one of the true facts. Change something to make it fake."),
     'link': lambda: _('Fakes cannot contain links.'),
+    # After the AI check (player_fakes.verdict)
+    'true': lambda: _("The AI thinks this is actually true, so it can't be the fake. Change a detail so it becomes false."),
+    'off_topic': lambda: _('This is not about the same topic as the true facts. Write a fake about the same subject.'),
+    'implausible': lambda: _('This is too easy to spot. Make it believable: change a number, a date or a name.'),
+    'inappropriate': lambda: _("This fake can't be shared. Keep it friendly."),
 }
 
 
@@ -91,8 +96,9 @@ def fake_new():
                 save_error(error)
                 check = None
                 problem = _("We couldn't check your fake right now. Please try again in a moment.")
-            if check and check.verdict != 'ok':
-                problem = check.reason or _("This fake can't be shared. Try changing a different detail.")
+            result = rules.verdict(check) if check else None
+            if result and result != 'ok':
+                problem = PROBLEMS[result]()
             elif check:
                 made = PlayerFake(code=secrets.token_urlsafe(8), user_id=user.id, topic=quiz.topic[:100],
                                   real_facts_json=json.dumps(real_facts), fake=fake,

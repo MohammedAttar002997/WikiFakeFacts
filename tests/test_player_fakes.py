@@ -37,6 +37,26 @@ def test_options_are_shuffled_the_same_way_for_everyone():
     assert first == rules.options(facts, 'Fake one.', 'code1') and sorted(first) == sorted(facts + ['Fake one.'])
 
 
+@pytest.mark.parametrize('changes, result', [
+    ({}, 'ok'),
+    ({'statement_is_true': True}, 'true'),
+    ({'on_topic': False}, 'off_topic'),
+    ({'believable': False}, 'implausible'),
+    ({'appropriate': False}, 'inappropriate'),
+    ({'appropriate': False, 'statement_is_true': True, 'on_topic': False}, 'inappropriate'),  # Most serious first
+    ({'statement_is_true': True, 'believable': False}, 'true'),
+])
+def test_verdict_from_the_ai_answers(changes, result):
+    assert rules.verdict(ai_answers(**changes)) == result
+
+
+def test_a_false_believable_on_topic_fake_is_accepted():
+    """The case a player hit: a wrong formula is a fine fake. The old single-label check turned it down while its
+    own reason said it was false."""
+    check = ai_answers(analysis='Cyclic amines do not have the general formula RA2N, so the statement is false.')
+    assert rules.verdict(check) == 'ok'
+
+
 def test_trickiest_needs_enough_plays():
     # (plays, fooled, id): 2 of 2 fooled isn't enough plays; 3 of 4 beats 1 of 3; newest first among the rest
     fakes = [(2, 2, 1), (4, 3, 2), (3, 1, 3), (0, 0, 4)]
@@ -46,16 +66,21 @@ def test_trickiest_needs_enough_plays():
 
 # ---------- Writing one -------------------------------------------------------------------------------------------
 
+def ai_answers(**changes):
+    """The AI check's yes/no answers (data.FakeCheck) for a good fake, with some changed."""
+    return SimpleNamespace(**{'analysis': 'Thinking.', 'statement_is_true': False, 'on_topic': True, 'believable': True,
+                              'appropriate': True, 'correction': 'It was never green.', **changes})
+
+
 class CheckStub:
     def __init__(self):
-        self.calls, self.verdict, self.error = [], 'ok', None
+        self.calls, self.changes, self.error = [], {}, None
 
     def __call__(self, fake, real_facts, topic, content, language='English'):
         self.calls.append({'fake': fake, 'real_facts': real_facts, 'topic': topic, 'language': language})
         if self.error:
             raise self.error
-        return SimpleNamespace(verdict=self.verdict, reason='That is actually true.' if self.verdict != 'ok' else '',
-                               correction='It was never green.')
+        return ai_answers(**self.changes)
 
 
 @pytest.fixture
@@ -101,11 +126,17 @@ def test_a_checked_fake_is_saved_and_shareable(played, check):
     assert 'Share this fake' in html and GOOD_FAKE in html
 
 
-def test_the_ai_can_turn_a_fake_down(played, check):
+@pytest.mark.parametrize('changes, message', [
+    ({'statement_is_true': True}, 'actually true'),
+    ({'on_topic': False}, 'not about the same topic'),
+    ({'believable': False}, 'too easy to spot'),
+    ({'appropriate': False}, 'Keep it friendly'),
+])
+def test_the_ai_can_turn_a_fake_down(played, check, changes, message):
     client, quiz = played
-    check.verdict = 'true'
+    check.changes = changes
     html = write(client, quiz).get_data(as_text=True)
-    assert 'That is actually true.' in html and PlayerFake.query.count() == 0
+    assert message in html and PlayerFake.query.count() == 0
 
 
 def test_obvious_problems_dont_reach_the_ai(played, check):

@@ -13,11 +13,13 @@ sys.path.insert(0, ROOT)
 os.chdir(ROOT)  # data.py loads .env from here
 
 import data  # noqa: E402
+from player_fakes import verdict  # noqa: E402
 
 TOPIC = 'Eiffel Tower'
 REAL = ['The Eiffel Tower is in Paris.', 'It was designed by the company of Gustave Eiffel.', 'It was completed in 1889.']
 EXAMPLES = [
     ('ok', 'The Eiffel Tower was originally painted bright green.'),
+    ('ok', 'The Eiffel Tower was completed in 1925.'),
     ('true', 'The Eiffel Tower is made of wrought iron.'),
     ('implausible', 'The Eiffel Tower is secretly a giant robot that walks at night.'),
     ('off_topic', 'Bananas are a good source of potassium.'),
@@ -29,4 +31,5 @@ if __name__ == '__main__':
     print(f'Article: {len(content)} characters' if content else 'Article: not available (checking without it)')
     for expected, fake in fakes:
         result = data.check_player_fake(fake, REAL, TOPIC, content, 'English')
-        print(f'\n{fake}\n  verdict: {result.verdict} (expected {expected})\n  reason: {result.reason}\n  correction: {result.correction}')
+        print(f'\n{fake}\n  verdict: {verdict(result)} (expected {expected})\n  analysis: {result.analysis}\n'
+              f'  correction: {result.correction}')
