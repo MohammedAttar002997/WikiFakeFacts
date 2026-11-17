@@ -307,3 +307,38 @@ def test_deleting_a_player_deletes_their_fakes_and_plays(fake, login):
     answer(login('Ben'), fake, GOOD_FAKE)
     app_module.delete_player_data(User.query.filter_by(username='Ann').one())
     assert PlayerFake.query.count() == 0 and PlayerFakePlay.query.count() == 0
+
+
+# ---------- Badges and the top fakers board -----------------------------------------------------------------------
+
+def test_badge_rules_for_fakes():
+    from badges import MASTER_FAKER_FOOLED, earned_badge_keys
+    assert 'fake_writer' in earned_badge_keys([], False, fakes_written=1)
+    assert 'master_faker' not in earned_badge_keys([], False, fakes_written=3, players_fooled=MASTER_FAKER_FOOLED - 1)
+    assert 'master_faker' in earned_badge_keys([], False, fakes_written=3, players_fooled=MASTER_FAKER_FOOLED)
+
+
+def test_sharing_a_fake_earns_fake_writer(fake):
+    from models import UserBadge
+    ann = User.query.filter_by(username='Ann').one()
+    assert UserBadge.query.filter_by(user_id=ann.id, badge='fake_writer').count() == 1
+
+
+def test_fooling_enough_players_earns_master_faker(fake, login, monkeypatch):
+    import badges
+    from models import UserBadge
+    monkeypatch.setattr(badges, 'MASTER_FAKER_FOOLED', 2)
+    ann = User.query.filter_by(username='Ann').one()
+    answer(login('Ben'), fake, 'R1 true A')
+    assert UserBadge.query.filter_by(user_id=ann.id, badge='master_faker').count() == 0
+    answer(login('Cat'), fake, GOOD_FAKE)  # Spotted it: doesn't count
+    assert UserBadge.query.filter_by(user_id=ann.id, badge='master_faker').count() == 0
+    answer(login('Dan'), fake, 'R1 true B')
+    assert UserBadge.query.filter_by(user_id=ann.id, badge='master_faker').count() == 1
+
+
+def test_the_feed_shows_the_top_fakers(fake, login, app):
+    assert 'Top fakers' not in app.test_client().get('/fakes').get_data(as_text=True)  # Nobody fooled yet
+    answer(login('Ben'), fake, 'R1 true A')
+    html = app.test_client().get('/fakes').get_data(as_text=True)
+    assert 'Top fakers' in html and 'fooled 1 player' in html

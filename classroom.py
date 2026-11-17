@@ -74,5 +74,27 @@ def distribution(statements, picks):
     return counts
 
 
+def results_table(rounds, players):
+    """The rows of the results download: a header, then one row per student, best first.
+
+    players: [(nickname, score, {round index as str: {'correct': bool, 'points': int}})] in the order they joined.
+    Each round shows the points scored, 0 for a wrong answer, or '' when the student didn't answer.
+    """
+    header = ['Rank', 'Nickname', 'Score', 'Correct'] + [f'Round {n}' for n in range(1, rounds + 1)]
+    answers = {nickname: given for nickname, _, given in players}
+    rows = [header]
+    for rank, nickname, score in ranking([(n, s) for n, s, _ in players]):
+        given = answers[nickname]
+        cells = [given[str(i)]['points'] if str(i) in given else '' for i in range(rounds)]
+        rows.append([rank, nickname, score, sum(1 for a in given.values() if a.get('correct'))] + cells)
+    return rows
+
+
+def next_topic(settings, topics, rng):
+    """A fresh topic for "play again": from the same category, or any category for "Surprise me"."""
+    category = rng.choice(sorted(topics)) if settings.get('surprise') else settings['category']
+    return category, rng.choice(topics[category])
+
+
 def expired(created_at, now):
     return now - created_at > timedelta(hours=ROOM_HOURS)

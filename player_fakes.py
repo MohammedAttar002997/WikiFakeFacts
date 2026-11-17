@@ -11,6 +11,7 @@ MIN_LENGTH = 15    # Characters; shorter isn't a statement anyone could believe
 MAX_LENGTH = 200   # Like the AI's statements, which fit a card on a phone
 TRICKY_MIN_PLAYS = 3  # A fake needs this many plays before "trickiest" ranks it, so one lucky fool doesn't top it
 PAGE_SIZE = 20
+TOP_FAKERS = 5  # Players on the feed's "Top fakers" board
 
 LINK = re.compile(r'https?://|www\.|\.(com|net|org|de|io)\b', re.I)
 

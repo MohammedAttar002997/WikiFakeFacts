@@ -54,7 +54,8 @@
                 <div class="text-center py-4" data-phase="finished" hidden>
                     <div class="display-5 mb-2">🏁</div>
                     <h1 class="h4 fw-black">{{ _('Game over!') }}</h1>
-                    <p class="lead mb-0" data-final></p>
+                    <p class="lead mb-2" data-final></p>
+                    <p class="small text-muted mb-0"><span class="spinner-grow spinner-grow-sm text-brand me-2" aria-hidden="true"></span>{{ _('If your teacher starts another game, you join it automatically.') }}</p>
                 </div>
                 <p class="text-center text-danger small mt-3 mb-0" data-offline hidden>{{ _('Connection lost. Trying again…') }}</p>
             </div>
@@ -153,7 +154,9 @@
             } catch (e) {
                 if (++failures > 2) $('[data-offline]').hidden = false;
             }
-            if (!state || state.phase !== 'finished') setTimeout(poll, Number(root.dataset.pollMs));
+            // After the game, keep listening (more slowly) in case the teacher plays again with the class
+            if (state && state.next) { location.href = '/class/' + encodeURIComponent(state.next); return; }
+            setTimeout(poll, Number(root.dataset.pollMs) * (state && state.phase === 'finished' ? 2 : 1));
         }
 
         async function answer(option) {

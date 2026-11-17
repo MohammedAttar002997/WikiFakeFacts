@@ -11,8 +11,11 @@ from sqlalchemy.exc import IntegrityError
 import app as core
 import hidden_rounds
 import player_fakes as rules
-from app import app, current_user, db, hidden_fingerprints, over_limit, save_error, today_utc
+from app import app, current_user, db, flash_new_badges, hidden_fingerprints, over_limit, save_error, today_utc
 from default_text import LANGUAGE_OPTIONS
+from sqlalchemy import func
+
+from badges import award_badges
 from models import DailyChallenge, PlayerFake, PlayerFakePlay, QuizSession, User
 from translations import translate as _
 from views.admin import is_admin
@@ -106,6 +109,7 @@ def fake_new():
                 db.session.add(made)
                 db.session.commit()
                 flash(_('Your fake is live! Share the link and see who it fools.'), 'success')
+                flash_new_badges(user)
                 return redirect(url_for('fake_play', code=made.code))
     return render_template('fake_new.html', quiz=quiz, index=request.values.get('round', type=int),
                            real_facts=real_facts, ai_fake=ai_fake, fake=fake, problem=problem,
@@ -135,7 +139,17 @@ def fakes_feed():
         codes = {code for code, _ in session.get(GUEST_ANSWERS, [])}
         played = {f.id for f in rows if f.code in codes}
     return render_template('fakes.html', fakes=rows, authors=authors, sort=sort, page=page, more=more,
-                           played=played, me_id=user.id if user else None)
+                           played=played, me_id=user.id if user else None, top=top_fakers())
+
+
+def top_fakers():
+    """[(player, players fooled, fakes)] of the TOP_FAKERS players whose public fakes fooled the most players."""
+    rows = (db.session.query(PlayerFake.user_id, func.sum(PlayerFake.fooled), func.count(PlayerFake.id))
+            .filter(PlayerFake.status.is_(None)).group_by(PlayerFake.user_id)
+            .having(func.sum(PlayerFake.fooled) > 0)
+            .order_by(func.sum(PlayerFake.fooled).desc(), func.count(PlayerFake.id)).limit(rules.TOP_FAKERS).all())
+    players = {u.id: u for u in User.query.filter(User.id.in_([r[0] for r in rows]))} if rows else {}
+    return [(players[uid], int(fooled), count) for uid, fooled, count in rows if uid in players]
 
 
 def answer_of(fake, user, statements):
@@ -177,6 +191,10 @@ def fake_play(code):
             {PlayerFake.plays: PlayerFake.plays + 1, PlayerFake.fooled: PlayerFake.fooled + (0 if correct else 1)},
             synchronize_session=False)
         db.session.commit()
+        if not correct:
+            author = db.session.get(User, fake.user_id)
+            if author:
+                award_badges(author)
         return redirect(url_for('fake_play', code=code))
     db.session.refresh(fake)
     my_play = PlayerFakePlay.query.filter_by(fake_id=fake.id, user_id=user.id).first() if user and answer else None

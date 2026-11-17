@@ -261,6 +261,9 @@ class ClassRoom(db.Model):
     current_round = db.Column(db.Integer, nullable=False, default=0)
     round_started_at = db.Column(db.DateTime, nullable=True)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+    # The setup page's choices, for "play again" (category, surprise, rounds); None for rooms from before it existed
+    settings_json = db.Column(db.Text, nullable=True)
+    next_code = db.Column(db.String(8), nullable=True)  # The room "play again" opened; students' pages follow it
 
 class ClassPlayer(db.Model):
     """A student in a classroom game: just a nickname and their answers, found again by the token in their session."""

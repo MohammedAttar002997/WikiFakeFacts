@@ -637,5 +637,15 @@
   "That was the tour. You can watch it again anytime from the link at the bottom of the page.": "كانت هذه الجولة. يمكنك مشاهدتها مجددًا في أي وقت من الرابط أسفل الصفحة.",
   "The help assistant answers questions about the game anytime.": "يجيب مساعد المساعدة عن أسئلتك حول اللعبة في أي وقت.",
   "Three ways to play": "ثلاث طرق للعب",
-  "Your scores over time, and a coach that tells you what to practice next.": "نتائجك مع مرور الوقت، ومدرّب يخبرك بما تتدرّب عليه بعد ذلك."
+  "Your scores over time, and a coach that tells you what to practice next.": "نتائجك مع مرور الوقت، ومدرّب يخبرك بما تتدرّب عليه بعد ذلك.",
+  "Play again with this class": "العب مرة أخرى مع هذا الصف",
+  "Download results (CSV)": "تنزيل النتائج (CSV)",
+  "If your teacher starts another game, you join it automatically.": "إذا بدأ معلمك لعبة أخرى، فستنضم إليها تلقائيًا.",
+  "Top fakers": "أمهر المزيّفين",
+  "fooled {players}": "خدع {players}",
+  "Fool 10 players with your fakes to earn the Master faker badge.": "اخدع 10 لاعبين بحقائقك المزيفة لتحصل على شارة سيد التزييف.",
+  "Fake writer": "كاتب الحقائق المزيفة",
+  "Share your first player fake.": "شارك أول حقيقة مزيفة لك.",
+  "Master faker": "سيد التزييف",
+  "Fool 10 players with your fakes.": "اخدع 10 لاعبين بحقائقك المزيفة."
 }
