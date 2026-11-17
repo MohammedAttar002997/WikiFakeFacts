@@ -19,6 +19,7 @@ class User(db.Model):
     avatar = db.deferred(db.Column(db.LargeBinary, nullable=True))
     avatar_updated_at = db.Column(db.DateTime, nullable=True)  # Set while there's a photo; versions its URL
     challenges_seen_at = db.Column(db.DateTime, nullable=True)  # Last visit to /challenges; newer challengers are new
+    tour_done_at = db.Column(db.DateTime, nullable=True)  # Finished or skipped Finn's tour; None: show it on /setup
     scores = db.relationship('Score', backref='user', lazy=True)
 
 class Score(db.Model):

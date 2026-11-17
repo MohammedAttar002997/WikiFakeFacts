@@ -1101,8 +1101,25 @@ def recommend_difficulty(user):
     return {'id': levels[index], 'direction': direction, 'average': round(average), 'count': len(recent)}
 
 
+def wants_tour(user):
+    """Whether the setup page starts Finn's tour: a player who hasn't seen it yet, or anyone who asked for it again
+    (the footer's "Take the tour" link adds ?tour=1)."""
+    return bool(user) and (user.tour_done_at is None or request.args.get('tour') == '1')
+
+
+@app.route('/tour/done', methods=['POST'])
+def tour_done():
+    """The player finished or skipped the tour; don't start it on its own again, on any device."""
+    user = current_user()
+    if user and user.tour_done_at is None:
+        user.tour_done_at = utcnow()
+        db.session.commit()
+    return ('', 204)
+
+
 def render_setup():
-    return render_template('setup.html', categories=CATEGORIES, lengths=GAME_LENGTH_OPTIONS,
+    return render_template('setup.html', show_tour=wants_tour(current_user()), categories=CATEGORIES,
+                           lengths=GAME_LENGTH_OPTIONS,
                            difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
                            daily_topic=daily_topic(today_utc()), event_theme=event_theme(),
                            timed_seconds=TIMED_ROUND_SECONDS,
