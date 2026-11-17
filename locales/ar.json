@@ -706,5 +706,8 @@
   "+{n} league points": "+{n} نقطة دوري",
   "Bronze": "البرونزي",
   "Silver": "الفضي",
-  "Diamond": "الماسي"
+  "Diamond": "الماسي",
+  "We couldn't check that topic right now. Please try again in a moment.": "تعذّر التحقق من هذا الموضوع الآن. يُرجى المحاولة بعد قليل.",
+  "This topic can't be played here. Try another one.": "لا يمكن اللعب بهذا الموضوع هنا. جرّب موضوعًا آخر.",
+  "This topic is for older players. Choose a harder level or another topic.": "هذا الموضوع للاعبين الأكبر سنًا. اختر مستوى أصعب أو موضوعًا آخر."
 }

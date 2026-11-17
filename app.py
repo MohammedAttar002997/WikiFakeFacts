@@ -29,7 +29,7 @@ from models import (db, utcnow, User, Score, QuizSession, CustomContent, Chatbot
 from data import get_ai_response, get_ai_analysis, AIAnalysis
 # Used by views/fakes.py as core.*, so tests stub them here
 from data import article_text, check_player_fake  # noqa: F401
-from data import resolve_topic, suggest_topics
+from data import check_topic_audience, resolve_topic, suggest_topics
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
                           translate_plural as _n)
@@ -126,6 +126,7 @@ RATE_LIMITS = {
     'push': (20, timedelta(hours=1)),        # reminder switches on/off per player
     'fake': (10, timedelta(hours=1)),        # player fakes sent to the AI check, per player
     'suggest': (150, timedelta(minutes=10)),  # topic suggestions while typing, per player
+    'topic': (30, timedelta(hours=1)),        # typed topics sent to the AI age check, per player
 }
 MAX_CHAT_MESSAGE = 500  # Characters
 MAX_NAME_LENGTH = 30  # For new names; players who signed up before the limit keep theirs
@@ -1390,9 +1391,24 @@ def quiz_settings_from_form():
     if category_id == any_topic.ANY_TOPIC:
         # Only a real Wikipedia article is accepted, so the quiz has a source (any_topic.py)
         typed = any_topic.clean_query(request.form.get('topic'))
+        user = current_user()
+        if user and over_limit('topic', user.id):
+            flash(_("You're going a bit fast. Please wait a few minutes and try again."), "warning")
+            return None
         topic = resolve_topic(typed) if len(typed) >= any_topic.MIN_QUERY else None
         if not topic:
             flash(_("We couldn't find a Wikipedia article for that topic. Pick one of the suggestions."), "warning")
+            return None
+        # The AI rates who the topic is for; the difficulty says who is playing (any_topic.allowed)
+        try:
+            audience = check_topic_audience(topic)
+        except Exception as error:
+            save_error(error)
+            flash(_("We couldn't check that topic right now. Please try again in a moment."), "warning")
+            return None
+        if not any_topic.allowed(audience, DIFFICULTY_OPTIONS.get(difficulty_id)):
+            flash(_("This topic can't be played here. Try another one.") if audience == 'never' or audience not in any_topic.AUDIENCES
+                  else _("This topic is for older players. Choose a harder level or another topic."), "warning")
             return None
         category_name = None
     else:

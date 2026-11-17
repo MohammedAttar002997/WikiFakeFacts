@@ -54,6 +54,10 @@ class RoundCheck(BaseModel):
 class QuizCheck(BaseModel):
     rounds: list[RoundCheck]
 
+class TopicCheck(BaseModel):
+    analysis: str  # A sentence or two of reasoning first (not shown)
+    audience: Literal['children', 'teens', 'adults', 'never']
+
 class FakeCheck(BaseModel):
     # Separate yes/no answers instead of one label: with a single label the model mixed the questions up and turned
     # down fakes its own reason called false. The verdict is worked out from these in player_fakes.verdict().
@@ -137,6 +141,33 @@ def suggest_topics(query):
     except Exception as e:
         print(f"Wikipedia suggestions failed for '{query}': {e!r}")
         return []
+
+
+@lru_cache(maxsize=1024)
+def check_topic_audience(title):
+    """Who a quiz about this Wikipedia article is suitable for: 'children' (7-12), 'teens' (13-17), 'adults' or
+    'never' (any_topic.allowed decides what that means for a difficulty). Raises when the check can't run, so an
+    unchecked topic is never played. Cached: the same article gets the same answer."""
+    if not OPEN_AI_KEY:
+        raise RuntimeError("OpenAI API key is required.")
+    client = OpenAI(api_key=OPEN_AI_KEY)
+    response = client.beta.chat.completions.parse(model=CHECK_MODEL, response_format=TopicCheck, messages=[
+        {"role": "system", "content": (
+            "A trivia game for all ages makes a quiz of facts from a Wikipedia article a player chose. Rate who a quiz "
+            "about the article's subject is suitable for, judging the subject itself (most facts will come from the "
+            "article). 'children' (ages 7-12): fine for primary-school pupils, which covers most science, nature, "
+            "places, history, sport, arts, people and inventions, including wars, diseases or disasters treated as "
+            "history. 'teens' (13-17): fine for secondary school but not young children, for example drugs, crime, "
+            "terrorism, genocide, suicide or adult relationships as a historical or social subject. 'adults': only for "
+            "grown-ups, for example sexual topics, pornography, explicit violence or gore, or detailed drug use. "
+            "'never': the subject's main point is sexual content involving minors, sexual violence, glorifying hate, "
+            "or instructions for causing harm. Write a short analysis first, then the audience.")},
+        {"role": "user", "content": f"Wikipedia article: {title}"},
+    ])
+    parsed = response.choices[0].message.parsed
+    if parsed is None:
+        raise ValueError("The topic check returned nothing")
+    return parsed.audience
 
 
 def resolve_topic(title):

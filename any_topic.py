@@ -3,9 +3,16 @@
 On the setup page a player can type any topic instead of picking a category. Suggestions come from Wikipedia's
 search as they type (data.suggest_topics), and before a quiz is made the topic must resolve to a real article
 (data.resolve_topic): free text is never handed to the AI as a "topic", so every quiz still has a source.
-This module reads what Wikipedia's API answers; the requests themselves are in data.py.
+A topic that resolves is then rated by the AI for its audience (children, teens, adults or never) and only played
+at a difficulty whose age group fits (allowed): the quiz's difficulty already says who is playing.
+This module reads what Wikipedia's API and the AI answer; the requests themselves are in data.py.
 """
 import re
+
+# The audience the AI gives a typed topic (data.check_topic_audience), youngest first; 'never' is never played
+AUDIENCES = ('children', 'teens', 'adults', 'never')
+# The youngest players each difficulty is for, as the highest audience it may play (the labels say the ages)
+ALLOWED_UP_TO = {'Easy (Ages 7-12)': 'children', 'Medium (Ages 13-17)': 'teens', 'Hard (Ages 18-99)': 'adults'}
 
 MIN_QUERY = 2      # Characters before suggestions are asked for
 MAX_QUERY = 80
@@ -16,6 +23,15 @@ ANY_TOPIC = 'topic'  # The setup form's category value for "Any topic"
 def clean_query(text):
     """What the player typed, tidied: one line, single spaces, at most MAX_QUERY characters."""
     return re.sub(r'\s+', ' ', text or '').strip()[:MAX_QUERY]
+
+
+def allowed(audience, difficulty):
+    """Whether a topic the AI rated `audience` may be played at `difficulty`. Unknown ratings and difficulties are
+    treated as the strictest case, so a surprise answer never lets a topic through."""
+    if audience not in AUDIENCES or audience == 'never':
+        return False
+    limit = ALLOWED_UP_TO.get(difficulty, 'children')
+    return AUDIENCES.index(audience) <= AUDIENCES.index(limit)
 
 
 def suggestions(answer):

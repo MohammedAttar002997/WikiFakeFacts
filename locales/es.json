@@ -706,5 +706,8 @@
   "+{n} league points": "+{n} puntos de liga",
   "Bronze": "Bronce",
   "Silver": "Plata",
-  "Diamond": "Diamante"
+  "Diamond": "Diamante",
+  "We couldn't check that topic right now. Please try again in a moment.": "No pudimos comprobar ese tema ahora. Inténtalo de nuevo en un momento.",
+  "This topic can't be played here. Try another one.": "Este tema no se puede jugar aquí. Prueba con otro.",
+  "This topic is for older players. Choose a harder level or another topic.": "Este tema es para jugadores mayores. Elige un nivel más difícil u otro tema."
 }
