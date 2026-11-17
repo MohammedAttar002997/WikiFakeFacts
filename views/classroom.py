@@ -1,12 +1,14 @@
 """Classroom mode (rules in classroom.py): the teacher's board (/class/<code>/board), students joining with a code
 and a nickname (/join, /class/<code>), and the JSON both pages poll (/class/<code>/state). Routes register on the app
 when app.py imports this."""
+import csv
+import io
 import json
 import random
 import secrets
 from datetime import timedelta
 
-from flask import abort, flash, jsonify, redirect, render_template, request, session, url_for
+from flask import Response, abort, flash, jsonify, redirect, render_template, request, session, url_for
 from sqlalchemy import update
 from sqlalchemy.exc import IntegrityError
 
@@ -14,6 +16,7 @@ import app as core
 import classroom as rules
 import ready_pool
 from app import (app, current_user, db, quiz_generation_allowed, quiz_settings_from_form, report_failure)
+from default_text import TOPICS
 from models import ClassPlayer, ClassRoom
 from translations import translate as _
 from views.timers import take_ready_quiz
@@ -37,9 +40,17 @@ def require_teacher(room):
 
 
 def my_seat(room):
-    """This visitor's ClassPlayer in the room, or None."""
-    token = session.get(SEATS, {}).get(room.code)
-    return ClassPlayer.query.filter_by(room_id=room.id, token=token).first() if token else None
+    """This visitor's ClassPlayer in the room, or None. A student who followed "play again" to a new room has no
+    seat recorded for it yet, but their token was copied into it: they're found by that and the seat is recorded."""
+    seats = session.get(SEATS, {})
+    token = seats.get(room.code)
+    if token:
+        return ClassPlayer.query.filter_by(room_id=room.id, token=token).first()
+    tokens = list(seats.values())
+    seat = ClassPlayer.query.filter(ClassPlayer.room_id == room.id, ClassPlayer.token.in_(tokens)).first() if tokens else None
+    if seat:
+        session[SEATS] = {**seats, room.code: seat.token}
+    return seat
 
 
 def forget_old_rooms(now):
@@ -63,6 +74,13 @@ def class_new():
     if not settings or not quiz_generation_allowed(user):
         return redirect(url_for('setup'))
     topic, difficulty, rounds, language_name, category, surprise = settings
+    room = open_room(user, topic, difficulty, rounds, language_name, category, surprise)
+    return redirect(url_for('class_board', code=room.code) if room else url_for('setup'))
+
+
+def open_room(user, topic, difficulty, rounds, language_name, category, surprise, players=()):
+    """A new room with a ready-made quiz when there is one, else a freshly made one; None (after saying why) when
+    the quiz couldn't be made. `players` (from "play again") are seated in it at once, with their scores at 0."""
     now = core.utcnow()
     forget_old_rooms(now)
     ready = take_ready_quiz(ready_pool.Kind(category, difficulty, rounds, language_name), any_category=surprise)
@@ -74,20 +92,63 @@ def class_new():
             quiz = core.get_ai_response(rounds, topic, difficulty, language_name)
         except Exception as e:
             report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
-            return redirect(url_for('setup'))
+            return None
         questions, explanations, source_url = quiz.rounds, quiz.explanations, quiz.source_url
+    settings = json.dumps({'category': category, 'surprise': surprise, 'rounds': rounds})
     for _attempt in range(5):
         room = ClassRoom(code=rules.make_code(secrets.SystemRandom()), host_id=user.id, topic=topic[:100],
                          difficulty=difficulty, language=language_name, source_url=source_url,
                          questions_json=json.dumps(questions), explanations_json=json.dumps(explanations),
-                         state='lobby', current_round=0, created_at=now)
+                         state='lobby', current_round=0, created_at=now, settings_json=settings)
         db.session.add(room)
         try:
-            db.session.commit()
-            return redirect(url_for('class_board', code=room.code))
+            db.session.flush()
         except IntegrityError:
             db.session.rollback()  # That code is taken: draw another
+            continue
+        for nickname, token in players:
+            db.session.add(ClassPlayer(room_id=room.id, token=token, nickname=nickname, joined_at=now))
+        db.session.commit()
+        return room
     abort(500)
+
+
+@app.route('/class/<code>/again', methods=['POST'])
+def class_again(code):
+    """Play again with the same class: a new quiz with the same choices, everyone already seated. Their pages move
+    to the new room on their own (the old room's state names it)."""
+    room = room_or_404(code)
+    user = require_teacher(room)
+    if room.next_code:
+        return jsonify(board=url_for('class_board', code=room.next_code))
+    if room.state != 'finished' or not room.settings_json or not quiz_generation_allowed(user):
+        return jsonify(ok=False), 409
+    settings = json.loads(room.settings_json)
+    category, topic = rules.next_topic(settings, TOPICS, random.SystemRandom())
+    players = [(p.nickname, p.token) for p in ClassPlayer.query.filter_by(room_id=room.id).order_by(ClassPlayer.id)]
+    new_room = open_room(user, topic, room.difficulty, settings['rounds'], room.language, category,
+                         settings.get('surprise', False), players)
+    if not new_room:
+        return jsonify(ok=False), 503
+    room.next_code = new_room.code
+    db.session.commit()
+    return jsonify(board=url_for('class_board', code=new_room.code))
+
+
+@app.route('/class/<code>/results.csv')
+def class_results(code):
+    """The teacher's results download: rank, nickname, score and points per round for every student."""
+    room = room_or_404(code)
+    require_teacher(room)
+    players = ClassPlayer.query.filter_by(room_id=room.id).order_by(ClassPlayer.id).all()
+    rows = rules.results_table(len(json.loads(room.questions_json)),
+                               [(p.nickname, p.score, json.loads(p.answers_json)) for p in players])
+    out = io.StringIO()
+    out.write('\ufeff')  # So Excel reads the nicknames as UTF-8
+    csv.writer(out).writerows(rows)
+    filename = f'wikifakefact-class-{room.code}-{room.created_at:%Y-%m-%d}.csv'
+    return Response(out.getvalue(), mimetype='text/csv',
+                    headers={'Content-Disposition': f'attachment; filename="{filename}"', 'Cache-Control': 'no-store'})
 
 
 @app.route('/class/<code>/board')
@@ -193,7 +254,8 @@ def class_state(code):
     answered = sum(1 for a in picks if a)
     phase, left = rules.phase(room.state, room.round_started_at, now, answered, len(players))
     payload = {'phase': phase, 'seconds': round(left, 1), 'round': index + 1, 'rounds': len(questions),
-               'players': len(players), 'answered': answered}
+               'players': len(players), 'answered': answered, 'next': room.next_code,
+               'can_play_again': teacher and bool(room.settings_json)}
     if phase == 'lobby':
         payload['lobby'] = [{'id': p.id, 'nickname': p.nickname} for p in players] if teacher else None
     if phase in ('question', 'reveal'):

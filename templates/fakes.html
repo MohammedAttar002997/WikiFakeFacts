@@ -14,6 +14,23 @@
             <p>{{ _('Fakes written by players, hidden among three true facts. To write one, finish a quiz and pick a round in its answer review.') }}</p>
         </div>
 
+        {% if top %}
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="section-label mb-2"><i class="bi bi-trophy-fill text-brand fs-4"></i>{{ _('Top fakers') }}</div>
+            <ol class="list-unstyled d-flex flex-column gap-2 mb-0">
+                {% for player, fooled, count in top %}
+                <li class="d-flex align-items-center gap-2">
+                    <span class="fw-black text-muted" style="width: 1.5rem">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 else loop.index }}</span>
+                    {{ avatar(player, 'sm') }}
+                    <a class="fw-bold text-truncate flex-grow-1 min-w-0 text-reset" href="{{ url_for('player_profile', user_id=player.id) }}">{{ player.username }}</a>
+                    <span class="small text-muted text-nowrap">{{ _('fooled {players}').format(players=_n('{n} player', '{n} players', fooled)) }}</span>
+                </li>
+                {% endfor %}
+            </ol>
+            <p class="small text-muted mt-2 mb-0">{{ _('Fool 10 players with your fakes to earn the Master faker badge.') }}</p>
+        </div>
+        {% endif %}
+
         <ul class="nav seg mb-3" aria-label="{{ _('Sort') }}">
             {% for value, label in [('new', _('Newest')), ('tricky', _('Trickiest'))] %}
             <li class="nav-item">

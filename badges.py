@@ -5,7 +5,7 @@ from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 
 from default_text import TOPICS
-from models import db, utcnow, Score, QuizSession, UserBadge
+from models import db, utcnow, PlayerFake, Score, QuizSession, UserBadge
 
 TOPIC_CATEGORY = {topic: category for category, topics in TOPICS.items() for topic in topics}
 
@@ -23,7 +23,10 @@ BADGES = [
     {'key': 'event', 'icon': '🎪', 'name': 'Event regular', 'description': 'Finish 3 quizzes of one weekly event.'},
     {'key': 'custom', 'icon': '📄', 'name': 'Bring your own', 'description': 'Finish a quiz made from your own content.'},
     {'key': 'comeback', 'icon': '📈', 'name': 'Comeback', 'description': 'Score 80% or more on a topic where you once scored under 50%.'},
+    {'key': 'fake_writer', 'icon': '✍️', 'name': 'Fake writer', 'description': 'Share your first player fake.'},
+    {'key': 'master_faker', 'icon': '🎭', 'name': 'Master faker', 'description': 'Fool 10 players with your fakes.'},
 ]
+MASTER_FAKER_FOOLED = 10  # Players fooled, over all of a player's fakes
 BADGES_BY_KEY = {b['key']: b for b in BADGES}
 
 
@@ -43,10 +46,15 @@ def compute_streaks(play_dates, today=None):
     return current, best
 
 
-def earned_badge_keys(scores, daily_completed, today=None, most_event_quizzes=0):
+def earned_badge_keys(scores, daily_completed, today=None, most_event_quizzes=0, fakes_written=0, players_fooled=0):
     """Every badge the given scores qualify for. `scores` must be oldest first; `most_event_quizzes` is the most
-    quizzes the player has finished in any one weekly event."""
+    quizzes the player has finished in any one weekly event; `fakes_written` and `players_fooled` count the
+    player's public player fakes and how many players those fooled in all."""
     earned = set()
+    if fakes_written:
+        earned.add('fake_writer')
+    if players_fooled >= MASTER_FAKER_FOOLED:
+        earned.add('master_faker')
     if not scores:
         return earned
     earned.add('first_quiz')
@@ -94,8 +102,12 @@ def award_badges(user):
                             QuizSession.event_week.isnot(None))
                     .group_by(QuizSession.event_week).all())
     most_event_quizzes = max((count for (count,) in event_counts), default=0)
+    fakes_written, players_fooled = (db.session.query(func.count(PlayerFake.id), func.coalesce(func.sum(PlayerFake.fooled), 0))
+                                     .filter(PlayerFake.user_id == user.id, PlayerFake.status.is_(None)).one())
     have = {b.badge for b in UserBadge.query.filter_by(user_id=user.id)}
-    new_keys = [b['key'] for b in BADGES if b['key'] in earned_badge_keys(scores, daily_completed, most_event_quizzes=most_event_quizzes) - have]
+    earned = earned_badge_keys(scores, daily_completed, most_event_quizzes=most_event_quizzes,
+                               fakes_written=fakes_written, players_fooled=players_fooled)
+    new_keys = [b['key'] for b in BADGES if b['key'] in earned - have]
     if not new_keys:
         return []
     for key in new_keys:
