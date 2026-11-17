@@ -3,17 +3,19 @@ import math
 import os
 import re
 from collections import Counter
-from functools import cache
+from functools import cache, lru_cache
 from typing import Literal, NamedTuple
 from urllib.parse import quote
 
 import numpy as np
+import requests
 import wikipedia
 from langchain_openai import OpenAIEmbeddings
 from openai import OpenAI
 from pydantic import BaseModel
 from dotenv import load_dotenv
 
+import any_topic
 from models import db, KnowledgeChunk
 
 # override=True so a debug-server reload picks up a changed .env
@@ -113,6 +115,39 @@ def fetch_local_knowledge(topic):
         print(f"Knowledge-base search failed for '{topic}': {e!r}")
     article = load_knowledge_base().get(topic, "")
     return (article, "Knowledge base") if article else ("", "")
+
+
+WIKIPEDIA_API = 'https://en.wikipedia.org/w/api.php'
+WIKIPEDIA_HEADERS = {'User-Agent': 'WikiFakeFact quiz game (python-requests)'}  # Wikipedia asks clients to say who they are
+
+
+def wikipedia_api(**params):
+    """One read-only call to Wikipedia's API, as JSON. Raises on network trouble or a bad answer."""
+    response = requests.get(WIKIPEDIA_API, params={'format': 'json', **params}, headers=WIKIPEDIA_HEADERS, timeout=4)
+    response.raise_for_status()
+    return response.json()
+
+
+@lru_cache(maxsize=512)
+def suggest_topics(query):
+    """Article titles Wikipedia suggests for what the player typed so far ([] when it can't be asked)."""
+    try:
+        return any_topic.suggestions(wikipedia_api(action='opensearch', search=query, namespace=0,
+                                                   limit=any_topic.MAX_SUGGESTIONS))
+    except Exception as e:
+        print(f"Wikipedia suggestions failed for '{query}': {e!r}")
+        return []
+
+
+def resolve_topic(title):
+    """The real article behind a typed topic (redirects followed), or None if there isn't one. A quiz is only made
+    for a topic that resolves, so free text never reaches the AI as a topic."""
+    try:
+        return any_topic.resolved_title(wikipedia_api(action='query', titles=title, redirects=1, prop='pageprops',
+                                                      ppprop='disambiguation', formatversion=2))
+    except Exception as e:
+        print(f"Wikipedia lookup failed for '{title}': {e!r}")
+        return None
 
 
 def fetch_wikipedia_article(query):

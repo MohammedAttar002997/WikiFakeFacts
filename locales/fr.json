@@ -676,5 +676,11 @@
   "Glasses": "Lunettes",
   "Bow tie": "Nœud papillon",
   "Pencil behind the ear": "Crayon derrière l'oreille",
-  "Star pin": "Broche étoile"
+  "Star pin": "Broche étoile",
+  "Any topic": "N'importe quel sujet",
+  "Search Wikipedia": "Chercher sur Wikipédia",
+  "What do you want to play about?": "Sur quel sujet voulez-vous jouer ?",
+  "For example: Black hole, Taylor Swift, Berlin…": "Par exemple : Trou noir, Taylor Swift, Berlin…",
+  "Pick a suggestion or type the exact name of a Wikipedia article.": "Choisissez une suggestion ou saisissez le nom exact d'un article de Wikipédia.",
+  "We couldn't find a Wikipedia article for that topic. Pick one of the suggestions.": "Nous n'avons pas trouvé d'article Wikipédia pour ce sujet. Choisissez l'une des suggestions."
 }

@@ -57,6 +57,25 @@
                             <span class="tile-sub">{{ _('Any category') }}</span>
                         </label>
                     </div>
+                    <div class="col-6 col-md-4 col-lg-3">
+                        <input class="tile-input" type="radio" name="category" id="catTopic" value="topic" required>
+                        <label class="tile" for="catTopic">
+                            <i class="bi bi-check-circle-fill tile-check"></i>
+                            <span class="tile-emoji">🔎</span>
+                            <span class="tile-title">{{ _('Any topic') }}</span>
+                            <span class="tile-sub">{{ _('Search Wikipedia') }}</span>
+                        </label>
+                    </div>
+                    {# Shown when "Any topic" is picked: suggestions come from /topics/suggest as the player types #}
+                    <div class="col-12" id="topicSearch" hidden>
+                        <label for="topicInput" class="form-label fw-bold">{{ _('What do you want to play about?') }}</label>
+                        <input type="text" class="form-control form-control-lg" id="topicInput" name="topic" list="topicOptions"
+                               maxlength="80" autocomplete="off" spellcheck="false"
+                               placeholder="{{ _('For example: Black hole, Taylor Swift, Berlin…') }}"
+                               data-suggest-url="{{ url_for('topic_suggestions') }}">
+                        <datalist id="topicOptions"></datalist>
+                        <div class="form-text">{{ _('Pick a suggestion or type the exact name of a Wikipedia article.') }}</div>
+                    </div>
                     <div class="col-12 col-md-4 col-lg-12">
                         <a class="tile tile-link" href="/custom_quiz">
                             <span class="tile-emoji">📄</span>
@@ -108,4 +127,41 @@
         </form>
     </div>
 </div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    // "Any topic": show the search box when its tile is picked, and fill its suggestions from Wikipedia while typing
+    (function () {
+        const box = document.getElementById('topicSearch');
+        const input = document.getElementById('topicInput');
+        const options = document.getElementById('topicOptions');
+        if (!box) return;
+        const form = input.form;
+        function sync() {
+            const on = form.querySelector('input[name="category"]:checked')?.value === 'topic';
+            box.hidden = !on;
+            input.required = on;
+            if (on) input.focus();
+        }
+        form.querySelectorAll('input[name="category"]').forEach(radio => radio.addEventListener('change', sync));
+        sync();
+        let timer = null, latest = '';
+        input.addEventListener('input', () => {
+            clearTimeout(timer);
+            const query = input.value.trim();
+            if (query.length < 2) { options.innerHTML = ''; return; }
+            timer = setTimeout(async () => {
+                latest = query;
+                try {
+                    const response = await fetch(input.dataset.suggestUrl + '?q=' + encodeURIComponent(query));
+                    const data = await response.json();
+                    if (latest !== query) return;  // An answer to something typed earlier
+                    options.innerHTML = '';
+                    data.topics.forEach(title => { const option = document.createElement('option'); option.value = title; options.appendChild(option); });
+                } catch (e) { /* no suggestions; the typed name is still checked on submit */ }
+            }, 250);
+        });
+    })();
+</script>
 {% endblock %}

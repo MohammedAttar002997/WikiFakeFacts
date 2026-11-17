@@ -83,7 +83,8 @@ def open_room(user, topic, difficulty, rounds, language_name, category, surprise
     the quiz couldn't be made. `players` (from "play again") are seated in it at once, with their scores at 0."""
     now = core.utcnow()
     forget_old_rooms(now)
-    ready = take_ready_quiz(ready_pool.Kind(category, difficulty, rounds, language_name), any_category=surprise)
+    ready = (take_ready_quiz(ready_pool.Kind(category, difficulty, rounds, language_name), any_category=surprise)
+             if category else None)
     if ready:
         topic, questions, explanations, source_url = (ready.topic, json.loads(ready.questions_json),
                                                       json.loads(ready.explanations_json), ready.source_url)
@@ -94,7 +95,9 @@ def open_room(user, topic, difficulty, rounds, language_name, category, surprise
             report_failure(_("We couldn't create your quiz right now. Please try again in a moment."), e)
             return None
         questions, explanations, source_url = quiz.rounds, quiz.explanations, quiz.source_url
-    settings = json.dumps({'category': category, 'surprise': surprise, 'rounds': rounds})
+    # With "Any topic" there's no category; playing again asks for another quiz on the same topic
+    settings = json.dumps({'category': category, 'surprise': surprise, 'rounds': rounds,
+                           **({} if category else {'topic': topic})})
     for _attempt in range(5):
         room = ClassRoom(code=rules.make_code(secrets.SystemRandom()), host_id=user.id, topic=topic[:100],
                          difficulty=difficulty, language=language_name, source_url=source_url,

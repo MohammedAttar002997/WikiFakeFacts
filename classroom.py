@@ -91,7 +91,10 @@ def results_table(rounds, players):
 
 
 def next_topic(settings, topics, rng):
-    """A fresh topic for "play again": from the same category, or any category for "Surprise me"."""
+    """A fresh topic for "play again": from the same category, or any category for "Surprise me". A class that
+    played a topic the teacher typed gets a new quiz on that same topic (there's no category to draw from)."""
+    if settings.get('topic'):
+        return None, settings['topic']
     category = rng.choice(sorted(topics)) if settings.get('surprise') else settings['category']
     return category, rng.choice(topics[category])
 

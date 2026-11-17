@@ -46,10 +46,13 @@ def compute_streaks(play_dates, today=None):
     return current, best
 
 
-def earned_badge_keys(scores, daily_completed, today=None, most_event_quizzes=0, fakes_written=0, players_fooled=0):
+def earned_badge_keys(scores, daily_completed, today=None, most_event_quizzes=0, fakes_written=0, players_fooled=0,
+                      own_content_topics=None):
     """Every badge the given scores qualify for. `scores` must be oldest first; `most_event_quizzes` is the most
     quizzes the player has finished in any one weekly event; `fakes_written` and `players_fooled` count the
-    player's public player fakes and how many players those fooled in all."""
+    player's public player fakes and how many players those fooled in all; `own_content_topics` are the topics of
+    quizzes made from the player's own uploads (when not given, any topic outside the built-in list counts, as it
+    did before players could type any Wikipedia topic)."""
     earned = set()
     if fakes_written:
         earned.add('fake_writer')
@@ -79,7 +82,9 @@ def earned_badge_keys(scores, daily_completed, today=None, most_event_quizzes=0,
         earned.add('daily')
     if most_event_quizzes >= 3:
         earned.add('event')
-    if any(s.topic not in TOPIC_CATEGORY for s in scores):
+    if own_content_topics is None:
+        own_content_topics = {s.topic for s in scores if s.topic not in TOPIC_CATEGORY}
+    if any(s.topic in own_content_topics for s in scores):
         earned.add('custom')
 
     struggled = set()
@@ -104,9 +109,14 @@ def award_badges(user):
     most_event_quizzes = max((count for (count,) in event_counts), default=0)
     fakes_written, players_fooled = (db.session.query(func.count(PlayerFake.id), func.coalesce(func.sum(PlayerFake.fooled), 0))
                                      .filter(PlayerFake.user_id == user.id, PlayerFake.status.is_(None)).one())
+    # Quizzes from uploads have no Wikipedia article; a topic typed on the setup page does
+    own_content_topics = {topic for (topic,) in db.session.query(QuizSession.topic).filter(
+        QuizSession.user_id == user.id, QuizSession.is_completed.is_(True), QuizSession.source_url.is_(None))
+        if topic not in TOPIC_CATEGORY}
     have = {b.badge for b in UserBadge.query.filter_by(user_id=user.id)}
     earned = earned_badge_keys(scores, daily_completed, most_event_quizzes=most_event_quizzes,
-                               fakes_written=fakes_written, players_fooled=players_fooled)
+                               fakes_written=fakes_written, players_fooled=players_fooled,
+                               own_content_topics=own_content_topics)
     new_keys = [b['key'] for b in BADGES if b['key'] in earned - have]
     if not new_keys:
         return []

@@ -676,5 +676,11 @@
   "Glasses": "نظارات",
   "Bow tie": "ربطة عنق فراشية",
   "Pencil behind the ear": "قلم خلف الأذن",
-  "Star pin": "دبوس نجمة"
+  "Star pin": "دبوس نجمة",
+  "Any topic": "أي موضوع",
+  "Search Wikipedia": "ابحث في ويكيبيديا",
+  "What do you want to play about?": "عن ماذا تريد أن تلعب؟",
+  "For example: Black hole, Taylor Swift, Berlin…": "مثلًا: الثقب الأسود، تايلور سويفت، برلين…",
+  "Pick a suggestion or type the exact name of a Wikipedia article.": "اختر اقتراحًا أو اكتب الاسم الدقيق لمقالة في ويكيبيديا.",
+  "We couldn't find a Wikipedia article for that topic. Pick one of the suggestions.": "لم نعثر على مقالة في ويكيبيديا لهذا الموضوع. اختر أحد الاقتراحات."
 }
