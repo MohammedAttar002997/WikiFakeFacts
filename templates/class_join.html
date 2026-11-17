@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{# Students type the code from the teacher's board (views/classroom.py). #}
+{% block title %}{{ _('Join a class game') }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-7 col-lg-5">
+        <div class="wf-card wf-card-pad text-center">
+            <div class="display-5 mb-2">🏫</div>
+            <h1 class="h3 fw-black">{{ _('Join a class game') }}</h1>
+            <p class="text-muted">{{ _('Type the code shown on the board.') }}</p>
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <label for="code" class="visually-hidden">{{ _('Game code') }}</label>
+                <input type="text" class="form-control form-control-lg text-center class-code-input mb-3" id="code" name="code"
+                       autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="10" required autofocus
+                       placeholder="ABC123">
+                <button type="submit" class="btn btn-primary btn-lg w-100"><i class="bi bi-box-arrow-in-right me-1"></i>{{ _('Join') }}</button>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}

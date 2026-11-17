@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+
+{# A student's screen in a class game (views/classroom.py): pick a nickname, then follow the teacher's board. The page
+   asks /class/<code>/state every poll_ms and shows the phase: lobby, question, reveal or finished. #}
+{% block title %}{{ _('Class game') }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="wf-card wf-card-pad class-card">
+            <div class="quiz-top">
+                <div class="quiz-counter"><i class="bi bi-easel2-fill me-1"></i>{{ _('Class game') }}</div>
+                <span class="chip chip-brand"><i class="bi bi-tag-fill"></i>{{ room.topic }}</span>
+            </div>
+
+            {% if not seat %}
+            <div class="text-center py-3">
+                <div class="display-5 mb-2">👋</div>
+                <h1 class="h3 fw-black">{{ _('Pick a nickname') }}</h1>
+                <p class="text-muted">{{ _('Your teacher will see it on the board. No account needed, and it is deleted after the game.') }}</p>
+                <form method="POST" class="mx-auto" style="max-width: 22rem">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <label for="nickname" class="visually-hidden">{{ _('Nickname') }}</label>
+                    <input type="text" class="form-control form-control-lg text-center mb-2{% if problem %} is-invalid{% endif %}"
+                           id="nickname" name="nickname" maxlength="{{ nickname_length }}" required autofocus autocomplete="off"
+                           {% if problem %}aria-describedby="nicknameProblem"{% endif %}>
+                    {% if problem %}<div class="invalid-feedback mb-2" id="nicknameProblem">{{ problem }}</div>{% endif %}
+                    <button type="submit" class="btn btn-primary btn-lg w-100">{{ _("I'm in!") }}</button>
+                </form>
+            </div>
+            {% else %}
+            <div id="classGame" data-state-url="{{ url_for('class_state', code=room.code) }}"
+                 data-answer-url="{{ url_for('class_answer', code=room.code) }}" data-poll-ms="{{ poll_ms }}"
+                 data-round-seconds="{{ round_seconds }}">
+                <p class="text-center small text-muted mb-3">{{ _('Playing as {name}').format(name=seat.nickname) }} · <span data-me-score>0</span> {{ _('points') }}</p>
+
+                <div class="text-center py-4" data-phase="lobby" hidden>
+                    <div class="display-5 mb-2">⏳</div>
+                    <h1 class="h4 fw-black">{{ _("You're in!") }}</h1>
+                    <p class="text-muted mb-0"><span class="spinner-grow spinner-grow-sm text-brand me-2" aria-hidden="true"></span>{{ _('Wait for your teacher to start the game.') }}</p>
+                </div>
+
+                <div data-phase="question reveal" hidden>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-black" data-round-label></span>
+                        <span class="chip" data-timer-chip><i class="bi bi-stopwatch"></i><span data-timer></span></span>
+                    </div>
+                    <p class="text-muted mb-3">{{ _('Three of these are true. Which one is the fake?') }}</p>
+                    <div class="d-flex flex-column gap-2 mb-3" data-options></div>
+                    <div class="tip" data-result hidden></div>
+                    <p class="text-center text-muted small mb-0" data-wait hidden>{{ _('Answer locked. Look at the board!') }}</p>
+                </div>
+
+                <div class="text-center py-4" data-phase="finished" hidden>
+                    <div class="display-5 mb-2">🏁</div>
+                    <h1 class="h4 fw-black">{{ _('Game over!') }}</h1>
+                    <p class="lead mb-0" data-final></p>
+                </div>
+                <p class="text-center text-danger small mt-3 mb-0" data-offline hidden>{{ _('Connection lost. Trying again…') }}</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if seat %}
+<script>
+    (function () {
+        const T = {{ {
+            'round': _('Round {n} of {total}'),
+            'right': _('Right! +{points} points'),
+            'wrong': _('Not this time. The fake was: {fake}'),
+            'missed': _('Time ran out. The fake was: {fake}'),
+            'final': _('You scored {score} points and finished #{rank}.'),
+        }|tojson }};
+        const root = document.getElementById('classGame');
+        const $ = s => root.querySelector(s);
+        const fill = (text, values) => text.replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m));
+        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+        let state = null, deadline = 0, failures = 0, sending = false, drawn = null;
+
+        function show(phase) {
+            root.querySelectorAll('[data-phase]').forEach(el => { el.hidden = !el.dataset.phase.split(' ').includes(phase); });
+        }
+
+        function drawOptions() {
+            const box = $('[data-options]');
+            const me = state.me || {};
+            // The tiles are made once per round (remaking them on every poll would restart their animation and
+            // lose focus); each poll only updates which is picked, the fake and whether they can be pressed
+            if (drawn !== state.round) {
+                drawn = state.round;
+                box.innerHTML = '';
+                state.options.forEach((option, i) => {
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'answer class-option answer-' + (i + 1);
+                    button.innerHTML = '<span class="letter"></span><span class="text"></span>';
+                    button.children[0].textContent = 'ABCD'[i];
+                    button.children[1].textContent = option;
+                    button.dataset.option = option;
+                    button.addEventListener('click', () => answer(option));
+                    box.appendChild(button);
+                });
+            }
+            box.querySelectorAll('button').forEach(button => {
+                const option = button.dataset.option;
+                const picked = me.pick === option;
+                button.classList.toggle('is-picked', picked);
+                if (state.phase === 'reveal') {
+                    button.classList.toggle('is-fake', option === state.fake);
+                    button.classList.toggle('is-wrong', picked && option !== state.fake);
+                }
+                button.disabled = state.phase !== 'question' || !!me.pick;
+            });
+            $('[data-wait]').hidden = !(state.phase === 'question' && me.pick);
+            const result = $('[data-result]');
+            result.hidden = state.phase !== 'reveal';
+            if (state.phase === 'reveal') {
+                result.textContent = me.correct ? fill(T.right, { points: me.points })
+                    : fill(me.pick ? T.wrong : T.missed, { fake: state.fake });
+            }
+        }
+
+        function draw() {
+            show(state.phase);
+            $('[data-me-score]').textContent = state.me ? state.me.score : 0;
+            if (state.phase === 'question' || state.phase === 'reveal') {
+                $('[data-round-label]').textContent = fill(T.round, { n: state.round, total: state.rounds });
+                $('[data-timer-chip]').hidden = state.phase !== 'question';
+                drawOptions();
+            }
+            if (state.phase === 'finished' && state.me) {
+                $('[data-final]').textContent = fill(T.final, { score: state.me.score, rank: state.me.rank });
+            }
+        }
+
+        setInterval(() => {
+            if (state && state.phase === 'question') $('[data-timer]').textContent = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        }, 250);
+
+        async function poll() {
+            try {
+                const response = await fetch(root.dataset.stateUrl, { headers: { Accept: 'application/json' } });
+                if (!response.ok) throw new Error(response.status);
+                state = await response.json();
+                deadline = Date.now() + state.seconds * 1000;
+                failures = 0;
+                $('[data-offline]').hidden = true;
+                draw();
+            } catch (e) {
+                if (++failures > 2) $('[data-offline]').hidden = false;
+            }
+            if (!state || state.phase !== 'finished') setTimeout(poll, Number(root.dataset.pollMs));
+        }
+
+        async function answer(option) {
+            if (!state || state.phase !== 'question' || (state.me && state.me.pick) || sending) return;
+            sending = true;
+            state.me = Object.assign({}, state.me, { pick: option });  // show it at once; the next poll confirms
+            drawOptions();
+            try {
+                await fetch(root.dataset.answerUrl, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
+                    body: JSON.stringify({ round: state.round, option })
+                });
+            } catch (e) { /* the next poll shows whether it counted */ }
+            sending = false;
+        }
+
+        poll();
+    })();
+</script>
+{% endif %}
+{% endblock %}

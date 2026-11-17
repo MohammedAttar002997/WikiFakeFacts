@@ -1285,6 +1285,47 @@ button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #e
 details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .chip-danger { background: var(--bs-danger-bg-subtle); color: var(--bs-danger-text-emphasis); }
 
+/* ---------- Classroom mode (board and student screen) ----------------------- */
+.class-code { font-size: clamp(2.6rem, 12vw, 5.5rem); font-weight: 900; letter-spacing: .12em; line-height: 1.1;
+    color: var(--wf-brand); font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.class-code-input { font-size: 1.6rem; font-weight: 900; letter-spacing: .15em; text-transform: uppercase; }
+.class-lobby { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; }
+.class-name { min-height: 44px; cursor: pointer; font-weight: 700; }
+.class-name:hover .bi-x, .class-name:focus-visible .bi-x { color: #ef4444; }
+.class-timer { font-size: 1.4rem; font-weight: 900; font-variant-numeric: tabular-nums; }
+.class-options { display: grid; gap: .75rem; }
+@media (min-width: 640px) { .class-options { grid-template-columns: 1fr 1fr; } }
+.class-board .class-option { --opt: var(--wf-opt-1); position: relative; overflow: hidden; display: flex; align-items: center;
+    gap: .85rem; padding: 1rem 1.1rem; border-radius: 1.1rem; border: 2px solid var(--wf-border);
+    background: var(--wf-surface); font-size: clamp(1rem, 1.8vw, 1.35rem); font-weight: 700; }
+.class-board .class-option.answer-2 { --opt: var(--wf-opt-2); }
+.class-board .class-option.answer-3 { --opt: var(--wf-opt-3); }
+.class-board .class-option.answer-4 { --opt: var(--wf-opt-4); }
+.class-board .class-option .letter { flex-shrink: 0; display: grid; place-items: center; width: 2.4rem; height: 2.4rem;
+    border-radius: .8rem; color: #fff; background: var(--opt); font-weight: 900; position: relative; z-index: 1; }
+.class-board .class-option .text { position: relative; z-index: 1; }
+.class-board .class-option .count { margin-inline-start: auto; font-weight: 900; font-size: 1.4rem; position: relative; z-index: 1; }
+.class-board .class-option .bar { position: absolute; inset-block: 0; inset-inline-start: 0; width: 0;
+    background: color-mix(in srgb, var(--opt) 16%, transparent); transition: width .6s ease; }
+.class-option.is-fake { border-color: #10b981 !important; box-shadow: 0 0 0 3px rgba(16, 185, 129, .25); }
+.class-card .class-option { width: 100%; text-align: start; height: auto; }
+.class-card .class-option:disabled { cursor: default; transform: none; }
+.class-card .class-option.is-picked { border-color: var(--opt); background: color-mix(in srgb, var(--opt) 12%, var(--wf-surface)); }
+.class-card .class-option.is-wrong { border-color: #ef4444; }
+.class-ranking { list-style: none; padding: 0; max-width: 32rem; }
+.class-ranking li { display: flex; align-items: center; gap: .75rem; padding: .45rem 0; border-bottom: 1px solid var(--wf-border); }
+.class-ranking .rank { width: 2rem; font-weight: 900; color: var(--wf-muted); }
+.class-ranking .name { flex: 1 1 auto; min-width: 0; font-weight: 700; overflow-wrap: anywhere; }
+.class-ranking .score { font-weight: 900; white-space: nowrap; }
+.class-podium { display: flex; justify-content: center; align-items: flex-end; gap: 1rem; flex-wrap: wrap; }
+.class-place { min-width: 8rem; max-width: 100%; padding: 1rem; border-radius: 1rem; background: var(--wf-surface-2);
+    border: 2px solid var(--wf-border); }
+.class-place .medal { font-size: 2.5rem; }
+.class-place .name { font-weight: 900; font-size: 1.2rem; overflow-wrap: anywhere; }
+.class-place.place-1 { order: 2; padding-block: 1.6rem; border-color: #f59e0b; }
+.class-place.place-2 { order: 1; }
+.class-place.place-3 { order: 3; }
+
 /* ---------- Player fakes (feed) ---------------------------------------------- */
 .fake-row { display: flex; align-items: center; gap: .85rem; padding: .85rem 1rem; color: inherit; text-decoration: none;
     min-height: 64px; }
