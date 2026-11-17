@@ -52,12 +52,15 @@ class RoundCheck(BaseModel):
 class QuizCheck(BaseModel):
     rounds: list[RoundCheck]
 
-FakeVerdict = Literal['ok', 'true', 'implausible', 'inappropriate', 'off_topic']
-
 class FakeCheck(BaseModel):
-    verdict: FakeVerdict
-    reason: str      # One short sentence for the author when it isn't 'ok'
-    correction: str  # One short sentence saying what is actually true, shown to players after they answer
+    # Separate yes/no answers instead of one label: with a single label the model mixed the questions up and turned
+    # down fakes its own reason called false. The verdict is worked out from these in player_fakes.verdict().
+    analysis: str            # A few sentences of reasoning first (not shown), which makes the answers below steadier
+    statement_is_true: bool  # True only if the source or well-known fact says the submitted statement is TRUE
+    on_topic: bool
+    believable: bool         # False only for obvious jokes or absurd claims
+    appropriate: bool
+    correction: str          # What is actually true, shown to players after they answer
 
 class TopicInsight(BaseModel):
     topic: str
@@ -279,14 +282,17 @@ def check_player_fake(fake, real_facts, topic, content, language="English"):
     client = OpenAI(api_key=OPEN_AI_KEY)
     response = client.beta.chat.completions.parse(model=CHECK_MODEL, response_format=FakeCheck, messages=[
         {"role": "system", "content": (
-            "Players of a quiz game write a fake fact to hide among three true facts about a topic; other players try "
-            "to spot it. You decide whether a submitted fake can be shared, using the source text where it helps. "
-            "Verdicts: 'true' if the source text (or well-known fact) says the statement is true, so it isn't a fake; "
-            "'off_topic' if it isn't about the topic; 'inappropriate' if it is offensive, hateful, sexual, about a "
-            "private person, or contains personal data; 'implausible' if it is obviously absurd or a joke nobody would "
-            "believe; otherwise 'ok'. Be generous with 'ok': a fake only needs to be false, on topic and believable. "
-            f"Write 'reason' (one short sentence to the author, empty for 'ok') and 'correction' (one short sentence "
-            f"saying what is actually true) in {language}.")},
+            "Players of a quiz game write a FAKE fact to hide among three true facts about a topic; other players try "
+            "to spot it. A submitted fake is supposed to be false: that is the point. Check it, using the source text "
+            "where it helps, and answer each question on its own.\n"
+            "- analysis: think it through in two or three short sentences.\n"
+            "- statement_is_true: true ONLY if the submitted statement is actually correct (the source or well-known "
+            "fact confirms it). If it is false, wrong or unsupported, answer false.\n"
+            "- on_topic: is it about the same subject as the true facts?\n"
+            "- believable: false ONLY for obvious jokes or absurd claims nobody would take seriously. A wrong number, "
+            "date, name, formula or detail is believable.\n"
+            "- appropriate: false if it is offensive, hateful, sexual, about a private person, or has personal data.\n"
+            f"- correction: one short sentence in {language} saying what is actually true.")},
         {"role": "user", "content": (
             f"Topic: {topic}\n\nThe three true facts:\n" + "\n".join(f"- {f}" for f in real_facts) +
             f"\n\nSubmitted fake: {fake}\n\nSource text:\n{passages or '(not available)'}")},

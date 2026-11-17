@@ -554,7 +554,6 @@
   "The AI checks that it is really false, on topic and friendly before anyone sees it. Everyone can play it in the community feed.": "يتحقق الذكاء الاصطناعي من أنها خاطئة فعلًا ومتعلقة بالموضوع ولائقة قبل أن يراها أحد. يمكن للجميع لعبها في صفحة المجتمع.",
   "The AI's fake was:": "كانت حقيقة الذكاء الاصطناعي المزيفة:",
   "The three true facts": "الحقائق الثلاث الصحيحة",
-  "This fake can't be shared. Try changing a different detail.": "لا يمكن مشاركة هذه الحقيقة المزيفة. جرّب تغيير تفصيل آخر.",
   "This fake fooled {fooled} of {players} ({pct}%).": "خدعت هذه الحقيقة المزيفة {fooled} من {players} ({pct}%).",
   "Trickiest": "الأكثر خداعًا",
   "We couldn't check your fake right now. Please try again in a moment.": "تعذّر التحقق من حقيقتك المزيفة الآن. يُرجى المحاولة بعد قليل.",
@@ -608,5 +607,9 @@
   "You're in!": "لقد انضممت!",
   "Your teacher will see it on the board. No account needed, and it is deleted after the game.": "سيراه معلمك على اللوح. لا تحتاج إلى حساب، ويُحذف بعد اللعبة.",
   "{answered} of {players} answered": "أجاب {answered} من {players}",
-  "{score} points": "{score} نقطة"
+  "{score} points": "{score} نقطة",
+  "The AI thinks this is actually true, so it can't be the fake. Change a detail so it becomes false.": "يرى الذكاء الاصطناعي أن هذا صحيح، لذا لا يمكن أن يكون الحقيقة المزيفة. غيّر تفصيلًا ليصبح خاطئًا.",
+  "This is not about the same topic as the true facts. Write a fake about the same subject.": "هذا ليس عن موضوع الحقائق الصحيحة نفسه. اكتب حقيقة مزيفة عن الموضوع نفسه.",
+  "This is too easy to spot. Make it believable: change a number, a date or a name.": "من السهل جدًا اكتشافها. اجعلها قابلة للتصديق: غيّر رقمًا أو تاريخًا أو اسمًا.",
+  "This fake can't be shared. Keep it friendly.": "لا يمكن مشاركة هذه الحقيقة المزيفة. حافظ على لطفها."
 }

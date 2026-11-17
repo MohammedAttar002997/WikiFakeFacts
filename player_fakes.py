@@ -34,6 +34,20 @@ def problem(fake, real_facts):
     return None
 
 
+def verdict(check):
+    """'ok' or why a checked fake can't be shared ('inappropriate', 'true', 'off_topic', 'implausible'), from the
+    AI's separate yes/no answers (data.FakeCheck). The most serious problem wins."""
+    if not check.appropriate:
+        return 'inappropriate'
+    if check.statement_is_true:
+        return 'true'
+    if not check.on_topic:
+        return 'off_topic'
+    if not check.believable:
+        return 'implausible'
+    return 'ok'
+
+
 def options(real_facts, fake, code):
     """The four statements in the order everyone sees them: shuffled, but the same each time for one fake."""
     statements = list(real_facts) + [fake]
