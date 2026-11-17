@@ -86,8 +86,11 @@ def save_live_scores(row, state):
         db.session.add(Score(user_id=user_id, topic=row.topic, difficulty=row.difficulty, score=correct,
                              total_questions=rounds, percentage=correct / rounds * 100, quiz_session_id=quiz.id))
     db.session.commit()
+    from views.leagues import join_league  # Imported here: views.leagues is loaded after this module
     for user_id in (row.host_id, row.guest_id):
-        award_badges(db.session.get(User, user_id))
+        player = db.session.get(User, user_id)
+        join_league(player)
+        award_badges(player)
 
 
 def live_payload(row, state, role, now):

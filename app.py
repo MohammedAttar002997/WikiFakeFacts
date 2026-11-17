@@ -45,6 +45,7 @@ import practice as practice_rules
 import fake_diff
 import outfits
 import any_topic
+import leagues
 
 
 # Vercel serves public/ from its CDN without starting the app; locally Flask serves the same files at /static
@@ -896,6 +897,7 @@ def delete_player_data(user, chat_id=None):
             {ReadyQuiz.quiz_session_id: None}, synchronize_session=False)
     fakes_views.delete_player_fakes(user)
     classroom_views.delete_rooms_of(user)
+    league_views.forget_player(user)
     for model in (PushSubscription, RoundReport, UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
@@ -1531,7 +1533,9 @@ def quiz():
                 db.session.add(final_score)
                 db.session.commit()
 
-                flash_new_badges(db.session.get(User, quiz_session.user_id))
+                player = db.session.get(User, quiz_session.user_id)
+                league_views.join_league(player)  # The first finished game of the week puts them in a league
+                flash_new_badges(player)
                 return answered('results', **result)
 
             db.session.commit()
@@ -1585,6 +1589,8 @@ def results():
                            share=None if is_practice else share_details(quiz_session),
                            challenge=challenge_comparison(quiz_session),
                            is_practice=is_practice, case_no=quiz_session.id,
+                           league_points=None if is_practice else leagues.points_for(quiz_session.difficulty,
+                                                                                    quiz_session.score),
                            practice_left=len(practice_pool(user)) if user else 0,
                            review=build_answer_review(quiz_session, opponent),
                            versus=versus_details(quiz_session, opponent),
@@ -2170,3 +2176,4 @@ if __name__ == '__main__':
 # Routes that live in their own modules register on `app` when imported, so this stays at the end of the file
 from views import admin as admin_views, live as live_views, timers, fakes as fakes_views  # noqa: E402,F401
 from views import classroom as classroom_views  # noqa: E402
+from views import leagues as league_views  # noqa: E402

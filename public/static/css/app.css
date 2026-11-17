@@ -1447,6 +1447,23 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
     .finn.mood-worried .finn-sweat { opacity: 1; }
 }
 
+/* Weekly league: the ladder of leagues and the lines where the moving zones begin and end */
+.league-ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }
+.league-step { display: flex; flex-direction: column; align-items: center; gap: .1rem; padding: .6rem .25rem; text-align: center;
+    border-radius: 1rem; border: 2px solid var(--wf-border); background: var(--wf-surface); opacity: .6; font-size: .9rem;
+    overflow-wrap: anywhere; }
+.league-step.is-mine { opacity: 1; border-color: var(--wf-brand); background: var(--wf-brand-soft); }
+.league-icon { font-size: 1.6rem; line-height: 1.2; }
+.league-line { display: flex; align-items: center; gap: .4rem; font-size: .8rem; font-weight: 800; text-transform: uppercase;
+    letter-spacing: .06em; }
+.league-line::after { content: ""; flex: 1 1 auto; border-top: 2px dashed currentColor; opacity: .5; }
+.league-line.is-up { color: #059669; }
+.league-line.is-down { color: #e11d48; }
+.rank-row.league-up { box-shadow: inset 4px 0 0 #059669; }
+.rank-row.league-down { box-shadow: inset 4px 0 0 #e11d48; }
+[dir="rtl"] .rank-row.league-up { box-shadow: inset -4px 0 0 #059669; }
+[dir="rtl"] .rank-row.league-down { box-shadow: inset -4px 0 0 #e11d48; }
+
 /* Finn's wardrobe on the account page */
 .wardrobe { display: grid; gap: 1rem; }
 .wardrobe-preview { width: 9rem; margin: 0 auto; }

@@ -277,6 +277,18 @@ class ClassPlayer(db.Model):
     score = db.Column(db.Integer, nullable=False, default=0)
     joined_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+class LeagueEntry(db.Model):
+    """A player in a week's league (rules in leagues.py): which tier and which group of it. Made when they finish
+    their first game of the week; their points are worked out from that week's scores, not stored."""
+    __table_args__ = (db.UniqueConstraint('user_id', 'week', name='uq_league_entry_user_week'),
+                      db.Index('ix_league_entry_group', 'week', 'tier', 'group_no'))
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    week = db.Column(db.String(8), nullable=False)  # ISO week, like '2026-W47'
+    tier = db.Column(db.Integer, nullable=False, default=0)  # Index into leagues.TIERS
+    group_no = db.Column(db.Integer, nullable=False, default=0)
+    joined_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""
