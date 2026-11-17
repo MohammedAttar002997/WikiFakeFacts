@@ -888,6 +888,7 @@ def delete_player_data(user, chat_id=None):
         ReadyQuiz.query.filter(ReadyQuiz.quiz_session_id.in_(own_quiz_ids)).update(
             {ReadyQuiz.quiz_session_id: None}, synchronize_session=False)
     fakes_views.delete_player_fakes(user)
+    classroom_views.delete_rooms_of(user)
     for model in (PushSubscription, RoundReport, UserBadge, PlayerAnalysis, Score, QuizSession, CustomContent):
         model.query.filter_by(user_id=user.id).delete()
     if chat_id:
@@ -2082,3 +2083,4 @@ if __name__ == '__main__':
 
 # Routes that live in their own modules register on `app` when imported, so this stays at the end of the file
 from views import admin as admin_views, live as live_views, timers, fakes as fakes_views  # noqa: E402,F401
+from views import classroom as classroom_views  # noqa: E402

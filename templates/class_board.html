@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+
+{# The teacher's board for a class game (views/classroom.py), meant for a projector. It asks /class/<code>/state every
+   poll_ms and shows the phase: lobby (code and who joined), question, reveal (how the class answered) or finished. #}
+{% block title %}{{ _('Class game') }} · WikiFakeFact{% endblock %}
+
+{% block content %}
+<div class="class-board" id="classBoard" data-state-url="{{ url_for('class_state', code=room.code) }}"
+     data-action-url="{{ url_for('class_action', code=room.code, action='ACTION') }}"
+     data-kick-url="{{ url_for('class_kick', code=room.code, player_id=0) }}" data-poll-ms="{{ poll_ms }}">
+    <div class="quiz-top mb-3">
+        <div class="quiz-counter"><i class="bi bi-easel2-fill me-1"></i>{{ _('Class game') }}</div>
+        <div class="d-flex flex-wrap gap-2">
+            <span class="chip chip-brand"><i class="bi bi-tag-fill"></i>{{ room.topic }}</span>
+            <span class="chip"><i class="bi bi-people-fill"></i><span data-players>0</span></span>
+        </div>
+    </div>
+
+    {# lobby #}
+    <div class="wf-card wf-card-pad text-center" data-phase="lobby" hidden>
+        {% set url %}<strong dir="ltr">{{ join_url.split('://')[-1] }}</strong>{% endset %}
+        <p class="lead mb-1">{{ _('Go to {url} and enter the code').format(url=url) }}</p>
+        <div class="class-code" aria-label="{{ _('Game code') }}">{{ room.code }}</div>
+        <div class="class-lobby my-4" data-lobby aria-live="polite"></div>
+        <p class="text-muted" data-lobby-empty>{{ _('Waiting for students to join…') }}</p>
+        <button type="button" class="btn btn-primary btn-lg px-5" data-action="start" disabled><i class="bi bi-play-fill me-1"></i>{{ _('Start the game') }}</button>
+    </div>
+
+    {# question and reveal #}
+    <div class="wf-card wf-card-pad" data-phase="question reveal" hidden>
+        <div class="d-flex justify-content-between align-items-center gap-2 mb-3 flex-wrap">
+            <span class="h4 fw-black mb-0" data-round-label></span>
+            <span class="class-timer" data-timer-wrap><i class="bi bi-stopwatch"></i> <span data-timer></span></span>
+            <span class="text-muted fw-bold" data-answered></span>
+        </div>
+        <div class="class-options" data-options></div>
+        <div class="tip mt-3" data-explanation hidden></div>
+        <div class="class-top mt-3" data-top hidden>
+            <div class="section-label mb-2"><i class="bi bi-trophy-fill text-brand fs-5"></i>{{ _('Top players') }}</div>
+            <ol class="class-ranking mb-0" data-ranking></ol>
+        </div>
+        <div class="d-flex flex-column flex-sm-row justify-content-end gap-2 mt-3">
+            <button type="button" class="btn btn-outline-secondary" data-action="end">{{ _('End the game') }}</button>
+            <button type="button" class="btn btn-primary btn-lg" data-action="next" hidden></button>
+        </div>
+    </div>
+
+    {# finished #}
+    <div class="wf-card wf-card-pad text-center" data-phase="finished" hidden>
+        <div class="display-5 mb-2">🏆</div>
+        <h1 class="h2 fw-black mb-4">{{ _('Final results') }}</h1>
+        <div class="class-podium mb-4" data-podium></div>
+        <ol class="class-ranking text-start mx-auto mb-4" data-full-ranking></ol>
+        <a href="{{ url_for('setup') }}" class="btn btn-primary"><i class="bi bi-arrow-repeat me-1"></i>{{ _('New game') }}</a>
+        <p class="small text-muted mt-3 mb-0">{{ _('Nicknames and answers are deleted a few hours after the game.') }}</p>
+    </div>
+    <p class="text-center text-danger small mt-3 mb-0" data-offline hidden>{{ _('Connection lost. Trying again…') }}</p>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const T = {{ {
+            'round': _('Round {n} of {total}'),
+            'answered': _('{answered} of {players} answered'),
+            'next': _('Next round'),
+            'podium': _('Show the results'),
+            'points': _('{score} points'),
+            'remove': _('Remove {name}'),
+        }|tojson }};
+        const root = document.getElementById('classBoard');
+        const $ = s => root.querySelector(s);
+        const fill = (text, values) => text.replace(/\{(\w+)\}/g, (m, k) => (k in values ? values[k] : m));
+        const csrf = document.querySelector('meta[name="csrf-token"]').content;
+        let state = null, deadline = 0, failures = 0, timer = null, drawn = null;
+
+        const post = url => fetch(url, { method: 'POST', headers: { 'X-CSRFToken': csrf } });
+
+        function show(phase) {
+            root.querySelectorAll('[data-phase]').forEach(el => { el.hidden = !el.dataset.phase.split(' ').includes(phase); });
+        }
+
+        function rankingItems(list, rows) {
+            list.innerHTML = '';
+            rows.forEach(row => {
+                const li = document.createElement('li');
+                li.innerHTML = '<span class="rank"></span><span class="name"></span><span class="score"></span>';
+                li.children[0].textContent = row.rank;
+                li.children[1].textContent = row.nickname;
+                li.children[2].textContent = fill(T.points, { score: row.score });
+                list.appendChild(li);
+            });
+        }
+
+        function drawLobby() {
+            const box = $('[data-lobby]');
+            box.innerHTML = '';
+            (state.lobby || []).forEach(player => {
+                const chip = document.createElement('button');
+                chip.type = 'button';
+                chip.className = 'chip class-name';
+                chip.title = fill(T.remove, { name: player.nickname });
+                chip.setAttribute('aria-label', chip.title);
+                chip.innerHTML = '<span></span><i class="bi bi-x"></i>';
+                chip.children[0].textContent = player.nickname;
+                chip.addEventListener('click', async () => {
+                    await post(root.dataset.kickUrl.replace(/0$/, player.id));
+                    poll(true);
+                });
+                box.appendChild(chip);
+            });
+            $('[data-lobby-empty]').hidden = state.players > 0;
+            root.querySelector('[data-action="start"]').disabled = state.players === 0;
+        }
+
+        function drawRound() {
+            const reveal = state.phase === 'reveal';
+            $('[data-round-label]').textContent = fill(T.round, { n: state.round, total: state.rounds });
+            $('[data-timer-wrap]').hidden = reveal;
+            $('[data-answered]').textContent = fill(T.answered, { answered: state.answered, players: state.players });
+            const box = $('[data-options]');
+            // Made once per round; polls only fill in the reveal, so the bars grow once instead of on every poll
+            if (drawn !== state.round) {
+                drawn = state.round;
+                box.innerHTML = '';
+                state.options.forEach((option, i) => {
+                    const div = document.createElement('div');
+                    div.className = 'class-option answer-' + (i + 1);
+                    div.innerHTML = '<span class="letter"></span><span class="text"></span><span class="count"></span><span class="bar"></span>';
+                    div.children[0].textContent = 'ABCD'[i];
+                    div.children[1].textContent = option;
+                    div.dataset.option = option;
+                    box.appendChild(div);
+                });
+            }
+            const most = reveal ? Math.max(1, ...Object.values(state.counts)) : 1;
+            box.querySelectorAll('.class-option').forEach(div => {
+                const option = div.dataset.option;
+                div.classList.toggle('is-fake', reveal && option === state.fake);
+                div.children[2].textContent = reveal ? state.counts[option] : '';
+                div.children[3].style.width = reveal ? (state.counts[option] / most * 100) + '%' : '0';
+            });
+            $('[data-explanation]').hidden = !(reveal && state.explanation);
+            if (reveal && state.explanation) $('[data-explanation]').textContent = state.explanation;
+            $('[data-top]').hidden = !reveal;
+            if (reveal) rankingItems($('[data-ranking]'), state.leaderboard);
+            const next = root.querySelector('[data-action="next"]');
+            next.hidden = !reveal;
+            next.textContent = state.last ? T.podium : T.next;
+        }
+
+        function drawFinished() {
+            const podium = $('[data-podium]');
+            podium.innerHTML = '';
+            state.leaderboard.slice(0, 3).forEach((row, i) => {
+                const place = document.createElement('div');
+                place.className = 'class-place place-' + (i + 1);
+                place.innerHTML = '<div class="medal"></div><div class="name"></div><div class="score"></div>';
+                place.children[0].textContent = ['🥇', '🥈', '🥉'][i];
+                place.children[1].textContent = row.nickname;
+                place.children[2].textContent = fill(T.points, { score: row.score });
+                podium.appendChild(place);
+            });
+            rankingItems($('[data-full-ranking]'), state.leaderboard.slice(3));
+        }
+
+        function draw() {
+            show(state.phase);
+            $('[data-players]').textContent = state.players;
+            if (state.phase === 'lobby') drawLobby();
+            if (state.phase === 'question' || state.phase === 'reveal') drawRound();
+            if (state.phase === 'finished') drawFinished();
+        }
+
+        setInterval(() => {
+            if (state && state.phase === 'question') $('[data-timer]').textContent = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+        }, 250);
+
+        async function poll(once) {
+            try {
+                const response = await fetch(root.dataset.stateUrl, { headers: { Accept: 'application/json' } });
+                if (!response.ok) throw new Error(response.status);
+                state = await response.json();
+                deadline = Date.now() + state.seconds * 1000;
+                failures = 0;
+                $('[data-offline]').hidden = true;
+                draw();
+            } catch (e) {
+                if (++failures > 2) $('[data-offline]').hidden = false;
+            }
+            if (once) return;
+            if (!state || state.phase !== 'finished') timer = setTimeout(() => poll(), Number(root.dataset.pollMs));
+        }
+
+        root.querySelectorAll('[data-action]').forEach(button => button.addEventListener('click', async () => {
+            button.disabled = true;
+            try { await post(root.dataset.actionUrl.replace('ACTION', button.dataset.action)); } catch (e) { /* next poll */ }
+            button.disabled = false;
+            clearTimeout(timer);
+            poll();
+        }));
+
+        poll();
+    })();
+</script>
+{% endblock %}

@@ -244,6 +244,34 @@ class PlayerFakePlay(db.Model):
     reported = db.Column(db.Boolean, nullable=False, default=False)
     created_at = db.Column(db.DateTime, nullable=False, default=utcnow)
 
+class ClassRoom(db.Model):
+    """A classroom game (rules in classroom.py): a teacher's quiz that students join with `code` and a nickname.
+    Deleted, with its players, ROOM_HOURS after it was opened."""
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(8), unique=True, nullable=False)
+    host_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False, index=True)
+    topic = db.Column(db.String(100), nullable=False)
+    difficulty = db.Column(db.String(50), nullable=False)
+    language = db.Column(db.String(50), nullable=False)
+    source_url = db.Column(db.String(500), nullable=True)
+    questions_json = db.Column(db.Text, nullable=False)
+    explanations_json = db.Column(db.Text, nullable=False)
+    state = db.Column(db.String(10), nullable=False, default='lobby')  # 'lobby', 'playing' or 'finished'
+    current_round = db.Column(db.Integer, nullable=False, default=0)
+    round_started_at = db.Column(db.DateTime, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=False, default=utcnow, index=True)
+
+class ClassPlayer(db.Model):
+    """A student in a classroom game: just a nickname and their answers, found again by the token in their session."""
+    __table_args__ = (db.UniqueConstraint('room_id', 'nickname', name='uq_class_player_nickname'),)
+    id = db.Column(db.Integer, primary_key=True)
+    room_id = db.Column(db.Integer, db.ForeignKey('class_room.id'), nullable=False, index=True)
+    token = db.Column(db.String(32), nullable=False)
+    nickname = db.Column(db.String(20), nullable=False)
+    answers_json = db.Column(db.Text, nullable=False, default='{}')  # {round: {pick, ms, correct, points}}
+    score = db.Column(db.Integer, nullable=False, default=0)
+    joined_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+
 class ErrorLog(db.Model):
     """Unexpected errors, kept because Vercel's own logs only last minutes. Only the newest few hundred are kept,
     and nothing about the player: just the page, the error and where in the code it happened."""
