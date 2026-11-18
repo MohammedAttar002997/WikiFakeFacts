@@ -1520,7 +1520,8 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .case-stamp.is-bad { color: #e11d48; }
 @keyframes case-stamp { 0% { opacity: 0; transform: rotate(9deg) scale(2.6); } 60% { opacity: 1; transform: rotate(9deg) scale(.92); }
     100% { opacity: 1; transform: rotate(9deg) scale(1); } }
-@media (max-width: 576px) { .case-stamp { position: static; display: inline-block; margin-bottom: .5rem; font-size: .9rem; } }
+@media (max-width: 576px) { .case-stamp { position: static; display: inline-block; margin-bottom: .5rem; font-size: .9rem; }
+    .case-file { overflow-x: clip; } /* The stamp lands from 2.6x its size: no sideways scroll on a phone meanwhile */ }
 @media (prefers-reduced-motion: reduce) { .case-stamp { animation: none; } }
 
 /* ---------- The first-visit tour (_tour.html, tour.js) ------------------------- */

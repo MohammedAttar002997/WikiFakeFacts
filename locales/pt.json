@@ -745,5 +745,7 @@
   "You can't follow yourself.": "Você não pode seguir a si mesmo.",
   "You already follow this player.": "Você já segue este jogador.",
   "You follow as many players as you can. Unfollow someone first.": "Você já segue o máximo de jogadores. Deixe de seguir alguém primeiro.",
-  "You now follow {name}.": "Agora você segue {name}."
+  "You now follow {name}.": "Agora você segue {name}.",
+  "Not sure what to play?": "Não sabe o que jogar?",
+  "Browse topics": "Explorar temas"
 }
