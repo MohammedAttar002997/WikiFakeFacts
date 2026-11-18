@@ -747,5 +747,20 @@
   "You follow as many players as you can. Unfollow someone first.": "Vous suivez déjà le maximum de joueurs. Arrêtez d’en suivre un d’abord.",
   "You now follow {name}.": "Vous suivez maintenant {name}.",
   "Not sure what to play?": "Vous ne savez pas à quoi jouer ?",
-  "Browse topics": "Parcourir les thèmes"
+  "Browse topics": "Parcourir les thèmes",
+  "A free round of the day for your blog, school page or class website: three true Wikipedia facts and one fake.": "Une manche du jour gratuite pour votre blog, le site de votre école ou de votre classe : trois faits vrais de Wikipédia et un faux.",
+  "A new round every day, from the daily challenge of {date}.": "Une nouvelle manche chaque jour, tirée du défi du jour du {date}.",
+  "Code copied!": "Code copié !",
+  "Colors": "Couleurs",
+  "Copy code": "Copier le code",
+  "Copy this code into your page:": "Copiez ce code dans votre page :",
+  "Dark": "Sombre",
+  "Embed": "Intégrer",
+  "It changes every day and needs no account.": "Elle change chaque jour et ne demande aucun compte.",
+  "Light": "Clair",
+  "Like the visitor’s device": "Comme l’appareil du visiteur",
+  "No round yet. Come back tomorrow!": "Pas encore de manche. Revenez demain !",
+  "Preview": "Aperçu",
+  "Put WikiFakeFact on your site": "Mettez WikiFakeFact sur votre site",
+  "Today's challenge: {topic}": "Défi du jour : {topic}"
 }

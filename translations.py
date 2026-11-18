@@ -38,8 +38,10 @@ CATALOGS = _load_catalogs()
 
 
 def current_language():
-    from flask import has_request_context, session
-    lang = session.get('language', 'en') if has_request_context() else 'en'
+    from flask import g, has_request_context, session
+    if not has_request_context():
+        return 'en'
+    lang = g.get('ui_language') or session.get('language', 'en')  # g.ui_language: set by the embed widget
     return lang if lang in UI_LANGUAGES else 'en'
 
 

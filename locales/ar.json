@@ -747,5 +747,20 @@
   "You follow as many players as you can. Unfollow someone first.": "أنت تتابع الحد الأقصى من اللاعبين. ألغِ متابعة أحدهم أولًا.",
   "You now follow {name}.": "أنت الآن تتابع {name}.",
   "Not sure what to play?": "لست متأكدًا مما تلعبه؟",
-  "Browse topics": "تصفّح المواضيع"
+  "Browse topics": "تصفّح المواضيع",
+  "A free round of the day for your blog, school page or class website: three true Wikipedia facts and one fake.": "جولة يومية مجانية لمدونتك أو موقع مدرستك أو صفك: ثلاث حقائق صحيحة من ويكيبيديا وواحدة مزيفة.",
+  "A new round every day, from the daily challenge of {date}.": "جولة جديدة كل يوم، من التحدي اليومي بتاريخ {date}.",
+  "Code copied!": "تم نسخ الرمز!",
+  "Colors": "الألوان",
+  "Copy code": "انسخ الرمز",
+  "Copy this code into your page:": "انسخ هذا الرمز إلى صفحتك:",
+  "Dark": "داكن",
+  "Embed": "تضمين",
+  "It changes every day and needs no account.": "تتغير كل يوم ولا تحتاج إلى حساب.",
+  "Light": "فاتح",
+  "Like the visitor’s device": "حسب جهاز الزائر",
+  "No round yet. Come back tomorrow!": "لا توجد جولة بعد. عد غدًا!",
+  "Preview": "معاينة",
+  "Put WikiFakeFact on your site": "ضع WikiFakeFact على موقعك",
+  "Today's challenge: {topic}": "تحدي اليوم: {topic}"
 }
