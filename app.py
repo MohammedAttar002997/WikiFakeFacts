@@ -186,8 +186,11 @@ app.add_template_filter(lambda value: format_date(value, with_time=True), 'datet
 def security_headers(response):
     # No framing by other sites (clickjacking), no guessing content types, and only the origin in cross-site
     # referrers so share codes and quiz pages don't leak to links people follow
-    response.headers.setdefault('X-Frame-Options', 'DENY')
-    response.headers.setdefault('Content-Security-Policy', "frame-ancestors 'none'")
+    if request.path.startswith('/embed/'):
+        response.headers['Content-Security-Policy'] = 'frame-ancestors *'  # The widget (views/embed.py) is for framing
+    else:
+        response.headers.setdefault('X-Frame-Options', 'DENY')
+        response.headers.setdefault('Content-Security-Policy', "frame-ancestors 'none'")
     response.headers.setdefault('X-Content-Type-Options', 'nosniff')
     response.headers.setdefault('Referrer-Policy', 'strict-origin-when-cross-origin')
     return response
@@ -2199,3 +2202,4 @@ from views import classroom as classroom_views  # noqa: E402
 from views import leagues as league_views  # noqa: E402
 from views import topics as topic_views  # noqa: E402,F401
 from views import friends as friend_views  # noqa: E402
+from views import embed as embed_views  # noqa: E402,F401

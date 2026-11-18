@@ -1622,3 +1622,11 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 /* ---------- Install app (footer) --------------------------------------------- */
 .wf-install { color: var(--wf-muted); text-decoration: none; font-size: inherit; min-height: 44px; }
 .wf-install:hover, .wf-install:focus { color: var(--wf-brand); text-decoration: underline; }
+
+/* The embeddable round of the day (templates/embed_daily.html): fits a narrow iframe, scrolls inside it */
+.embed-body { background: var(--bs-body-bg); padding: .75rem; }
+.embed-main { max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: .75rem; }
+.embed-brand { font-size: 1.1rem; align-self: flex-start; text-decoration: none; }
+.embed-card { padding: 1rem; }
+.embed-card .answer { min-height: 44px; }
+.embed-cta { text-align: center; }

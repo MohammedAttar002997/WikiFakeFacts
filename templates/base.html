@@ -174,6 +174,7 @@
         {% if is_admin %}<span class="d-none d-xl-inline">&middot; <a href="{{ url_for('admin') }}" class="wf-donate"><i class="bi bi-speedometer2" aria-hidden="true"></i> Admin</a></span>{% endif %}
         {# Shown by app.js only when the browser offers to install the app #}
         &middot; <a href="{{ url_for('topics_index') }}" class="wf-footer-link"><i class="bi bi-collection" aria-hidden="true"></i> {{ _('Topics') }}</a>
+        &middot; <a href="{{ url_for('embed_page') }}" class="wf-footer-link"><i class="bi bi-code-slash" aria-hidden="true"></i> {{ _('Embed') }}</a>
         {% if me %}&middot; <a href="{{ url_for('setup', tour=1) }}" class="wf-donate"><i class="bi bi-signpost-2" aria-hidden="true"></i> {{ _('Take the tour') }}</a>{% endif %}
         <span id="installApp" hidden>&middot; <button type="button" class="btn btn-link wf-install p-0 align-baseline">
             <i class="bi bi-download" aria-hidden="true"></i> {{ _('Install app') }}</button></span>

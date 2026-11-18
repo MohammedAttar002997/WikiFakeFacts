@@ -1,0 +1,77 @@
+{% extends "base.html" %}
+
+{# For site owners (views/embed.py): pick the widget's language and theme, copy its code, see a preview. #}
+{% block title %}{{ _('Put WikiFakeFact on your site') }} · WikiFakeFact{% endblock %}
+{% block og_description %}{{ _('A free round of the day for your blog, school page or class website: three true Wikipedia facts and one fake.') }}{% endblock %}
+
+{% block content %}
+{% set language_names = {'en': 'English', 'es': 'Español', 'fr': 'Français', 'de': 'Deutsch', 'it': 'Italiano', 'pt': 'Português', 'ar': 'العربية'} %}
+{% set theme_names = {'auto': _('Like the visitor’s device'), 'light': _('Light'), 'dark': _('Dark')} %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-code-slash"></i> {{ _('Embed') }}</span>
+            <h1>{{ _('Put WikiFakeFact on your site') }}</h1>
+            <p>{{ _('A free round of the day for your blog, school page or class website: three true Wikipedia facts and one fake.') }}
+               {{ _('It changes every day and needs no account.') }}</p>
+        </div>
+
+        <div class="row g-4">
+            <div class="col-lg-6">
+                <div class="wf-card wf-card-pad">
+                    <form class="row g-3 mb-3" id="embedOptions">
+                        <div class="col-sm-6">
+                            <label class="form-label fw-bold" for="embedLang">{{ _('Language') }}</label>
+                            <select class="form-select" id="embedLang" name="lang">
+                                {% for code in ui_languages %}<option value="{{ code }}"{% if code == lang %} selected{% endif %}>{{ language_names[code] }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-sm-6">
+                            <label class="form-label fw-bold" for="embedTheme">{{ _('Colors') }}</label>
+                            <select class="form-select" id="embedTheme" name="theme">
+                                {% for value in themes %}<option value="{{ value }}"{% if value == theme %} selected{% endif %}>{{ theme_names[value] }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                    <label class="form-label fw-bold" for="embedCode">{{ _('Copy this code into your page:') }}</label>
+                    <textarea class="form-control font-monospace small mb-3" id="embedCode" rows="5" readonly dir="ltr">{{ snippet }}</textarea>
+                    <button type="button" class="btn btn-primary" id="copyEmbed" data-copied-label="{{ _('Code copied!') }}">
+                        <i class="bi bi-clipboard me-1"></i><span>{{ _('Copy code') }}</span>
+                    </button>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="section-label"><i class="bi bi-eye-fill text-brand fs-4"></i>{{ _('Preview') }}</div>
+                <iframe id="embedPreview" src="{{ widget_base }}?lang={{ lang }}&amp;theme={{ theme }}" title="WikiFakeFact"
+                        width="100%" height="{{ height }}" style="max-width:{{ max_width }}px;border:0;border-radius:16px" loading="lazy"></iframe>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    (function () {
+        const base = {{ widget_base|tojson }};
+        const code = document.getElementById('embedCode');
+        const preview = document.getElementById('embedPreview');
+        const form = document.getElementById('embedOptions');
+        const copy = document.getElementById('copyEmbed');
+        const label = copy.querySelector('span');
+        const original = label.textContent;
+        // The copied code and the preview follow the chosen language and colors
+        form.addEventListener('change', () => {
+            const src = base + '?' + new URLSearchParams(new FormData(form)).toString();
+            preview.src = src;
+            code.value = code.value.replace(/src="[^"]*"/, 'src="' + src.replace(/&/g, '&amp;') + '"');
+            label.textContent = original;
+        });
+        copy.addEventListener('click', async () => {
+            try { await navigator.clipboard.writeText(code.value); }
+            catch (e) { code.select(); document.execCommand('copy'); }
+            label.textContent = copy.dataset.copiedLabel;
+        });
+    })();
+</script>
+{% endblock %}
