@@ -18,8 +18,10 @@
                         {% if player.created_at %}
                         <span class="chip"><i class="bi bi-calendar-heart"></i>{{ _('Playing since {date}').format(date=player.created_at|date) }}</span>
                         {% endif %}
+                        <span class="chip"><i class="bi bi-person-heart"></i>{{ _n('{n} follower', '{n} followers', follower_count(player)) }}</span>
                     </div>
                 </div>
+                <div class="flex-shrink-0">{% include "_follow_button.html" %}</div>
             </div>
         </div>
 

@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+
+{# The Friends tab (views/friends.py): this week's leaderboard of the player and everyone they follow, and their
+   recent games. #}
+{% block title %}{{ _('Friends') }} · WikiFakeFact{% endblock %}
+{% from "_macros.html" import avatar, finn %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-9">
+        {% include "_players_switch.html" %}
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-person-heart"></i> {{ _('Friends') }}</span>
+            <h1>{{ _('You and your friends') }}</h1>
+            <p>{{ _('Follow players from their profile to see them here: who is ahead this week and what they played.') }}</p>
+        </div>
+
+        {% if not me %}
+        <div class="wf-card wf-card-pad text-center">
+            {{ finn('think') }}
+            <p class="lead mb-3">{{ _('Sign in to follow other players.') }}</p>
+            <a href="/" class="btn btn-primary btn-lg"><i class="bi bi-person-fill me-1"></i>{{ _('Sign in to play') }}</a>
+        </div>
+        {% else %}
+        <p class="text-muted small mb-3">
+            {{ _n('You follow {n} player', 'You follow {n} players', following|length) }} &middot; {{ _n('{n} follower', '{n} followers', followers) }}
+        </p>
+
+        <div class="wf-card p-3 p-md-4 mb-4">
+            <div class="section-label px-1"><i class="bi bi-trophy-fill text-brand fs-4"></i>{{ _('This week') }}</div>
+            <div class="d-flex flex-column gap-2">
+                {% for row in board %}
+                {% set player = users.get(row.user_id) %}
+                {% if player %}
+                <div class="rank-row{% if row.is_me %} rank-row-me{% endif %}">
+                    <div class="rank">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 and row.points else row.rank }}</div>
+                    {{ avatar(player, 'sm') }}
+                    <div class="who">
+                        <a class="fw-bold text-reset text-decoration-none" href="{{ url_for('player_profile', user_id=player.id) }}">{{ player.username }}</a>{% if row.is_me %} <span class="text-brand small fw-bold">{{ _('(you)') }}</span>{% endif %}
+                        <div class="meta">{{ _n('{n} game this week', '{n} games this week', row.games) }}</div>
+                    </div>
+                    <div class="score">
+                        <div class="pct"><span dir="ltr">{{ row.points }}</span></div>
+                        <div class="meta">{{ _('points') }}</div>
+                    </div>
+                </div>
+                {% endif %}
+                {% endfor %}
+            </div>
+            {% if board|length < 2 %}<p class="text-muted text-center small mt-3 mb-0">{{ _('Follow a few players to compare scores.') }}</p>{% endif %}
+        </div>
+
+        {% if suggested %}
+        <div class="wf-card wf-card-pad mb-4">
+            <div class="section-label"><i class="bi bi-stars text-brand fs-4"></i>{{ _('Active this week') }}</div>
+            <div class="d-flex flex-column gap-2">
+                {% for uid in suggested %}{% set player = users.get(uid) %}{% if player %}
+                <div class="d-flex align-items-center gap-2">
+                    {{ avatar(player, 'sm') }}
+                    <a class="fw-bold flex-grow-1 min-w-0 text-truncate text-reset text-decoration-none" href="{{ url_for('player_profile', user_id=player.id) }}">{{ player.username }}</a>
+                    {% with small=true, next='/friends' %}{% include "_follow_button.html" %}{% endwith %}
+                </div>
+                {% endif %}{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="wf-card wf-card-pad">
+            <div class="section-label"><i class="bi bi-activity text-brand fs-4"></i>{{ _('Latest games') }}</div>
+            {% for score, share_code in feed %}{% set player = users.get(score.user_id) %}{% if player %}
+            <div class="feed-row">
+                {{ avatar(player, 'sm') }}
+                <div class="flex-grow-1 min-w-0">
+                    <div>{% set topic_link = topic_url(score.topic) %}
+                        {{ _('{name} scored {score} of {total} on {topic}').format(name=player.username, score=score.score, total=score.total_questions, topic=score.topic) }}
+                    </div>
+                    <div class="small text-muted">{{ score.timestamp|datetime if score.timestamp }}</div>
+                </div>
+                {% if share_code %}
+                <a class="btn btn-sm btn-outline-primary flex-shrink-0" href="{{ url_for('shared_result', code=share_code) }}"><i class="bi bi-lightning-charge-fill me-1"></i>{{ _('Beat it') }}</a>
+                {% elif topic_link %}
+                <a class="btn btn-sm btn-outline-primary flex-shrink-0" href="{{ topic_link }}">{{ _('Try the topic') }}</a>
+                {% endif %}
+            </div>
+            {% endif %}{% else %}
+            <p class="text-muted mb-0">{{ _('Games of players you follow show up here.') }}</p>
+            {% endfor %}
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
