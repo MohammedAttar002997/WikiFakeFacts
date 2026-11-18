@@ -50,7 +50,8 @@
                 <div class="col-4">
                     <div class="stat-tile">
                         {% set topic = _('Your mistakes') if is_practice else topic %}
-                        <div class="value text-truncate fs-6 pt-2" title="{{ topic }}">{{ topic }}</div>
+                        {% set topic_link = None if is_practice else topic_url(topic) %}
+                        <div class="value text-truncate fs-6 pt-2" title="{{ topic }}">{% if topic_link %}<a href="{{ topic_link }}" class="text-reset">{{ topic }}</a>{% else %}{{ topic }}{% endif %}</div>
                         <div class="label">{{ _('Topic:')|replace(':', '') }}</div>
                     </div>
                 </div>
@@ -62,6 +63,9 @@
             </div>
             <a href="/analysis" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis" class="d-inline-block mt-3 fw-bold text-decoration-none">
                 <i class="bi bi-graph-up-arrow me-1"></i>{{ _('See my progress') }}
+            </a>
+            <a href="{{ url_for('topics_index') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
+                <i class="bi bi-collection me-1"></i>{{ _('Browse topics') }}
             </a>
             {% if league_points is not none %}
             <a href="{{ url_for('league') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">

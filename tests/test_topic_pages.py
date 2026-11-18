@@ -6,6 +6,7 @@ import pytest
 
 import topic_pages as rules
 from app import db
+from conftest import answers, play_quiz
 from hidden_rounds import fingerprint
 from models import DailyChallenge, HiddenRound, QuizSession, User, utcnow
 from views import topics as views
@@ -159,3 +160,15 @@ def test_robots_keeps_private_pages_out_and_names_the_sitemap(app):
 
 def test_the_footer_links_the_topics(app):
     assert 'href="/topics"' in app.test_client().get('/').get_data(as_text=True)
+
+
+def test_setup_offers_browsing_topics(login):
+    html = login('Ann').get('/setup').get_data(as_text=True)
+    assert 'Not sure what to play?' in html and 'href="/topics"' in html.split('Not sure what to play?')[1]
+
+
+def test_results_link_the_topic_page_and_browsing(login):
+    html = play_quiz(login("Ann"), answers(1, 3))
+    tile = html.split('stat-tile')[-1]
+    assert 'href="/topic/' in tile  # A built-in topic's name links to its page
+    assert 'Browse topics' in html and 'href="/topics"' in html.split('See my progress')[1]
