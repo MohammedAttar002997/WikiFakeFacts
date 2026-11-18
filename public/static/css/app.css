@@ -942,8 +942,8 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 }
 
 .wf-footer { color: var(--wf-muted); font-size: .9rem; }
-.wf-donate { color: var(--wf-muted); text-decoration: none; }
-.wf-donate:hover, .wf-donate:focus { color: var(--wf-brand); text-decoration: underline; }
+.wf-donate, .wf-footer-link { color: var(--wf-muted); text-decoration: none; }
+.wf-donate:hover, .wf-donate:focus, .wf-footer-link:hover, .wf-footer-link:focus { color: var(--wf-brand); text-decoration: underline; }
 .wf-donate .bi-heart-fill { color: #e0457b; }
 
 /* ---------- Loading overlay ---------------------------------------------- */
@@ -1446,6 +1446,13 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
     .finn-sparkles path { opacity: 0 !important; }
     .finn.mood-worried .finn-sweat { opacity: 1; }
 }
+
+/* Topic pages: the list of a category's topics, in columns on wider screens */
+.topic-list { columns: 1; column-gap: 2rem; }
+@media (min-width: 640px) { .topic-list { columns: 2; } }
+@media (min-width: 900px) { .topic-list { columns: 3; } }
+.topic-list li { break-inside: avoid; padding: .3rem 0; }
+.topic-list a { display: inline-block; min-height: 32px; text-decoration: none; font-weight: 700; }
 
 /* Weekly league: the ladder of leagues and the lines where the moving zones begin and end */
 .league-ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: .5rem; }

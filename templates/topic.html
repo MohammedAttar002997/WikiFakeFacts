@@ -1,0 +1,93 @@
+{% extends "base.html" %}
+
+{# A public topic page (views/topics.py): a sample round of a topic, for players and search engines alike. #}
+{% from "_macros.html" import CATEGORY_EMOJI, finn %}
+{% block title %}{{ _('{topic}: spot the fake fact').format(topic=topic) }} · WikiFakeFact{% endblock %}
+{% block og_title %}{{ _('{topic}: spot the fake fact').format(topic=topic) }}{% endblock %}
+{% block og_description %}{{ description }}{% endblock %}
+{% block head_extra %}
+    <link rel="canonical" href="{{ url_for('topic_page', slug=slug, _external=True) }}">
+    {# No round to play yet: nothing worth listing in search results #}
+    {% if not has_round %}<meta name="robots" content="noindex">{% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <nav aria-label="{{ _('Breadcrumb') }}" class="small mb-2">
+            <a href="{{ url_for('topics_index') }}" class="text-decoration-none">{{ _('Topics') }}</a>
+            {% if category %} › <a href="{{ url_for('topics_index', category_slug=category_slug) }}" class="text-decoration-none">{{ _(category) }}</a>{% endif %}
+        </nav>
+        <div class="page-head">
+            <span class="eyebrow">{% if category %}<span aria-hidden="true">{{ CATEGORY_EMOJI.get(category, '❓') }}</span> {{ _(category) }}{% else %}<i class="bi bi-book-half"></i> Wikipedia{% endif %}</span>
+            <h1>{{ topic }}</h1>
+            <p>{{ _('Three facts about {topic} are true and one is fake. Can you spot it?').format(topic=topic) }}</p>
+        </div>
+
+        {% if review %}
+        {% include "_answer_review.html" %}
+        {% elif options %}
+        <div class="wf-card wf-card-pad">
+            <div class="quiz-question">
+                <div class="quiz-finn">{% include "_finn.html" %}</div>
+                <h2 class="h3 mb-1">{{ _('Spot the Fake Fact!') }}</h2>
+                <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
+            </div>
+            <form method="POST" id="quizForm">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                <div class="row g-3 mb-4">
+                    {% for option in options %}
+                    <div class="col-md-6">
+                        <input class="answer-input visually-hidden" type="radio" name="option" id="opt{{ loop.index }}" value="{{ option }}" required>
+                        <label class="answer answer-{{ loop.index }}" for="opt{{ loop.index }}">
+                            <span class="letter">{{ 'ABCD'[loop.index0] }}</span>
+                            <span class="text">{{ option }}</span>
+                            <i class="bi bi-check-circle-fill pick"></i>
+                        </label>
+                    </div>
+                    {% endfor %}
+                </div>
+                <div class="d-flex justify-content-end">
+                    <button type="submit" class="btn btn-primary btn-lg px-5" id="submitAnswer" disabled>{{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i></button>
+                </div>
+            </form>
+        </div>
+        {% else %}
+        <div class="wf-card wf-card-pad text-center">
+            {{ finn('think') }}
+            <p class="lead mb-0">{{ _('Nobody has played {topic} yet. Be the first!').format(topic=topic) }}</p>
+        </div>
+        {% endif %}
+
+        {# The way in: a full quiz on this topic (the setup page with the topic filled in) #}
+        <div class="wf-card wf-card-pad text-center mt-4 try-cta">
+            <p class="lead mb-3">{{ _('Want more? Play a full quiz about {topic}.').format(topic=topic) }}</p>
+            <a href="{{ url_for('setup', topic=topic) if me else url_for('index') }}" class="btn btn-primary btn-lg">
+                <i class="bi bi-play-fill me-1"></i>{{ _('Play a full quiz') }}
+            </a>
+            {% if not me %}<p class="small text-muted mt-2 mb-0">{{ _('Free: pick a name and a PIN, no email needed.') }}</p>{% endif %}
+        </div>
+
+        {% if related %}
+        <div class="mt-4">
+            <div class="section-label"><i class="bi bi-signpost-split-fill text-brand fs-4"></i>{{ _('More topics in {category}').format(category=_(category)) }}</div>
+            <div class="d-flex flex-wrap gap-2">
+                {% for other in related %}<a class="chip text-decoration-none" href="{{ topic_url(other) }}">{{ other }}</a>{% endfor %}
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if options and not review %}
+<script>
+    (function () {
+        const submit = document.getElementById('submitAnswer');
+        document.querySelectorAll('#quizForm input[name="option"]').forEach(input =>
+            input.addEventListener('change', () => { submit.disabled = false; }));
+    })();
+</script>
+{% endif %}
+{% endblock %}

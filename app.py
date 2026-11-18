@@ -1169,7 +1169,9 @@ def tour_done():
 
 
 def render_setup():
-    return render_template('setup.html', show_tour=wants_tour(current_user()), categories=CATEGORIES,
+    # A topic page's "Play a full quiz" link fills in the "Any topic" box (?topic=…)
+    prefill = any_topic.clean_query(request.args.get('topic'))
+    return render_template('setup.html', show_tour=wants_tour(current_user()), prefill_topic=prefill, categories=CATEGORIES,
                            lengths=GAME_LENGTH_OPTIONS,
                            difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
                            daily_topic=daily_topic(today_utc()), event_theme=event_theme(),
@@ -2193,3 +2195,4 @@ if __name__ == '__main__':
 from views import admin as admin_views, live as live_views, timers, fakes as fakes_views  # noqa: E402,F401
 from views import classroom as classroom_views  # noqa: E402
 from views import leagues as league_views  # noqa: E402
+from views import topics as topic_views  # noqa: E402,F401
