@@ -13,10 +13,16 @@ WORDS = {
     'plain': {
         'submit_answer': 'Submit Answer',
         'quiz_prompt': 'Three of these are true. Which one is the fake?',
+        'quiz_case': 'Topic',
+        'quiz_step': 'Round {n} of {total}',
+        'pick_label': 'Your pick',
     },
     'casefile': {
         'submit_answer': 'Accuse this one',
         'quiz_prompt': "Three of these are true. Who's lying?",
+        'quiz_case': 'Case',
+        'quiz_step': 'Evidence {n} of {total}',
+        'pick_label': 'Suspect',
     },
 }
 

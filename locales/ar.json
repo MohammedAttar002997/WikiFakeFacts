@@ -251,7 +251,6 @@
   "Preparing today's challenge…": "جارٍ تجهيز تحدي اليوم…",
   "Profile": "الملف الشخصي",
   "Profile and account": "الملف الشخصي والحساب",
-  "Question": "السؤال",
   "Quick Help": "مساعدة سريعة",
   "Quiz Language:": "لغة الاختبار:",
   "Quiz Title": "عنوان الاختبار",
@@ -452,7 +451,6 @@
   "Your uploads": "ملفاتك المرفوعة",
   "e.g. My biology notes": "مثال: ملاحظاتي في الأحياء",
   "last day, ends at midnight UTC": "اليوم الأخير، تنتهي عند منتصف الليل بتوقيت UTC",
-  "of": "من",
   "one attempt": "محاولة واحدة",
   "play today to keep it": "العب اليوم لتحافظ عليها",
   "points": "نقاط",
@@ -790,5 +788,9 @@
   "{n} detective on it today": "{n} محقق في القضية اليوم",
   "{n} detectives on it today": "{n} محققين في القضية اليوم",
   "Accuse this one": "اتّهم هذا",
-  "Three of these are true. Who's lying?": "ثلاثة من هذه صحيحة. من الكاذب؟"
+  "Three of these are true. Who's lying?": "ثلاثة من هذه صحيحة. من الكاذب؟",
+  "Case": "القضية",
+  "Evidence {n} of {total}": "الدليل {n} من {total}",
+  "Suspect": "مشتبه به",
+  "Topic": "الموضوع"
 }

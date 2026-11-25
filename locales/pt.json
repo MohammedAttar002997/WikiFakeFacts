@@ -251,7 +251,6 @@
   "Preparing today's challenge…": "Preparando o desafio de hoje…",
   "Profile": "Perfil",
   "Profile and account": "Perfil e conta",
-  "Question": "Pergunta",
   "Quick Help": "Ajuda rápida",
   "Quiz Language:": "Idioma do quiz:",
   "Quiz Title": "Título do quiz",
@@ -452,7 +451,6 @@
   "Your uploads": "Seus envios",
   "e.g. My biology notes": "ex.: Minhas anotações de biologia",
   "last day, ends at midnight UTC": "último dia, termina à meia-noite UTC",
-  "of": "de",
   "one attempt": "uma tentativa",
   "play today to keep it": "jogue hoje para manter",
   "points": "pontos",
@@ -790,5 +788,9 @@
   "{n} detective on it today": "{n} detetive no caso hoje",
   "{n} detectives on it today": "{n} detetives no caso hoje",
   "Accuse this one": "Acusar este",
-  "Three of these are true. Who's lying?": "Três destes são verdadeiros. Quem está mentindo?"
+  "Three of these are true. Who's lying?": "Três destes são verdadeiros. Quem está mentindo?",
+  "Case": "Caso",
+  "Evidence {n} of {total}": "Prova {n} de {total}",
+  "Suspect": "Suspeito",
+  "Topic": "Tema"
 }

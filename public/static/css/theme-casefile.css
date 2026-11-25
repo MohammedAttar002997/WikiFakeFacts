@@ -440,6 +440,33 @@
 [data-theme="casefile"] mark.diff-source { background: color-mix(in srgb, var(--wf-good) 22%, transparent); text-decoration-color: var(--wf-good); }
 [data-theme="casefile"] mark.diff-fake { background: color-mix(in srgb, var(--wf-marker) 20%, transparent); text-decoration-color: var(--wf-marker); }
 
+/* ---------- The quiz layout in the case file: typed header, numbered cards, the pick labelled "suspect" --------- */
+
+[data-theme="casefile"] .quiz-case { font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .quiz-timer { font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .quiz-steps .is-now { background: var(--wf-marker); }
+[data-theme="casefile"] .quiz-prompt { font-family: var(--wf-font-head); font-weight: 800; }
+[data-theme="casefile"] .quiz-step { font-family: var(--wf-font-label); }
+[data-theme="casefile"] .quiz-cards .answer { padding: 1rem 1.1rem; gap: .9rem; }
+[data-theme="casefile"] .quiz-cards .answer .letter {
+    width: auto; height: auto; border: 0; background: transparent; color: var(--wf-muted);
+    font-family: var(--wf-font-label); font-size: 1.25rem; align-self: flex-start;
+}
+[data-theme="casefile"] .quiz-cards .answer .pick { display: none; }
+[data-theme="casefile"] .quiz-cards .answer-input:checked + .answer:not(.is-stamped)::after {
+    content: attr(data-pick-label);
+    position: absolute; inset-inline-end: .6rem; bottom: -.7rem; padding: .05rem .45rem;
+    font-family: var(--wf-font-label); font-size: .72rem; letter-spacing: .06em; text-transform: uppercase;
+    background: var(--wf-marker); color: #fff; border-radius: 2px; transform: rotate(-4deg);
+}
+[data-theme="casefile"] .quiz-submit,
+[data-theme="casefile"][data-bs-theme="dark"] .quiz-submit {
+    --bs-btn-bg: var(--wf-marker); --bs-btn-border-color: var(--wf-marker);
+    --bs-btn-hover-bg: color-mix(in srgb, var(--wf-marker) 85%, #000); --bs-btn-hover-border-color: var(--bs-btn-hover-bg);
+    --bs-btn-active-bg: var(--bs-btn-hover-bg); --bs-btn-disabled-bg: var(--wf-marker); --bs-btn-disabled-border-color: var(--wf-marker);
+    --bs-btn-color: #fff; --bs-btn-hover-color: #fff; --bs-btn-active-color: #fff; --bs-btn-disabled-color: #fff;
+}
+
 /* ---------- Everything else (stage 3): square paper corners and flat case-file colours instead of gradients ---- */
 
 [data-theme="casefile"] :is(.badge-tile, .class-board .class-option, .class-place, .insight-box, .league-step, .live-player,

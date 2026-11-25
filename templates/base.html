@@ -83,7 +83,8 @@
                     {% if challenge_news %}<span class="count" aria-hidden="true">{{ challenge_news if challenge_news < 10 else '9+' }}</span>{% endif %}
                 </a>
                 {% endif %}
-                <div class="dropdown">
+                {# Below 576px these two live in the menu instead (nav-tools), so the bar stays one row #}
+                <div class="dropdown d-none d-sm-block">
                     <button type="button" class="theme-toggle lang-toggle" data-bs-toggle="dropdown" aria-expanded="false"
                             aria-label="{{ _('Language') }}: {{ language_names[ui_language] }}" title="{{ _('Language') }}">
                         <i class="bi bi-translate"></i><span class="lang-code">{{ ui_language|upper }}</span>
@@ -99,7 +100,7 @@
                         {% endfor %}
                     </ul>
                 </div>
-                <button type="button" class="theme-toggle" data-theme-toggle aria-label="{{ _('Switch to dark mode') }}">
+                <button type="button" class="theme-toggle d-none d-sm-grid" data-theme-toggle aria-label="{{ _('Switch to dark mode') }}">
                     <i class="bi bi-moon-stars-fill"></i>
                     <i class="bi bi-sun-fill"></i>
                 </button>
@@ -134,6 +135,17 @@
                         </a>
                     </li>
                     {% endif %}
+                    <li class="nav-item d-sm-none nav-tools">
+                        <button type="button" class="nav-link" data-theme-toggle aria-label="{{ _('Switch to dark mode') }}">
+                            <i class="bi bi-moon-stars-fill"></i><i class="bi bi-sun-fill"></i><span>{{ _('Dark mode') }} / {{ _('Light mode') }}</span>
+                        </button>
+                        <div class="nav-langs" role="group" aria-label="{{ _('Language') }}">
+                            {% for code in ui_languages %}
+                            <a lang="{{ code }}" href="{{ url_for('set_language', code=code, next=request.full_path.rstrip('?')) }}"
+                               title="{{ language_names[code] }}"{% if code == ui_language %} class="active" aria-current="true"{% endif %}>{{ code|upper }}</a>
+                            {% endfor %}
+                        </div>
+                    </li>
                 </ul>
             </div>
         </div>
