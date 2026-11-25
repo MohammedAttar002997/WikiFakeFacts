@@ -800,5 +800,9 @@
   "Case report": "تقرير القضية",
   "Challenge a friend": "تحدَّ صديقًا",
   "Results": "النتائج",
-  "{score} of {total} fakes found": "وجدت {score} من {total} مزيفة"
+  "{score} of {total} fakes found": "وجدت {score} من {total} مزيفة",
+  "Drop zone": "منطقة الهبوط",
+  "Promotion": "الصعود",
+  "Top {up} move up, bottom {down} move down": "يصعد أول {up} ويهبط آخر {down}",
+  "{league} precinct": "مخفر {league}"
 }
