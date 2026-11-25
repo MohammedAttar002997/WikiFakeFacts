@@ -804,5 +804,18 @@
   "Drop zone": "Abstiegszone",
   "Promotion": "Aufstieg",
   "Top {up} move up, bottom {down} move down": "Die ersten {up} steigen auf, die letzten {down} ab",
-  "{league} precinct": "Revier {league}"
+  "{league} precinct": "Revier {league}",
+  "Ask Finn": "Frag Finn",
+  "Cases": "Fälle",
+  "Detectives": "Detektive",
+  "Duel a friend": "Duell mit Freund",
+  "Good afternoon": "Guten Tag",
+  "Good afternoon, detective.": "Guten Tag, Detektiv.",
+  "Good evening": "Guten Abend",
+  "Good evening, detective.": "Guten Abend, Detektiv.",
+  "Good morning": "Guten Morgen",
+  "Good morning, detective.": "Guten Morgen, Detektiv.",
+  "My file": "Meine Akte",
+  "Top detectives": "Top-Detektive",
+  "Your text": "Dein Text"
 }

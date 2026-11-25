@@ -11,7 +11,9 @@
         <div class="desk">
             <div class="desk-hello">
                 <div class="min-w-0">
-                    <h1 class="desk-title">{{ _('Welcome back, detective.') }}</h1>
+                    {# The server can't know the player's time of day; the script below picks the greeting #}
+                    <h1 class="desk-title" data-greet-morning="{{ word('greet_morning') }}" data-greet-afternoon="{{ word('greet_afternoon') }}"
+                        data-greet-evening="{{ word('greet_evening') }}">{{ _('Welcome back, detective.') }}</h1>
                     <p class="text-muted mb-0">{{ _("Today's case is closed. Pick a new investigation below.") if desk.attempt else _('One new case on your desk.') }}</p>
                 </div>
                 {{ finn('think' if not desk.attempt else 'happy', class='desk-finn') }}
@@ -36,6 +38,13 @@
                         <b>{{ desk.streak }}</b>{{ _n('day in a row', 'days in a row', desk.streak) }}</div>
                     <a class="desk-note" href="{{ url_for('league') }}"><span class="desk-note-pin" aria-hidden="true"></span>
                         {% if desk.league %}<b>#{{ desk.league.rank }}</b>{{ _('{league} league').format(league=_(desk.league.tier)) }}{% else %}<b>—</b>{{ _("Finish a quiz to join this week's league") }}{% endif %}</a>
+                    {# Quick leads: they pick the choice in the form below and take the player there #}
+                    <div class="desk-leads desk-note-wide">
+                        <span class="desk-leads-label">{{ _('New investigation') }}</span>
+                        <button type="button" class="desk-lead" data-lead="surprise"><i class="bi bi-shuffle" aria-hidden="true"></i>{{ _('Surprise me') }}</button>
+                        <button type="button" class="desk-lead" data-lead="topic"><i class="bi bi-search" aria-hidden="true"></i>{{ _('Any topic') }}</button>
+                        <button type="button" class="desk-lead" data-lead="duel"><i class="bi bi-people" aria-hidden="true"></i>{{ _('Duel a friend') }}</button>
+                    </div>
                     <a class="desk-note desk-note-wide" href="{{ url_for('event') }}"><span class="desk-note-pin" aria-hidden="true"></span>
                         <span class="small text-muted d-block">{{ _('Weekly event') }}</span><b class="desk-note-event">{{ _(desk.event_theme) }}</b></a>
                 </div>
@@ -71,7 +80,7 @@
 
         {% endif %}
 
-        {% if desk %}<h2 class="desk-subhead">{{ _('New investigation') }}</h2>{% endif %}
+        {% if desk %}<h2 class="desk-subhead" id="new-investigation">{{ _('New investigation') }}</h2>{% endif %}
         <form action="/start_quiz" method="POST" class="wf-card wf-card-pad investigation" data-loading="{{ _('Generating your quiz…') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <section class="mb-5" data-tour="category">
@@ -177,6 +186,31 @@
 
 {% block scripts %}
 <script>
+    // The desk: greet by the player's own clock, and quick leads that pick a choice in the form and go there
+    (function () {
+        const title = document.querySelector('.desk-title');
+        if (title) {
+            const hour = new Date().getHours();
+            title.textContent = title.dataset[hour < 12 ? 'greetMorning' : hour < 18 ? 'greetAfternoon' : 'greetEvening'];
+        }
+        const jump = target => target.scrollIntoView({ behavior: 'instant', block: 'start' });
+        document.querySelectorAll('[data-lead]').forEach(button => button.addEventListener('click', () => {
+            const lead = button.dataset.lead;
+            if (lead === 'duel') {
+                const box = document.querySelector('.together-box');
+                jump(box);
+                box.classList.add('is-hinted');
+                box.focus();
+                return;
+            }
+            const input = document.getElementById(lead === 'surprise' ? 'catSurprise' : 'catTopic');
+            input.checked = true;
+            input.dispatchEvent(new Event('change', { bubbles: true }));
+            jump(document.getElementById('new-investigation'));
+            if (lead === 'topic') setTimeout(() => document.getElementById('topicInput').focus(), 50);
+        }));
+    })();
+
     // "Any topic": show the search box when its tile is picked, and fill its suggestions from Wikipedia while typing
     (function () {
         const box = document.getElementById('topicSearch');

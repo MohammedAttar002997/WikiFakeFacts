@@ -804,5 +804,18 @@
   "Drop zone": "منطقة الهبوط",
   "Promotion": "الصعود",
   "Top {up} move up, bottom {down} move down": "يصعد أول {up} ويهبط آخر {down}",
-  "{league} precinct": "مخفر {league}"
+  "{league} precinct": "مخفر {league}",
+  "Ask Finn": "اسأل فِن",
+  "Cases": "القضايا",
+  "Detectives": "المحققون",
+  "Duel a friend": "نازل صديقًا",
+  "Good afternoon": "مساء الخير",
+  "Good afternoon, detective.": "مساء الخير أيها المحقق.",
+  "Good evening": "مساء الخير",
+  "Good evening, detective.": "مساء الخير أيها المحقق.",
+  "Good morning": "صباح الخير",
+  "Good morning, detective.": "صباح الخير أيها المحقق.",
+  "My file": "ملفي",
+  "Top detectives": "أفضل المحققين",
+  "Your text": "نصّك"
 }

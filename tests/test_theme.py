@@ -85,3 +85,15 @@ def test_setup_has_the_compact_investigation_form(login):
         assert step in form
     assert 'Start the investigation' in form and form.count('class="together-box"') == 2
     assert 'formaction="/live/new"' in form and 'formaction="/class/new"' in form
+
+
+def test_the_menu_and_desk_use_the_case_file_words(login):
+    html = login('Ann').get('/setup').get_data(as_text=True)
+    nav = html.split('id="navbarNav"')[1].split('</ul>')[0]
+    for name in ('Cases', 'Top detectives', 'Detectives', 'My file', 'Your text', 'Ask Finn'):
+        assert f'</i>{name}' in nav
+    title = html.split('class="desk-title"')[1].split('</h1>')[0]
+    assert 'data-greet-morning="Good morning, detective."' in title and 'data-greet-evening=' in title
+    leads = html.split('class="desk-leads desk-note-wide"')[1].split('</div>')[0]
+    assert all(f'data-lead="{lead}"' in leads for lead in ('surprise', 'topic', 'duel'))
+    assert 'id="new-investigation"' in html and 'id="catSurprise"' in html and 'id="topicInput"' in html
