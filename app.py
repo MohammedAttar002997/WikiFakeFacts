@@ -453,6 +453,11 @@ def pin_token(user):
 
 
 def sign_in(user):
+    # Another player signing in on this browser (without signing out first) must not get the last one's quiz or
+    # help chat
+    if session.get('user_id') not in (None, user.id):
+        for key in ('quiz_session_id', 'chat_id', 'chat_owner'):
+            session.pop(key, None)
     session['user_id'] = user.id
     session['pin_token'] = pin_token(user)
     session.pop('username', None)  # Sessions from before user_id named the player instead
@@ -460,7 +465,7 @@ def sign_in(user):
 
 
 def sign_out():
-    for key in ('user_id', 'pin_token', 'username', 'quiz_session_id', 'chat_id', 'next_url'):
+    for key in ('user_id', 'pin_token', 'username', 'quiz_session_id', 'chat_id', 'chat_owner', 'next_url'):
         session.pop(key, None)
     g.me = None
 
