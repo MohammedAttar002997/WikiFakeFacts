@@ -82,6 +82,9 @@ MAX_FILE_SIZE = MAX_FILE_MB * 1024 * 1024
 AVATAR_SIZE = 256
 AVATAR_FORMATS = {'JPEG', 'PNG', 'WEBP', 'GIF'}
 AVATAR_MAX_PIXELS = 40_000_000  # Bigger pictures are refused before they're decoded
+# Big pictures are shrunk in the browser to this many pixels on their longest side before uploading (account.html),
+# so phone photos fit under the upload limit; the server then crops them to AVATAR_SIZE anyway
+PHOTO_MAX_SIDE = 1024
 
 app.config['MAX_CONTENT_LENGTH'] = MAX_FILE_SIZE
 
@@ -942,7 +945,8 @@ def account():
         'badges': UserBadge.query.filter_by(user_id=user.id).count(),
     }
     return render_template('account.html', user=user, counts=counts, categories=CATEGORIES,
-                           max_name_length=MAX_NAME_LENGTH, wardrobe=finn_wardrobe(user))
+                           max_name_length=MAX_NAME_LENGTH, wardrobe=finn_wardrobe(user),
+                           max_file_bytes=MAX_FILE_SIZE, max_file_mb=MAX_FILE_MB, photo_max_side=PHOTO_MAX_SIDE)
 
 
 def finn_wardrobe(user):
