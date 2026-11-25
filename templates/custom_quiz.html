@@ -30,6 +30,11 @@
                         </button>
                     </li>
                     <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="text-tab" data-bs-toggle="tab" data-bs-target="#text-content" type="button" role="tab" aria-controls="text-content" aria-selected="false">
+                            <i class="bi bi-textarea-t me-1"></i>{{ _('Paste text') }}
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
                         <button class="nav-link" id="url-tab" data-bs-toggle="tab" data-bs-target="#url-content" type="button" role="tab" aria-controls="url-content" aria-selected="false">
                             <i class="bi bi-link-45deg me-1"></i>{{ _('Paste URL') }}
                         </button>
@@ -46,11 +51,19 @@
                 <div class="tab-content" id="contentTabsContent">
                     <div class="tab-pane fade{% if not open_uploads %} show active{% endif %}" id="file-content" role="tabpanel" aria-labelledby="file-tab">
                         <label class="dropzone" id="dropzone" for="file">
-                            <input type="file" id="file" name="file" accept=".pdf,.txt,.docx">
+                            <input type="file" id="file" name="file" accept=".pdf,.txt,.docx" data-max-bytes="{{ max_file_bytes }}">
                             <i class="bi bi-cloud-arrow-up-fill dz-icon"></i>
                             <div class="fw-black mt-2" id="dzLabel">{{ _('Drop a file here or click to browse') }}</div>
-                            <div class="small text-muted mt-1">{{ _('PDF, TXT or DOCX · max 10MB') }}</div>
+                            <div class="small text-muted mt-1">{{ _('PDF, TXT or DOCX · up to {n} MB').format(n=max_file_mb) }}</div>
                         </label>
+                        <div class="invalid-feedback fw-bold" id="fileError" role="alert">{{ _('That file is too big. The limit is {n} MB.').format(n=max_file_mb) }}
+                            {{ _('Try a smaller file, or paste the text instead.') }}</div>
+                    </div>
+                    <div class="tab-pane fade" id="text-content" role="tabpanel" aria-labelledby="text-tab">
+                        <label class="visually-hidden" for="text">{{ _('Paste text') }}</label>
+                        <textarea class="form-control" id="text" name="text" rows="8" maxlength="{{ max_text_chars }}"
+                                  placeholder="{{ _('Paste notes, an article or any text you want to be quizzed on…') }}"></textarea>
+                        <small class="text-muted d-block mt-2">{{ _('At least a few sentences. Long texts are fine.') }}</small>
                     </div>
                     <div class="tab-pane fade" id="url-content" role="tabpanel" aria-labelledby="url-tab">
                         <div class="input-group input-group-lg">
@@ -65,13 +78,14 @@
                         <div class="d-flex flex-column gap-2" role="radiogroup" aria-label="{{ _('Your uploads') }}">
                             {% for upload in uploads %}
                             {% set is_url = upload.content_type == 'url' or (upload.source or '').startswith('http') %}
+                            {% set is_text = upload.content_type == 'text' %}
                             <div class="upload-option">
                                 <input class="upload-input visually-hidden" type="radio" name="saved_content_id" id="upload{{ upload.id }}" value="{{ upload.id }}">
                                 <label class="upload-label" for="upload{{ upload.id }}">
-                                    <i class="bi {{ 'bi-globe2' if is_url else 'bi-file-earmark-text' }} upload-icon" aria-hidden="true"></i>
+                                    <i class="bi {{ 'bi-globe2' if is_url else ('bi-textarea-t' if is_text else 'bi-file-earmark-text') }} upload-icon" aria-hidden="true"></i>
                                     <span class="flex-grow-1 min-w-0">
                                         <span class="d-block fw-bold text-truncate">{{ upload.title }}</span>
-                                        <span class="d-block small text-muted text-truncate">{{ upload.source or _('Uploaded content') }} &middot; {{ upload.created_at|date }}</span>
+                                        <span class="d-block small text-muted text-truncate">{{ upload.source or (_('Pasted text') if is_text else _('Uploaded content')) }} &middot; {{ upload.created_at|date }}</span>
                                     </span>
                                     <i class="bi bi-check-circle-fill upload-check" aria-hidden="true"></i>
                                 </label>
@@ -86,7 +100,7 @@
                     </div>
                     {% endif %}
                 </div>
-                <div class="invalid-feedback fw-bold" id="contentError">{{ _('Please upload a file, enter a URL, or pick one of your uploads.') }}</div>
+                <div class="invalid-feedback fw-bold" id="contentError">{{ _('Please upload a file, paste some text or a link, or pick one of your uploads.') }}</div>
             </section>
 
             <section class="mb-5">
@@ -118,6 +132,9 @@
     (function () {
         const fileInput = document.getElementById('file');
         const urlInput = document.getElementById('url');
+        const textInput = document.getElementById('text');
+        const fileError = document.getElementById('fileError');
+        const maxBytes = Number(fileInput.dataset.maxBytes);
         const dropzone = document.getElementById('dropzone');
         const dzLabel = document.getElementById('dzLabel');
         const contentError = document.getElementById('contentError');
@@ -133,8 +150,14 @@
 
         // Ensure only one input is filled
         fileInput.addEventListener('change', function () {
-            if (this.files.length > 0) {
+            fileError.style.display = '';
+            // Bigger files never reach the app (the host refuses them), so say so before uploading
+            if (this.files.length > 0 && this.files[0].size > maxBytes) {
+                this.value = '';
+                fileError.style.display = 'block';
+            } else if (this.files.length > 0) {
                 urlInput.value = '';
+                textInput.value = '';
                 clearSaved();
                 contentError.style.display = '';
             }
@@ -144,6 +167,17 @@
         urlInput.addEventListener('input', function () {
             if (this.value.trim()) {
                 fileInput.value = '';
+                textInput.value = '';
+                clearSaved();
+                contentError.style.display = '';
+                showFileName();
+            }
+        });
+
+        textInput.addEventListener('input', function () {
+            if (this.value.trim()) {
+                fileInput.value = '';
+                urlInput.value = '';
                 clearSaved();
                 contentError.style.display = '';
                 showFileName();
@@ -153,6 +187,7 @@
         savedInputs.forEach(r => r.addEventListener('change', () => {
             fileInput.value = '';
             urlInput.value = '';
+            textInput.value = '';
             contentError.style.display = '';
             showFileName();
         }));
@@ -167,7 +202,7 @@
         // Form validation
         document.getElementById('customQuizForm').addEventListener('submit', function (e) {
             if (e.submitter && e.submitter.hasAttribute('data-no-loading')) return;  // Delete buttons
-            if (!fileInput.files.length && !urlInput.value.trim() && !savedInputs.some(r => r.checked)) {
+            if (!fileInput.files.length && !urlInput.value.trim() && !textInput.value.trim() && !savedInputs.some(r => r.checked)) {
                 e.preventDefault();
                 contentError.style.display = 'block';
                 contentError.scrollIntoView({ behavior: 'smooth', block: 'center' });

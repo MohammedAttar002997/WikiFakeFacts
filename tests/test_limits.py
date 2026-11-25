@@ -273,3 +273,60 @@ def test_limits_start_over_after_the_window(app_ctx, monkeypatch):
         db.session.get(RateLimit, 'chat:someone').window_start -= timedelta(minutes=11)
         db.session.commit()
         assert not app_module.over_limit('chat', 'someone')
+
+
+# ---------- Size limit, scanned PDFs and pasted text --------------------------------------------------------------
+
+def blank_pdf(pages=2):
+    from pypdf import PdfWriter
+    writer = PdfWriter()
+    for _ in range(pages):
+        writer.add_blank_page(width=595, height=842)
+    output = io.BytesIO()
+    writer.write(output)
+    return output.getvalue()
+
+
+def test_the_upload_limit_fits_under_the_hosts_limit():
+    # Vercel refuses request bodies over 4.5 MB with its own page, before the app's friendly message can run
+    assert app_module.app.config['MAX_CONTENT_LENGTH'] <= 4 * 1024 * 1024
+
+
+def test_a_pdf_without_text_is_called_a_scan(login, app_ctx):
+    with pytest.raises(ContentError) as error:
+        extract_text_from_upload(blank_pdf(), 'scan.pdf')
+    assert error.value.reason == 'scanned_pdf'
+    client = login('Owner')
+    upload(client, blank_pdf(), 'scan.pdf')
+    assert 'scanned pages' in client.get('/custom_quiz').get_data(as_text=True)
+    assert CustomContent.query.count() == 0
+
+
+def test_too_big_uploads_get_the_apps_message(login):
+    client = login('Owner')
+    response = upload(client, b'x' * (app_module.MAX_FILE_SIZE + 1), 'big.txt')
+    assert response.status_code == 302
+    assert 'The limit is 4 MB.' in client.get('/custom_quiz').get_data(as_text=True)
+
+
+def test_the_page_checks_the_size_before_uploading(login):
+    html = login('Owner').get('/custom_quiz').get_data(as_text=True)
+    assert f'data-max-bytes="{app_module.MAX_FILE_SIZE}"' in html and 'up to 4 MB' in html
+
+
+def test_pasted_text_makes_a_quiz_and_is_kept(login, app_ctx):
+    client = login('Owner')
+    response = client.post('/custom_quiz', data={**FORM, 'text': '  Volcanoes erupt magma. ' * 20})
+    assert response.headers['Location'] == '/quiz'
+    saved = CustomContent.query.one()
+    assert (saved.content_type, saved.source) == ('text', None)
+    assert saved.content.startswith('Volcanoes erupt magma.')
+    assert 'Pasted text' in client.get('/custom_quiz?tab=uploads').get_data(as_text=True)
+
+
+def test_pasted_text_is_cut_and_short_text_refused(login, app_ctx):
+    client = login('Owner')
+    client.post('/custom_quiz', data={**FORM, 'text': 'Too short.'})
+    assert 'enough text' in client.get('/custom_quiz').get_data(as_text=True)
+    client.post('/custom_quiz', data={**FORM, 'text': 'a' * (MAX_CONTENT_CHARS + 500)})
+    assert len(CustomContent.query.one().content) == MAX_CONTENT_CHARS
