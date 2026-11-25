@@ -489,6 +489,22 @@
 [data-theme="casefile"] .report-links a { font-family: var(--wf-font-label); font-weight: 400; color: var(--wf-text); }
 [data-theme="casefile"] .report-links a:hover { color: var(--wf-marker); }
 
+/* ---------- The precinct board (league): a roster on a clipboard, stamped promotion and drop lines -------------- */
+
+[data-theme="casefile"] .board-kicker { font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .board-title { font-family: var(--wf-font-head); font-weight: 800; }
+[data-theme="casefile"] .roster { border: 0; border-radius: 2px; margin-top: 1.8rem; }
+[data-theme="casefile"] .roster::before {  /* The clipboard's clip */
+    content: ""; position: absolute; top: -12px; left: 50%; width: 76px; height: 20px; margin-left: -38px;
+    background: #8d8a83; border-radius: 4px; box-shadow: 0 2px 3px rgba(0, 0, 0, .25);
+}
+[data-theme="casefile"] .roster-head { font-family: var(--wf-font-label); font-weight: 400; letter-spacing: .04em; }
+[data-theme="casefile"] .roster .rank-row .who a { font-family: var(--wf-font-body); }
+[data-theme="casefile"] .roster .league-line { font-family: var(--wf-font-label); font-weight: 400; letter-spacing: .12em; }
+[data-theme="casefile"] .roster .league-line.is-up { color: var(--wf-good); }
+[data-theme="casefile"] .roster .league-line.is-down { color: var(--wf-marker); }
+[data-theme="casefile"] .board-rules summary, [data-theme="casefile"] .board-points { font-family: var(--wf-font-label); font-weight: 400; }
+
 /* ---------- Everything else (stage 3): square paper corners and flat case-file colours instead of gradients ---- */
 
 [data-theme="casefile"] :is(.badge-tile, .class-board .class-option, .class-place, .insight-box, .league-step, .live-player,

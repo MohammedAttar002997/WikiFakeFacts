@@ -1755,3 +1755,26 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .report-links a { font-weight: 700; text-decoration: none; padding: .4rem 0; }
 @media (max-width: 400px) { .report-actions { grid-template-columns: 1fr; } }
 
+/* ---------- The league as the precinct board (league.html) -------------------------------------------------------- */
+.board-head { margin-bottom: 1rem; }
+.board-kicker { font-size: .8rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--wf-muted); }
+.board-title { font-size: clamp(1.7rem, 5vw, 2.4rem); margin: .1rem 0 .2rem; }
+.board-meta { color: var(--wf-muted); margin: 0; font-size: .95rem; }
+.league-ladder { margin-bottom: 1.25rem !important; }
+.roster { position: relative; margin-top: 1.4rem; padding: 1.1rem 0 .4rem; background: var(--wf-surface); border: 1px solid var(--wf-border);
+          border-radius: .9rem; box-shadow: var(--wf-shadow); }
+.roster-head { display: flex; align-items: center; gap: .5rem; padding: 0 1rem .6rem; font-weight: 800; border-bottom: 1px solid var(--wf-border); }
+.roster-rows { display: flex; flex-direction: column; }
+.roster .rank-row { border: 0; border-radius: 0; border-bottom: 1px dashed var(--wf-border); background: transparent; padding: .55rem 1rem; gap: .75rem; }
+.roster .rank-row:hover { transform: none; }
+.roster .rank-row .meta { display: none; }
+.roster .rank-row .score .meta { display: none; }
+.roster .league-line { margin: 0; padding: .35rem 1rem; justify-content: center; }
+.roster .league-line::after { display: none; }
+.roster .league-line.is-up { border-top: 2px solid currentColor; }
+.roster .league-line.is-down { border-bottom: 2px solid currentColor; }
+.board-points { margin: 1rem 0 .4rem; color: var(--wf-muted); font-size: .95rem; text-align: center; }
+.board-rules { text-align: center; margin-bottom: 1rem; }
+.board-rules summary { cursor: pointer; font-weight: 700; padding: .5rem; display: inline-block; }
+.board-rules ul { text-align: start; max-width: 40rem; margin-inline: auto; }
+

@@ -800,5 +800,9 @@
   "Case report": "Fallbericht",
   "Challenge a friend": "Freund herausfordern",
   "Results": "Ergebnisse",
-  "{score} of {total} fakes found": "{score} von {total} Fälschungen gefunden"
+  "{score} of {total} fakes found": "{score} von {total} Fälschungen gefunden",
+  "Drop zone": "Abstiegszone",
+  "Promotion": "Aufstieg",
+  "Top {up} move up, bottom {down} move down": "Die ersten {up} steigen auf, die letzten {down} ab",
+  "{league} precinct": "Revier {league}"
 }

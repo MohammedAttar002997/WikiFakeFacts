@@ -22,6 +22,9 @@ WORDS = {
         'start_quiz': 'Start Game',
         'step_language': 'Quiz Language:',
         'report_label': 'Results',
+        'league_title': '{league} league',
+        'promotion_line': 'Moving up',
+        'drop_line': 'Moving down',
     },
     'casefile': {
         'submit_answer': 'Accuse this one',
@@ -35,6 +38,9 @@ WORDS = {
         'start_quiz': 'Start the investigation',
         'step_language': 'Language',
         'report_label': 'Case report',
+        'league_title': '{league} precinct',
+        'promotion_line': 'Promotion',
+        'drop_line': 'Drop zone',
     },
 }
 
