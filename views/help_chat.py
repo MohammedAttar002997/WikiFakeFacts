@@ -63,10 +63,19 @@ def player_summary(user):
     }
 
 
+def chat_owner():
+    """Whose chat this browser may show: the signed-in player's id, or 'guest'."""
+    user = current_user()
+    return user.id if user else 'guest'
+
+
 def conversation():
-    """This browser's chat (a ChatbotSession), or None before its first message."""
+    """This browser's chat with the current player (a ChatbotSession), or None before its first message. A chat
+    started by someone else on this browser (another player, or a guest before signing in) is never shown."""
     chat_id = session.get('chat_id')
-    return ChatbotSession.query.filter_by(session_id=chat_id).first() if chat_id else None
+    if not chat_id or session.get('chat_owner') != chat_owner():
+        return None
+    return ChatbotSession.query.filter_by(session_id=chat_id).first()
 
 
 @app.route('/chatbot')
@@ -93,10 +102,10 @@ def chatbot_api():
         if over_limit('chat', client_ip()):
             return jsonify({'error': _("You're going a bit fast. Please wait a few minutes and try again.")}), 429
 
-        # Each browser gets its own random conversation ID (Flask has no built-in session ID)
-        if 'chat_id' not in session:
-            session['chat_id'] = secrets.token_urlsafe(16)
+        # Each browser and player gets its own random conversation ID (Flask has no built-in session ID)
         chat = conversation()
+        if not chat and (session.get('chat_owner') != chat_owner() or 'chat_id' not in session):
+            session['chat_id'], session['chat_owner'] = secrets.token_urlsafe(16), chat_owner()
         if not chat:
             chat = ChatbotSession(session_id=session['chat_id'], conversation_json='[]')
             db.session.add(chat)
