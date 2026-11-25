@@ -56,7 +56,6 @@
   "Bring your own content": "Utilisez vos propres contenus",
   "Building your custom quiz…": "Création de votre quiz personnalisé…",
   "Building your practice quiz…": "Création de votre quiz d'entraînement…",
-  "Can I see other players?": "Puis-je voir les autres joueurs ?",
   "Can you beat that? Three facts are true, one is a lie.": "Pouvez-vous faire mieux ? Trois faits sont vrais, un est un mensonge.",
   "Category": "Catégorie",
   "Challenge": "Défi",
@@ -418,10 +417,7 @@
   "Weekly event": "Événement hebdomadaire",
   "Weekly event standings": "Classement de l'événement hebdomadaire",
   "Welcome to WikiFakeFact!": "Bienvenue sur WikiFakeFact !",
-  "What difficulty levels are available?": "Quels niveaux de difficulté sont disponibles ?",
   "What is your name?": "Quel est votre nom ?",
-  "What languages are supported?": "Quelles langues sont disponibles ?",
-  "Who are the top players?": "Qui sont les meilleurs joueurs ?",
   "Who took the challenge": "Qui a relevé le défi",
   "Who took your challenges": "Qui a relevé vos défis",
   "Why it's fake:": "Pourquoi c'est faux :",
@@ -768,5 +764,9 @@
   "Please upload a file, paste some text or a link.": "Importez un fichier, collez un texte ou un lien.",
   "That file is too big. The limit is {n} MB.": "Ce fichier est trop volumineux. La limite est de {n} Mo.",
   "Try a smaller file, or paste the text instead.": "Essayez un fichier plus petit, ou collez plutôt le texte.",
-  "We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.": "Nous avons trouvé peu ou pas de texte dans ce PDF. S’il s’agit de pages numérisées (photos de texte), essayez un PDF dont le texte peut être sélectionné, un fichier Word, ou collez le texte."
+  "We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.": "Nous avons trouvé peu ou pas de texte dans ce PDF. S’il s’agit de pages numérisées (photos de texte), essayez un PDF dont le texte peut être sélectionné, un fichier Word, ou collez le texte.",
+  "How can I play with friends?": "Comment jouer avec des amis ?",
+  "How do leagues work?": "Comment fonctionnent les ligues ?",
+  "How does the daily challenge work?": "Comment fonctionne le défi du jour ?",
+  "What should I play next?": "À quoi devrais-je jouer maintenant ?"
 }

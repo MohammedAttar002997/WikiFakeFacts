@@ -56,7 +56,6 @@
   "Bring your own content": "Bring deine eigenen Inhalte mit",
   "Building your custom quiz…": "Dein eigenes Quiz wird erstellt…",
   "Building your practice quiz…": "Dein Übungsquiz wird erstellt…",
-  "Can I see other players?": "Kann ich andere Spieler sehen?",
   "Can you beat that? Three facts are true, one is a lie.": "Schaffst du mehr? Drei Fakten sind wahr, einer ist gelogen.",
   "Category": "Kategorie",
   "Challenge": "Herausforderung",
@@ -418,10 +417,7 @@
   "Weekly event": "Wochen-Event",
   "Weekly event standings": "Stand im Wochen-Event",
   "Welcome to WikiFakeFact!": "Willkommen bei WikiFakeFact!",
-  "What difficulty levels are available?": "Welche Schwierigkeitsstufen gibt es?",
   "What is your name?": "Wie heißt du?",
-  "What languages are supported?": "Welche Sprachen gibt es?",
-  "Who are the top players?": "Wer sind die besten Spieler?",
   "Who took the challenge": "Wer die Herausforderung gespielt hat",
   "Who took your challenges": "Wer deine Herausforderungen gespielt hat",
   "Why it's fake:": "Darum ist es ein Fake:",
@@ -768,5 +764,9 @@
   "Please upload a file, paste some text or a link.": "Lade eine Datei hoch oder füge einen Text oder Link ein.",
   "That file is too big. The limit is {n} MB.": "Diese Datei ist zu groß. Die Grenze liegt bei {n} MB.",
   "Try a smaller file, or paste the text instead.": "Versuche eine kleinere Datei oder füge stattdessen den Text ein.",
-  "We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.": "In diesem PDF haben wir wenig oder keinen Text gefunden. Wenn es gescannte Seiten sind (Fotos von Text), nimm ein PDF, in dem du Text markieren kannst, eine Word-Datei, oder füge den Text ein."
+  "We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.": "In diesem PDF haben wir wenig oder keinen Text gefunden. Wenn es gescannte Seiten sind (Fotos von Text), nimm ein PDF, in dem du Text markieren kannst, eine Word-Datei, oder füge den Text ein.",
+  "How can I play with friends?": "Wie kann ich mit Freunden spielen?",
+  "How do leagues work?": "Wie funktionieren die Ligen?",
+  "How does the daily challenge work?": "Wie funktioniert die Tages-Challenge?",
+  "What should I play next?": "Was soll ich als Nächstes spielen?"
 }

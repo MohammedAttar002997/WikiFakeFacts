@@ -28,6 +28,13 @@
                             <div class="bot-avatar">{{ finn_face() }}</div>
                             <div class="message-content assistant">👋 {{ _("Hi! I'm Finn, your WikiFakeFact guide. What would you like to know?") }}</div>
                         </div>
+                        {# This browser's conversation so far (views/help_chat.py), so a reload doesn't lose it #}
+                        {% for turn in history %}
+                        <div class="chat-message {{ 'user' if turn.role == 'user' else 'assistant' }}">
+                            {% if turn.role != 'user' %}<div class="bot-avatar">{{ finn_face() }}</div>{% endif %}
+                            <div class="message-content {{ 'user' if turn.role == 'user' else 'assistant' }}">{{ turn.content }}</div>
+                        </div>
+                        {% endfor %}
                     </div>
 
                     <form id="chatForm" class="chat-input">
@@ -97,7 +104,7 @@
             const data = await response.json().catch(() => ({}));
             typing.remove();
             if (response.ok) {
-                addMessage(data.message, 'assistant', data.suggested_action, data.action_url);
+                addMessage(data.message, 'assistant', data.actions || []);
             } else {
                 // The server explains in the player's language (too long, too many messages…)
                 addMessage(data.error || {{ _('Sorry, I encountered an error. Please try again.')|tojson }}, 'assistant');
@@ -143,15 +150,15 @@
         return row;
     }
 
-    function addMessage(text, sender, action = null, actionUrl = null) {
+    function addMessage(text, sender, actions = []) {
         const row = messageRow(sender);
 
         let content = `<div class="message-content ${sender}">${escapeHtml(text)}`;
 
-        if (action && actionUrl) {
-            content += `<div class="suggested-action">
-                <a href="${escapeHtml(actionUrl)}"><i class="bi bi-arrow-right-circle-fill"></i>${escapeHtml(action)}</a>
-            </div>`;
+        // Up to two buttons to the pages Finn talks about ({label, url}, checked on the server)
+        if (actions.length) {
+            content += '<div class="suggested-action">' + actions.map(a =>
+                `<a href="${escapeHtml(a.url)}"><i class="bi bi-arrow-right-circle-fill"></i>${escapeHtml(a.label)}</a>`).join('') + '</div>';
         }
 
         content += '</div>';

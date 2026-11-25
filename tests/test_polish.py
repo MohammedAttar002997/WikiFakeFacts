@@ -54,9 +54,9 @@ def test_too_large_upload_goes_back_with_a_message(login, app, monkeypatch):
 def assistant(monkeypatch):
     calls = []
 
-    def respond(message, history, language='English'):
+    def respond(message, history, language='English', **context):
         calls.append(language)
-        return SimpleNamespace(message='Hola', suggested_action='Ir', action_url=calls_url.pop(0))
+        return SimpleNamespace(message='Hola', actions=[SimpleNamespace(label='Ir', url=calls_url.pop(0))])
     calls_url = []
     monkeypatch.setattr(app_module, 'get_chatbot_response', respond)
     return calls, calls_url
@@ -75,7 +75,8 @@ def test_assistant_answers_in_the_interface_language(login, assistant):
 def test_assistant_links_stay_on_this_site(app, app_ctx, assistant, url, expected):
     _calls, urls = assistant
     urls.append(url)
-    assert app.test_client().post('/api/chatbot', json={'message': 'hi'}).get_json()['action_url'] == expected
+    actions = app.test_client().post('/api/chatbot', json={'message': 'hi'}).get_json()['actions']
+    assert [a['url'] for a in actions] == ([expected] if expected else [])
 
 
 def test_quick_help_is_translated(login):
@@ -84,7 +85,7 @@ def test_quick_help_is_translated(login):
 
 
 def test_assistant_failures_show_a_translated_message(login, monkeypatch):
-    def broken(message, history, language):
+    def broken(message, history, language, **context):
         raise RuntimeError('upstream says no')
     monkeypatch.setattr(app_module, 'get_chatbot_response', broken)
     response = login('Player', language='it').post('/api/chatbot', json={'message': 'ciao'})
