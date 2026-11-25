@@ -1635,6 +1635,7 @@ def results():
                            share=None if is_practice else share_details(quiz_session),
                            challenge=challenge_comparison(quiz_session),
                            is_practice=is_practice, case_no=quiz_session.id,
+                           difficulty=quiz_session.difficulty,
                            league_points=None if is_practice else leagues.points_for(quiz_session.difficulty,
                                                                                     quiz_session.score),
                            practice_left=len(practice_pool(user)) if user else 0,

@@ -74,7 +74,6 @@
   "Compare answers": "Comparar respuestas",
   "Continue": "Continuar",
   "Continue the challenge": "Continuar el desafío",
-  "Correct": "Correctas",
   "Correct! You found the fake fact.": "¡Correcto! Encontraste el hecho falso.",
   "Countries": "Países",
   "Create Custom Quiz": "Crear quiz personalizado",
@@ -797,5 +796,9 @@
   "On a big screen; students join at {url} with a code.": "En una pantalla grande; los alumnos entran en {url} con un código.",
   "Pick a lead": "Elige una pista",
   "Same rounds at the same time; faster right answers score more.": "Las mismas rondas a la vez; las respuestas correctas más rápidas suman más.",
-  "Start the investigation": "Empezar la investigación"
+  "Start the investigation": "Empezar la investigación",
+  "Case report": "Informe del caso",
+  "Challenge a friend": "Reta a un amigo",
+  "Results": "Resultados",
+  "{score} of {total} fakes found": "{score} de {total} falsos encontrados"
 }

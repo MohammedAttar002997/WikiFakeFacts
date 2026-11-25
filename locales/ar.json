@@ -74,7 +74,6 @@
   "Compare answers": "قارن الإجابات",
   "Continue": "متابعة",
   "Continue the challenge": "تابع التحدي",
-  "Correct": "صحيح",
   "Correct! You found the fake fact.": "صحيح! لقد وجدت المعلومة المزيّفة.",
   "Countries": "الدول",
   "Create Custom Quiz": "إنشاء اختبار مخصص",
@@ -797,5 +796,9 @@
   "On a big screen; students join at {url} with a code.": "على شاشة كبيرة؛ ينضم الطلاب عبر {url} برمز.",
   "Pick a lead": "اختر خيطًا",
   "Same rounds at the same time; faster right answers score more.": "الجولات نفسها في الوقت نفسه؛ الإجابات الصحيحة الأسرع تكسب أكثر.",
-  "Start the investigation": "ابدأ التحقيق"
+  "Start the investigation": "ابدأ التحقيق",
+  "Case report": "تقرير القضية",
+  "Challenge a friend": "تحدَّ صديقًا",
+  "Results": "النتائج",
+  "{score} of {total} fakes found": "وجدت {score} من {total} مزيفة"
 }

@@ -479,6 +479,16 @@
 [data-theme="casefile"] .together-box { border-radius: var(--wf-radius); border-color: var(--wf-folder-edge); }
 [data-theme="casefile"] .together-title { font-family: var(--wf-font-head); }
 
+/* ---------- The case report (results): a typed report on paper, the score in big serif ------------------------- */
+
+[data-theme="casefile"] .report { border-radius: 2px; border: 0; }
+[data-theme="casefile"] .report-kind, [data-theme="casefile"] .report-no, [data-theme="casefile"] .report-facts dt { font-family: var(--wf-font-label); }
+[data-theme="casefile"] .report-title, [data-theme="casefile"] .report-big { font-family: var(--wf-font-head); font-weight: 800; }
+[data-theme="casefile"] .report-score { font-family: var(--wf-font-head); }
+[data-theme="casefile"] .report-say { border-radius: 12px 12px 12px 2px; background: var(--wf-surface-2); }
+[data-theme="casefile"] .report-links a { font-family: var(--wf-font-label); font-weight: 400; color: var(--wf-text); }
+[data-theme="casefile"] .report-links a:hover { color: var(--wf-marker); }
+
 /* ---------- Everything else (stage 3): square paper corners and flat case-file colours instead of gradients ---- */
 
 [data-theme="casefile"] :is(.badge-tile, .class-board .class-option, .class-place, .insight-box, .league-step, .live-player,
