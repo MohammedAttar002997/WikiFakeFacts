@@ -56,3 +56,23 @@ def test_the_quiz_uses_the_case_file_words_in_every_language(login, ai):
     german = login('Ben', language='de')
     german.post('/start_quiz', data={'category': '1', 'length': '1', 'difficulty': '2', 'language': 'de'})
     assert translate('Accuse this one', 'de') in german.get('/quiz').get_data(as_text=True)
+
+
+# ---------- Case file layouts --------------------------------------------------------------------------------------
+
+def test_the_quiz_has_the_case_file_layout(login, ai):
+    client = login('Ann')
+    client.post('/start_quiz', data={'category': '1', 'length': '2', 'difficulty': '2', 'language': 'en'})
+    html = client.get('/quiz').get_data(as_text=True)
+    assert 'class="quiz-case">Case: ' in html and 'Evidence 1 of 5' in html
+    assert html.count('class="is-now"') == 1 and html.count('<span class=""></span>') == 4  # One mark per round
+    assert '<span class="letter">1</span>' in html and 'data-pick-label="Suspect"' in html
+    for needed in ('id="quizForm"', 'id="submitAnswer"', 'id="quizFinn"', 'id="quizReveal"'):  # What the script uses
+        assert needed in html
+
+
+def test_phones_find_language_and_dark_mode_in_the_menu(app):
+    html = app.test_client().get('/').get_data(as_text=True)
+    tools = html.split('nav-tools')[1].split('</li>')[0]
+    assert 'data-theme-toggle' in tools and tools.count('/language/') == 7
+    assert 'class="dropdown d-none d-sm-block"' in html and 'theme-toggle d-none d-sm-grid' in html

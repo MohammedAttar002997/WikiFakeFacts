@@ -251,7 +251,6 @@
   "Preparing today's challenge…": "Die heutige Challenge wird vorbereitet…",
   "Profile": "Profil",
   "Profile and account": "Profil und Konto",
-  "Question": "Frage",
   "Quick Help": "Schnellhilfe",
   "Quiz Language:": "Quiz-Sprache:",
   "Quiz Title": "Quiz-Titel",
@@ -452,7 +451,6 @@
   "Your uploads": "Deine Uploads",
   "e.g. My biology notes": "z. B. Meine Bio-Notizen",
   "last day, ends at midnight UTC": "letzter Tag, endet um Mitternacht UTC",
-  "of": "von",
   "one attempt": "ein Versuch",
   "play today to keep it": "spiel heute, um sie zu halten",
   "points": "Punkte",
@@ -790,5 +788,9 @@
   "{n} detective on it today": "{n} Detektiv heute an dem Fall",
   "{n} detectives on it today": "{n} Detektive heute an dem Fall",
   "Accuse this one": "Diesen beschuldigen",
-  "Three of these are true. Who's lying?": "Drei davon sind wahr. Wer lügt?"
+  "Three of these are true. Who's lying?": "Drei davon sind wahr. Wer lügt?",
+  "Case": "Fall",
+  "Evidence {n} of {total}": "Beweisstück {n} von {total}",
+  "Suspect": "Verdächtig",
+  "Topic": "Thema"
 }
