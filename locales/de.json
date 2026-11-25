@@ -560,7 +560,6 @@
   "{n} players": "{n} Personen",
   "Answer locked. Look at the board!": "Antwort gespeichert. Schau auf die Tafel!",
   "Class game": "Klassenspiel",
-  "Class: show the game on a big screen; students join at {url} with a code and a nickname, no account needed.": "Klasse: Zeig das Spiel auf einem großen Bildschirm; die Schülerinnen und Schüler machen unter {url} mit einem Code und einem Spitznamen mit, ganz ohne Konto.",
   "End the game": "Spiel beenden",
   "Final results": "Endergebnis",
   "Game code": "Spielcode",
@@ -792,5 +791,11 @@
   "Case": "Fall",
   "Evidence {n} of {total}": "Beweisstück {n} von {total}",
   "Suspect": "Verdächtig",
-  "Topic": "Thema"
+  "Topic": "Thema",
+  "How hard": "Wie schwer",
+  "How long": "Wie lang",
+  "On a big screen; students join at {url} with a code.": "Auf einem großen Bildschirm; Schüler machen auf {url} mit einem Code mit.",
+  "Pick a lead": "Wähle eine Spur",
+  "Same rounds at the same time; faster right answers score more.": "Dieselben Runden gleichzeitig; schnelle richtige Antworten bringen mehr.",
+  "Start the investigation": "Ermittlung starten"
 }

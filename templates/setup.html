@@ -72,10 +72,10 @@
         {% endif %}
 
         {% if desk %}<h2 class="desk-subhead">{{ _('New investigation') }}</h2>{% endif %}
-        <form action="/start_quiz" method="POST" class="wf-card wf-card-pad" data-loading="{{ _('Generating your quiz…') }}">
+        <form action="/start_quiz" method="POST" class="wf-card wf-card-pad investigation" data-loading="{{ _('Generating your quiz…') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <section class="mb-5" data-tour="category">
-                <div class="section-label"><span class="step">1</span>{{ _('Select Category:') }}</div>
+                <div class="section-label"><span class="step">1</span>{{ word('step_category') }}</div>
                 <div class="row g-3">
                     {% for id, name in categories.items() %}
                     <div class="col-6 col-md-4 col-lg-3">
@@ -130,17 +130,17 @@
             </section>
 
             <section class="mb-5" data-tour="length">
-                <div class="section-label"><span class="step">2</span>{{ _('Game Length:') }}</div>
+                <div class="section-label"><span class="step">2</span>{{ word('step_length') }}</div>
                 {{ length_tiles(lengths) }}
             </section>
 
-            <section class="mb-5">
-                <div class="section-label"><span class="step">3</span>{{ _('Difficulty / Age Group:') }}</div>
+            <section class="mb-5 difficulty-row">
+                <div class="section-label"><span class="step">3</span>{{ word('step_difficulty') }}</div>
                 {{ difficulty_tiles(difficulties, recommended) }}
             </section>
 
             <section class="mb-5">
-                <div class="section-label"><span class="step">4</span>{{ _('Quiz Language:') }}</div>
+                <div class="section-label"><span class="step">4</span>{{ word('step_language') }}</div>
                 {{ language_select(languages, ui_language) }}
             </section>
 
@@ -154,19 +154,22 @@
                 </div>
             </section>
 
-            <div class="d-flex flex-column flex-sm-row flex-sm-wrap justify-content-center gap-3" data-tour="start">
-                <button type="submit" class="btn btn-primary btn-lg px-5">
-                    <i class="bi bi-play-fill me-1"></i>{{ _('Start Game') }}
+            <div data-tour="start">
+                <button type="submit" class="btn btn-primary btn-lg quiz-submit">
+                    <i class="bi bi-play-fill me-1"></i>{{ word('start_quiz') }}
                 </button>
-                <button type="submit" formaction="{{ url_for('live_new') }}" class="btn btn-outline-primary btn-lg px-4">
-                    <i class="bi bi-people-fill me-1"></i>{{ _('Play live with a friend') }}
-                </button>
-                <button type="submit" formaction="{{ url_for('class_new') }}" class="btn btn-outline-primary btn-lg px-4">
-                    <i class="bi bi-easel2-fill me-1"></i>{{ _('Play with a class') }}
-                </button>
+                {# Together: the same form, sent to a live match or a class game instead #}
+                <div class="together">
+                    <button type="submit" formaction="{{ url_for('live_new') }}" class="together-box">
+                        <span class="together-title"><i class="bi bi-people-fill me-1" aria-hidden="true"></i>{{ _('Play live with a friend') }}</span>
+                        <span class="together-text">{{ _('Same rounds at the same time; faster right answers score more.') }}</span>
+                    </button>
+                    <button type="submit" formaction="{{ url_for('class_new') }}" class="together-box">
+                        <span class="together-title"><i class="bi bi-easel2-fill me-1" aria-hidden="true"></i>{{ _('Play with a class') }}</span>
+                        <span class="together-text">{{ _('On a big screen; students join at {url} with a code.').format(url=request.host + '/join') }}</span>
+                    </button>
+                </div>
             </div>
-            <p class="small text-muted text-center mt-3 mb-0">{{ _('Live: you and a friend answer the same rounds at the same time. Right answers score, faster ones score more.') }}</p>
-            <p class="small text-muted text-center mt-1 mb-0">{{ _('Class: show the game on a big screen; students join at {url} with a code and a nickname, no account needed.').format(url=request.host + '/join') }}</p>
         </form>
     </div>
 </div>

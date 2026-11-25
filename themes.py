@@ -16,6 +16,11 @@ WORDS = {
         'quiz_case': 'Topic',
         'quiz_step': 'Round {n} of {total}',
         'pick_label': 'Your pick',
+        'step_category': 'Select Category:',
+        'step_length': 'Game Length:',
+        'step_difficulty': 'Difficulty / Age Group:',
+        'start_quiz': 'Start Game',
+        'step_language': 'Quiz Language:',
     },
     'casefile': {
         'submit_answer': 'Accuse this one',
@@ -23,6 +28,11 @@ WORDS = {
         'quiz_case': 'Case',
         'quiz_step': 'Evidence {n} of {total}',
         'pick_label': 'Suspect',
+        'step_category': 'Pick a lead',
+        'step_length': 'How long',
+        'step_difficulty': 'How hard',
+        'start_quiz': 'Start the investigation',
+        'step_language': 'Language',
     },
 }
 
