@@ -440,6 +440,73 @@
 [data-theme="casefile"] mark.diff-source { background: color-mix(in srgb, var(--wf-good) 22%, transparent); text-decoration-color: var(--wf-good); }
 [data-theme="casefile"] mark.diff-fake { background: color-mix(in srgb, var(--wf-marker) 20%, transparent); text-decoration-color: var(--wf-marker); }
 
+/* ---------- Everything else (stage 3): square paper corners and flat case-file colours instead of gradients ---- */
+
+[data-theme="casefile"] :is(.badge-tile, .class-board .class-option, .class-place, .insight-box, .league-step, .live-player,
+    .player-card, .rank-row, .tour-bubble, .upload-label, .wardrobe-item, .wf-alert, .chat-shell, .dropzone, .tile-badge,
+    .suggestion-chip, .seg, .seg .nav-link, .practice-card) { border-radius: var(--wf-radius); }
+[data-theme="casefile"] :is(.daily-banner-icon, .daily-icon, .loading-dice, .quiz-question .q-icon, .practice-icon,
+    .reminder-icon, .feature-icon, .chat-message .bot-avatar) {
+    border-radius: 6px;
+    background: var(--wf-folder);
+    color: var(--wf-text);
+}
+[data-theme="casefile"][data-bs-theme="dark"] :is(.daily-banner-icon, .daily-icon, .loading-dice, .practice-icon, .reminder-icon) { color: #f6ead2; }
+[data-theme="casefile"] :is(.meter, .meter > span, .timer-track, .timer-bar) { border-radius: 2px; }
+[data-theme="casefile"] .timer-bar { background: var(--wf-marker); }
+[data-theme="casefile"] .tour-spot { border-radius: 6px; }
+
+/* Avatars: initials on flat ink colours, like coloured stamp pads */
+[data-theme="casefile"] .avatar { background: var(--wf-text); color: var(--wf-bg); }
+[data-theme="casefile"] .avatar-c1 { background: #b3261e; color: #fff; }
+[data-theme="casefile"] .avatar-c2 { background: #2e5f8a; color: #fff; }
+[data-theme="casefile"] .avatar-c3 { background: #2e7d4f; color: #fff; }
+[data-theme="casefile"] .avatar-c4 { background: #5b4a8a; color: #fff; }
+[data-theme="casefile"] .avatar-c5 { background: #a0711b; color: #fff; }
+[data-theme="casefile"] .avatar { font-family: var(--wf-font-label); font-weight: 400; }
+
+/* Rankings (leaderboard, league, friends): paper strips, your own row in highlighter */
+[data-theme="casefile"] .rank-row { background: var(--wf-surface); border: 0; border-bottom: 1px dashed var(--wf-border); box-shadow: none; }
+[data-theme="casefile"] .rank-row:hover { transform: none; background: var(--wf-surface-2); }
+[data-theme="casefile"] .rank-row .rank { font-family: var(--wf-font-head); }
+[data-theme="casefile"] .rank-row .score .pct { color: var(--wf-text); font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .rank-row-me { background: rgba(242, 213, 74, .42); }
+[data-theme="casefile"][data-bs-theme="dark"] .rank-row-me { background: rgba(232, 184, 106, .22); }
+[data-theme="casefile"] .rank-row-new { background: color-mix(in srgb, var(--wf-marker) 8%, var(--wf-surface)); }
+[data-theme="casefile"] .chip-new { background: var(--wf-marker); }
+[data-theme="casefile"] .podium-spot .block { border-radius: 2px 2px 0 0; font-family: var(--wf-font-head); }
+[data-theme="casefile"] .podium-1 .block { background: #d9b574; }
+[data-theme="casefile"] .podium-2 .block { background: #c9c2b3; }
+[data-theme="casefile"] .podium-3 .block { background: #c08a5a; }
+[data-theme="casefile"] .player-card:hover { transform: translateY(-3px) rotate(-.4deg); }
+[data-theme="casefile"] .practice-card { border-inline-start-color: var(--wf-marker); }
+[data-theme="casefile"] .tag-their-pick { background: var(--wf-folder); color: var(--wf-text); }
+
+/* Finn's help chat: his replies on paper notes, yours in ink */
+[data-theme="casefile"] .chat-shell { box-shadow: var(--wf-shadow); }
+[data-theme="casefile"] .message-content { border-radius: 4px; }
+[data-theme="casefile"] .message-content.assistant {
+    background-color: var(--wf-surface);
+    background-image: repeating-linear-gradient(transparent 0 23px, var(--wf-card-line) 23px 24px);
+    border-inline-start: 3px solid var(--wf-card-edge);
+}
+[data-theme="casefile"] .message-content.user,
+[data-theme="casefile"][data-bs-theme="dark"] .message-content.user { background: var(--wf-brand); color: var(--wf-on-brand); }
+[data-theme="casefile"] .suggested-action a { border-radius: 3px; font-family: var(--wf-font-label); font-weight: 400; background: var(--wf-folder); color: var(--wf-text); }
+[data-theme="casefile"] .suggested-action a:hover { background: var(--wf-text); color: var(--wf-bg); }
+[data-theme="casefile"] .chatbot-fab { background: var(--wf-folder); }
+[data-theme="casefile"] .chatbot-fab-badge { background: var(--wf-marker); }
+[data-theme="casefile"] .chat-header .status { color: var(--wf-good); }
+
+/* Custom quiz: the drop zone is an empty evidence bag, the tabs are folder tabs */
+[data-theme="casefile"] .dropzone { border-style: dashed; border-color: var(--wf-muted); background: var(--wf-surface-2); }
+[data-theme="casefile"] .dropzone .dz-icon, [data-theme="casefile"] .dropzone .dz-file { color: var(--wf-marker); }
+[data-theme="casefile"] .seg .nav-link { font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .seg .nav-link.active { color: var(--wf-text); }
+
+/* Alerts and the loading screen */
+[data-theme="casefile"] .wf-alert { box-shadow: var(--wf-shadow); }
+
 /* ---------- Footer and floating help button --------------------------------------------------------------------- */
 
 [data-theme="casefile"] .wf-footer { font-family: var(--wf-font-label); }

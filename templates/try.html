@@ -29,7 +29,7 @@
             <div class="quiz-question">
                 <div class="q-icon">🕵️</div>
                 <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
-                <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
+                <p class="text-muted mb-0">{{ word('quiz_prompt') }}</p>
             </div>
 
             <form action="{{ url_for('try_round') }}" method="POST" id="quizForm">
@@ -48,7 +48,7 @@
                 </div>
                 <div class="d-flex justify-content-end">
                     <button type="submit" class="btn btn-primary btn-lg px-5" id="submitAnswer" disabled>
-                        {{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i>
+                        {{ word('submit_answer') }} <i class="bi bi-arrow-right ms-1"></i>
                     </button>
                 </div>
             </form>

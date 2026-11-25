@@ -34,7 +34,7 @@
                 {# Finn watches the round: thinking, worried when time runs low, happy or sad at the answer #}
                 <div class="quiz-finn" id="quizFinn">{% include "_finn.html" %}</div>
                 <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
-                <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
+                <p class="text-muted mb-0">{{ word('quiz_prompt') }}</p>
             </div>
 
             <form action="/quiz" method="POST" id="quizForm" data-fake-label="{{ _('Fake') }}" data-true-label="{{ _('True') }}">
@@ -60,7 +60,7 @@
                         {{ _('Tip: press {keys} to pick, {enter} to submit').format(keys=keys, enter=enter_key) }}
                     </span>
                     <button type="submit" class="btn btn-primary btn-lg px-5 ms-sm-auto" id="submitAnswer" disabled>
-                        {{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i>
+                        {{ word('submit_answer') }} <i class="bi bi-arrow-right ms-1"></i>
                     </button>
                 </div>
             </form>
