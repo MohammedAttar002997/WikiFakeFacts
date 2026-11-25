@@ -56,7 +56,6 @@
   "Bring your own content": "استخدم محتواك الخاص",
   "Building your custom quiz…": "جارٍ إعداد اختبارك المخصص…",
   "Building your practice quiz…": "جارٍ إعداد اختبار التدريب…",
-  "Can I see other players?": "هل يمكنني رؤية اللاعبين الآخرين؟",
   "Can you beat that? Three facts are true, one is a lie.": "هل تستطيع التفوق على ذلك؟ ثلاث معلومات صحيحة وواحدة كاذبة.",
   "Category": "الفئة",
   "Challenge": "تحدٍّ",
@@ -418,10 +417,7 @@
   "Weekly event": "الفعالية الأسبوعية",
   "Weekly event standings": "ترتيب الفعالية الأسبوعية",
   "Welcome to WikiFakeFact!": "مرحبًا بك في WikiFakeFact!",
-  "What difficulty levels are available?": "ما مستويات الصعوبة المتاحة؟",
   "What is your name?": "ما اسمك؟",
-  "What languages are supported?": "ما اللغات المتاحة؟",
-  "Who are the top players?": "من هم أفضل اللاعبين؟",
   "Who took the challenge": "من خاض التحدي",
   "Who took your challenges": "من خاض تحدياتك",
   "Why it's fake:": "لماذا هي مزيّفة:",
@@ -768,5 +764,9 @@
   "Please upload a file, paste some text or a link.": "ارفع ملفًا أو الصق نصًا أو رابطًا.",
   "That file is too big. The limit is {n} MB.": "هذا الملف كبير جدًا. الحد الأقصى {n} ميغابايت.",
   "Try a smaller file, or paste the text instead.": "جرّب ملفًا أصغر أو الصق النص بدلًا من ذلك.",
-  "We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.": "لم نجد نصًا يُذكر في ملف PDF هذا. إذا كانت صفحات ممسوحة ضوئيًا (صور لنص)، فجرّب ملف PDF يمكن تحديد نصه، أو ملف Word، أو الصق النص بدلًا من ذلك."
+  "We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.": "لم نجد نصًا يُذكر في ملف PDF هذا. إذا كانت صفحات ممسوحة ضوئيًا (صور لنص)، فجرّب ملف PDF يمكن تحديد نصه، أو ملف Word، أو الصق النص بدلًا من ذلك.",
+  "How can I play with friends?": "كيف ألعب مع أصدقائي؟",
+  "How do leagues work?": "كيف تعمل الدوريات؟",
+  "How does the daily challenge work?": "كيف يعمل التحدي اليومي؟",
+  "What should I play next?": "ماذا ألعب بعد ذلك؟"
 }

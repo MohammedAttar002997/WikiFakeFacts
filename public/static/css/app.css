@@ -852,7 +852,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
     border-bottom-right-radius: .3rem;
 }
 [data-bs-theme="dark"] .message-content.user { color: #1a1029; }
-.suggested-action { margin-top: .5rem; }
+.suggested-action { margin-top: .5rem; display: flex; flex-wrap: wrap; gap: .4rem; }
 .suggested-action a {
     display: inline-flex;
     align-items: center;

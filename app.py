@@ -35,7 +35,7 @@ from translations import (UI_LANGUAGES, current_language, format_date, template_
                           translate_plural as _n)
 from content_extractor import (MAX_CONTENT_CHARS, ContentError, extract_text_from_upload, extract_text_from_url,
                                validate_content_length)
-from chatbot import QUICK_HELP, get_chatbot_response
+from chatbot import get_chatbot_response  # noqa: F401  (views/help_chat.py calls it through here, so tests can stub it)
 from badges import BADGES, BADGES_BY_KEY, award_badges, compute_streaks, player_streaks
 from rating import rank as rank_players
 from og_card import result_card
@@ -2134,71 +2134,6 @@ def practice():
         return redirect(url_for('analysis'))
 
 
-@app.route('/chatbot')
-def chatbot_page():
-    """Display the chatbot interface."""
-    return render_template('chatbot.html', suggestions=QUICK_HELP)
-
-
-@app.route('/api/chatbot', methods=['POST'])
-def chatbot_api():
-    """API endpoint for chatbot messages."""
-    try:
-        data = request.get_json(silent=True) or {}
-        user_message = str(data.get('message') or '').strip()
-
-        if not user_message:
-            return jsonify({'error': _("Please type a question.")}), 400
-        if len(user_message) > MAX_CHAT_MESSAGE:
-            return jsonify({'error': _("Please keep your message under {n} characters.").format(
-                n=MAX_CHAT_MESSAGE)}), 400
-        # Every message costs an AI call and is stored, so each address gets a limited number
-        if over_limit('chat', client_ip()):
-            return jsonify({'error': _("You're going a bit fast. Please wait a few minutes and try again.")}), 429
-
-        # Each browser gets its own random conversation ID (Flask has no built-in session ID)
-        if 'chat_id' not in session:
-            session['chat_id'] = secrets.token_urlsafe(16)
-        session_id = session['chat_id']
-        chatbot_session = ChatbotSession.query.filter_by(session_id=session_id).first()
-
-        if not chatbot_session:
-            chatbot_session = ChatbotSession(session_id=session_id, conversation_json='[]')
-            db.session.add(chatbot_session)
-            db.session.commit()
-
-        # Load conversation history from database
-        conversation_history = json.loads(chatbot_session.conversation_json)
-
-        # Get chatbot response
-        language_name = LANGUAGE_OPTIONS.get(session.get('language', 'en'), "English")
-        response = get_chatbot_response(user_message, conversation_history, language_name)
-
-        # Update conversation history
-        conversation_history.append({"role": "user", "content": user_message})
-        conversation_history.append({"role": "assistant", "content": response.message})
-
-        # Keep only last 20 messages to avoid database bloat
-        if len(conversation_history) > 20:
-            conversation_history = conversation_history[-20:]
-
-        # Save to database
-        chatbot_session.conversation_json = json.dumps(conversation_history)
-        db.session.commit()
-
-        return jsonify({
-            'message': response.message,
-            'suggested_action': response.suggested_action,
-            # The link comes from the AI, so only pages on this site (never javascript: or other sites)
-            'action_url': local_path(response.action_url),
-        })
-
-    except Exception as e:
-        app.logger.error('Help chat failed: %r', e, exc_info=e)
-        save_error(e)
-        return jsonify({'error': _("Sorry, I encountered an error. Please try again.")}), 500
-
-
 if __name__ == '__main__':
     # Development server. FLASK_DEBUG=1 turns on auto-reload and the in-browser debugger, which can run code,
     # so it's off unless asked for. For anything other people use, run serve.py instead.
@@ -2214,3 +2149,4 @@ from views import leagues as league_views  # noqa: E402
 from views import topics as topic_views  # noqa: E402,F401
 from views import friends as friend_views  # noqa: E402
 from views import embed as embed_views  # noqa: E402,F401
+from views import help_chat  # noqa: E402,F401

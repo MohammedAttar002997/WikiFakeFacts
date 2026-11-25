@@ -56,7 +56,6 @@
   "Bring your own content": "Usa tu propio contenido",
   "Building your custom quiz…": "Creando tu quiz personalizado…",
   "Building your practice quiz…": "Creando tu quiz de práctica…",
-  "Can I see other players?": "¿Puedo ver a otros jugadores?",
   "Can you beat that? Three facts are true, one is a lie.": "¿Puedes superarlo? Tres hechos son verdaderos y uno es mentira.",
   "Category": "Categoría",
   "Challenge": "Desafío",
@@ -418,10 +417,7 @@
   "Weekly event": "Evento semanal",
   "Weekly event standings": "Clasificación del evento semanal",
   "Welcome to WikiFakeFact!": "¡Bienvenido a WikiFakeFact!",
-  "What difficulty levels are available?": "¿Qué niveles de dificultad hay?",
   "What is your name?": "¿Cómo te llamas?",
-  "What languages are supported?": "¿Qué idiomas hay disponibles?",
-  "Who are the top players?": "¿Quiénes son los mejores jugadores?",
   "Who took the challenge": "Quién aceptó el desafío",
   "Who took your challenges": "Quién aceptó tus desafíos",
   "Why it's fake:": "Por qué es falso:",
@@ -768,5 +764,9 @@
   "Please upload a file, paste some text or a link.": "Sube un archivo, pega un texto o un enlace.",
   "That file is too big. The limit is {n} MB.": "Ese archivo es demasiado grande. El límite es de {n} MB.",
   "Try a smaller file, or paste the text instead.": "Prueba con un archivo más pequeño o pega el texto.",
-  "We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.": "Encontramos poco o ningún texto en ese PDF. Si son páginas escaneadas (fotos de texto), prueba con un PDF en el que se pueda seleccionar el texto, un archivo de Word o pega el texto."
+  "We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.": "Encontramos poco o ningún texto en ese PDF. Si son páginas escaneadas (fotos de texto), prueba con un PDF en el que se pueda seleccionar el texto, un archivo de Word o pega el texto.",
+  "How can I play with friends?": "¿Cómo puedo jugar con amigos?",
+  "How do leagues work?": "¿Cómo funcionan las ligas?",
+  "How does the daily challenge work?": "¿Cómo funciona el reto diario?",
+  "What should I play next?": "¿Qué debería jugar ahora?"
 }
