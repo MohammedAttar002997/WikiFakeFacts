@@ -33,7 +33,7 @@ from data import check_topic_audience, resolve_topic, suggest_topics
 from default_text import CATEGORIES, MENU, TOPICS, ALL_TOPICS, SURPRISE, GAME_LENGTH_OPTIONS, DIFFICULTY_OPTIONS, LANGUAGE_OPTIONS, LEADERBOARD_PERIODS
 from translations import (UI_LANGUAGES, current_language, format_date, template_context, template_globals, translate as _,
                           translate_plural as _n)
-from content_extractor import (ContentError, extract_text_from_upload, extract_text_from_url,
+from content_extractor import (MAX_CONTENT_CHARS, ContentError, extract_text_from_upload, extract_text_from_url,
                                validate_content_length)
 from chatbot import QUICK_HELP, get_chatbot_response
 from badges import BADGES, BADGES_BY_KEY, award_badges, compute_streaks, player_streaks
@@ -73,7 +73,10 @@ app.config['VAPID_SUBJECT'] = os.environ.get('VAPID_SUBJECT', 'https://www.wikif
 
 # File upload configuration (uploads are read in memory, never saved)
 ALLOWED_EXTENSIONS = {'pdf', 'txt', 'docx'}
-MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
+# Vercel refuses request bodies over 4.5 MB with its own error page, before the app sees them; 4 MB leaves room for
+# the rest of the form. The custom quiz page also checks the size in the browser (data-max-bytes) before uploading.
+MAX_FILE_MB = 4
+MAX_FILE_SIZE = MAX_FILE_MB * 1024 * 1024
 
 # Profile photos: re-encoded as square WebP images of this size and stored in the database
 AVATAR_SIZE = 256
@@ -213,7 +216,7 @@ def server_error(error):
 @app.errorhandler(413)
 def file_too_large(error):
     """An upload over MAX_CONTENT_LENGTH: back to the form it came from, with a message."""
-    flash(_("That file is too big. The limit is 10 MB."), "danger")
+    flash(_("That file is too big. The limit is {n} MB.").format(n=MAX_FILE_MB), "danger")
     referrer = urlparse(request.referrer or '')
     same_site = referrer.netloc == request.host
     return redirect((local_path(referrer.path) if same_site else None) or url_for('index'))
@@ -772,6 +775,8 @@ def flash_content_error(error):
     """A message for a ContentError, in the player's language."""
     if error.reason == 'unsupported_file':
         message = _("Invalid file type. Allowed types: PDF, TXT, DOCX")
+    elif error.reason == 'scanned_pdf':
+        message = _("We found little or no text in that PDF. If it's scanned pages (photos of text), try a PDF where you can select the text, a Word file, or paste the text instead.")
     elif error.reason == 'unreadable_file':
         message = _("We couldn't read that file. Please check that it isn't damaged or password-protected.")
     elif error.reason == 'blocked_url':
@@ -1278,6 +1283,11 @@ def custom_quiz():
                     flash_content_error(e)
                     return redirect(url_for('custom_quiz'))
 
+            elif (request.form.get('text') or '').strip():
+                content = request.form['text'].strip()[:MAX_CONTENT_CHARS]
+                source_info = None
+                content_type = 'text'
+
             elif request.form.get('url'):
                 url = request.form.get('url').strip()
 
@@ -1294,7 +1304,7 @@ def custom_quiz():
                     return redirect(url_for('custom_quiz'))
 
             else:
-                flash(_("Please upload a file or paste a URL"), "danger")
+                flash(_("Please upload a file, paste some text or a link."), "danger")
                 return redirect(url_for('custom_quiz'))
 
             # Validate content length
@@ -1362,7 +1372,8 @@ def custom_quiz():
     uploads = (CustomContent.query.filter_by(user_id=user.id).order_by(CustomContent.created_at.desc()).all()
                if user else [])
     return render_template('custom_quiz.html', lengths=GAME_LENGTH_OPTIONS, difficulties=DIFFICULTY_OPTIONS,
-                           languages=LANGUAGE_OPTIONS, uploads=uploads, recommended=recommend_difficulty(user))
+                           languages=LANGUAGE_OPTIONS, uploads=uploads, recommended=recommend_difficulty(user),
+                           max_file_mb=MAX_FILE_MB, max_file_bytes=MAX_FILE_SIZE, max_text_chars=MAX_CONTENT_CHARS)
 
 
 @app.route('/uploads/<int:content_id>/delete', methods=['POST'])

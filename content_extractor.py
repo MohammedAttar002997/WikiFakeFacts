@@ -32,19 +32,25 @@ class ContentError(Exception):
 
     def __init__(self, reason, detail=''):
         super().__init__(f'{reason}: {detail}' if detail else reason)
-        self.reason = reason  # 'unreadable_file', 'unsupported_file', 'blocked_url', 'fetch_failed', 'too_short'
+        self.reason = reason  # 'unreadable_file', 'unsupported_file', 'scanned_pdf', 'blocked_url', 'fetch_failed',
+        #                       'too_short'
 
 
 def extract_text_from_pdf(stream):
+    reader = PdfReader(stream)
     text = []
     length = 0
-    for page in PdfReader(stream).pages:
+    for page in reader.pages:
         page_text = page.extract_text() or ''
         text.append(page_text)
         length += len(page_text)
         if length >= MAX_CONTENT_CHARS:
             break
-    return '\n'.join(text)
+    text = '\n'.join(text)
+    if reader.pages and len(text.strip()) < MIN_CONTENT_CHARS:
+        # Pages but (almost) no text: usually a scan, photos of pages with no text layer to read
+        raise ContentError('scanned_pdf', f'{len(reader.pages)} pages, {len(text.strip())} characters')
+    return text
 
 
 def extract_text_from_docx(stream):
