@@ -21,6 +21,7 @@ WORDS = {
         'step_difficulty': 'Difficulty / Age Group:',
         'start_quiz': 'Start Game',
         'step_language': 'Quiz Language:',
+        'report_label': 'Results',
     },
     'casefile': {
         'submit_answer': 'Accuse this one',
@@ -33,6 +34,7 @@ WORDS = {
         'step_difficulty': 'How hard',
         'start_quiz': 'Start the investigation',
         'step_language': 'Language',
+        'report_label': 'Case report',
     },
 }
 
