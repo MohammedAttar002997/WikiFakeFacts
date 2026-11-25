@@ -15,7 +15,7 @@
 
         <div class="wf-card wf-card-pad mb-4">
             <div class="section-label"><i class="bi bi-person-circle text-brand fs-4"></i>{{ _('Profile') }}</div>
-            <form action="{{ url_for('change_photo') }}" method="POST" enctype="multipart/form-data"
+            <form action="{{ url_for('change_photo') }}" method="POST" enctype="multipart/form-data" id="photoForm"
                   class="d-flex flex-column flex-sm-row align-items-center gap-4 mb-4">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
                 {{ avatar(user, 'xl') }}
@@ -27,9 +27,11 @@
                         <span class="small text-muted text-truncate" id="photoName"></span>
                     </div>
                     <input type="file" class="visually-hidden" id="photo" name="photo" accept="image/jpeg,image/png,image/webp,image/gif"
-                           onchange="document.getElementById('photoName').textContent = this.files[0] ? this.files[0].name : ''">
+                           data-max-bytes="{{ max_file_bytes }}" data-max-side="{{ photo_max_side }}">
                     <div class="form-text mb-2">{{ _('JPEG, PNG, WebP or GIF. It’s cropped to a square and shown to everyone.') }}</div>
-                    <button type="submit" class="btn btn-primary">{{ _('Upload photo') }}</button>
+                    <div class="invalid-feedback fw-bold mb-2" id="photoError" role="alert">{{ _('That file is too big. The limit is {n} MB.').format(n=max_file_mb) }}
+                        {{ _('Please try a smaller picture.') }}</div>
+                    <button type="submit" class="btn btn-primary" id="photoSubmit">{{ _('Upload photo') }}</button>
                     {% if user.avatar_updated_at %}
                     <button type="submit" class="btn btn-outline-secondary" name="remove" value="1" formnovalidate>{{ _('Remove photo') }}</button>
                     {% endif %}
@@ -152,6 +154,72 @@
 
 {% block scripts %}
 <script>
+    // Profile photo: big pictures (phone photos are often 5 MB and more) are shrunk here before uploading, because the
+    // host refuses uploads over the limit before the app sees them. The server crops and re-encodes them anyway.
+    (function () {
+        const input = document.getElementById('photo');
+        const name = document.getElementById('photoName');
+        const error = document.getElementById('photoError');
+        const submit = document.getElementById('photoSubmit');
+        const maxBytes = Number(input.dataset.maxBytes);
+        const maxSide = Number(input.dataset.maxSide);
+        const SHRINK_ABOVE = 1024 * 1024;  // Smaller files go up as they are
+
+        async function decode(file) {
+            try { return await createImageBitmap(file, { imageOrientation: 'from-image' }); }
+            catch (e) {
+                const url = URL.createObjectURL(file);
+                try {
+                    const img = new Image();
+                    img.src = url;
+                    await img.decode();
+                    return img;
+                } finally { URL.revokeObjectURL(url); }
+            }
+        }
+
+        async function shrink(file) {
+            const image = await decode(file);
+            const scale = Math.min(1, maxSide / Math.max(image.width, image.height));
+            const canvas = document.createElement('canvas');
+            canvas.width = Math.round(image.width * scale);
+            canvas.height = Math.round(image.height * scale);
+            const ctx = canvas.getContext('2d');
+            ctx.fillStyle = '#fff';  // JPEG has no transparency
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+            const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.9));
+            if (!blob) throw new Error('could not encode');
+            return new File([blob], file.name.replace(/\.[^.]+$/, '') + '.jpg', { type: 'image/jpeg' });
+        }
+
+        input.addEventListener('change', async () => {
+            error.style.display = '';
+            let file = input.files[0];
+            name.textContent = file ? file.name : '';
+            if (!file || file.size <= SHRINK_ABOVE || !file.type.startsWith('image/')) return;
+            submit.disabled = true;
+            try {
+                const smaller = await shrink(file);
+                if (smaller.size < file.size) {
+                    const files = new DataTransfer();
+                    files.items.add(smaller);
+                    input.files = files.files;
+                    file = smaller;
+                }
+            } catch (e) {
+                // A picture this browser can't read: send it as it is if it fits, the server says what's wrong
+            } finally {
+                submit.disabled = false;
+            }
+            if (file.size > maxBytes) {
+                input.value = '';
+                name.textContent = '';
+                error.style.display = 'block';
+            }
+        });
+    })();
+
     // Finn's wardrobe: show the picked items on the preview at once (saved only with the button)
     (function () {
         const form = document.getElementById('finn');

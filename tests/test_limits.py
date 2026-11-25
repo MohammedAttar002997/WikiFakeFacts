@@ -330,3 +330,20 @@ def test_pasted_text_is_cut_and_short_text_refused(login, app_ctx):
     assert 'enough text' in client.get('/custom_quiz').get_data(as_text=True)
     client.post('/custom_quiz', data={**FORM, 'text': 'a' * (MAX_CONTENT_CHARS + 500)})
     assert len(CustomContent.query.one().content) == MAX_CONTENT_CHARS
+
+
+def test_the_account_page_shrinks_big_photos_before_uploading(login):
+    # Phone photos are often over the host's upload limit; the page shrinks them first (account.html's script)
+    html = login('Owner').get('/account').get_data(as_text=True)
+    form = html.split('id="photoForm"')[1].split('</form>')[0]
+    assert f'data-max-bytes="{app_module.MAX_FILE_SIZE}"' in form
+    assert f'data-max-side="{app_module.PHOTO_MAX_SIDE}"' in form and 'id="photoError"' in form
+    assert 'async function shrink(file)' in html and "canvas.toBlob(resolve, 'image/jpeg'" in html
+
+
+def test_too_big_photos_get_the_apps_message(login):
+    client = login('Owner')
+    response = client.post('/account/photo', data={'photo': (io.BytesIO(b'x' * (app_module.MAX_FILE_SIZE + 1)), 'big.jpg')},
+                           content_type='multipart/form-data', headers={'Referer': 'http://localhost/account'})
+    assert response.headers['Location'].endswith('/account')
+    assert 'The limit is 4 MB.' in client.get('/account').get_data(as_text=True)
