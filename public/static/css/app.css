@@ -1701,3 +1701,33 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
     .wf-brand-mark { width: 1.9rem; height: 1.9rem; font-size: .95rem; }
 }
 
+/* ---------- The "New investigation" form on /setup (.investigation): compact, as in the case file drafts --------
+   Leads three to a row on phones, length and difficulty as chips, one wide start button, then two boxes to play
+   together. Neutral colours; the theme adds its look. */
+.investigation section { margin-bottom: 2rem !important; }
+.investigation .tile { min-height: 72px; padding: .7rem .4rem; gap: .2rem; }
+.investigation .tile .tile-emoji { font-size: 1.45rem; }
+.investigation .tile .tile-title { font-size: .9rem; line-height: 1.2; }
+.investigation [data-tour="category"] .tile .tile-sub { display: none; }
+@media (max-width: 767.98px) {
+    .investigation [data-tour="category"] .row > [class*="col-"]:not(#topicSearch) { width: 33.333%; }
+    .investigation [data-tour="category"] .row { --bs-gutter-x: .6rem; --bs-gutter-y: .6rem; }
+}
+/* Length and difficulty: chips with the detail beside the name */
+.investigation [data-tour="length"] .row, .investigation .difficulty-row .row { --bs-gutter-x: .5rem; --bs-gutter-y: .5rem; }
+.investigation [data-tour="length"] .tile, .investigation .difficulty-row .tile {
+    min-height: 48px; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: .1rem .4rem; padding: .5rem .5rem;
+}
+.investigation [data-tour="length"] .tile-icon, .investigation .difficulty-row .tile-emoji,
+.investigation [data-tour="length"] .tile-check, .investigation .difficulty-row .tile-check { display: none; }
+.investigation [data-tour="length"] .tile-sub, .investigation .difficulty-row .tile-sub { font-size: .8rem; }
+.investigation .difficulty-row .tile-badge { position: static; order: 3; width: 100%; }
+.investigation .timed-switch { border: 1px solid var(--wf-border); border-radius: .75rem; padding: .75rem .9rem; }
+.together { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: 1rem; }
+.together-box { display: flex; flex-direction: column; gap: .2rem; text-align: start; padding: .75rem .85rem; min-height: 44px;
+                background: transparent; color: var(--wf-text); border: 1.5px dashed var(--wf-border); border-radius: .75rem; }
+.together-box:hover { border-color: var(--wf-text); }
+.together-title { font-weight: 800; font-size: .95rem; }
+.together-text { font-size: .8rem; color: var(--wf-muted); line-height: 1.35; }
+@media (max-width: 380px) { .together { grid-template-columns: 1fr; } }
+

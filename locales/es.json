@@ -560,7 +560,6 @@
   "{n} players": "{n} jugadores",
   "Answer locked. Look at the board!": "Respuesta registrada. ¡Mira la pizarra!",
   "Class game": "Juego en clase",
-  "Class: show the game on a big screen; students join at {url} with a code and a nickname, no account needed.": "Clase: muestra el juego en una pantalla grande; los alumnos se unen en {url} con un código y un apodo, sin cuenta.",
   "End the game": "Terminar el juego",
   "Final results": "Resultados finales",
   "Game code": "Código del juego",
@@ -792,5 +791,11 @@
   "Case": "Caso",
   "Evidence {n} of {total}": "Prueba {n} de {total}",
   "Suspect": "Sospechoso",
-  "Topic": "Tema"
+  "Topic": "Tema",
+  "How hard": "Qué tan difícil",
+  "How long": "Cuánto dura",
+  "On a big screen; students join at {url} with a code.": "En una pantalla grande; los alumnos entran en {url} con un código.",
+  "Pick a lead": "Elige una pista",
+  "Same rounds at the same time; faster right answers score more.": "Las mismas rondas a la vez; las respuestas correctas más rápidas suman más.",
+  "Start the investigation": "Empezar la investigación"
 }

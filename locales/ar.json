@@ -560,7 +560,6 @@
   "{n} players": "{n} لاعبين",
   "Answer locked. Look at the board!": "تم تسجيل إجابتك. انظر إلى اللوح!",
   "Class game": "لعبة الصف",
-  "Class: show the game on a big screen; students join at {url} with a code and a nickname, no account needed.": "الصف: اعرض اللعبة على شاشة كبيرة؛ ينضم الطلاب عبر {url} برمز واسم مستعار، دون حساب.",
   "End the game": "إنهاء اللعبة",
   "Final results": "النتائج النهائية",
   "Game code": "رمز اللعبة",
@@ -792,5 +791,11 @@
   "Case": "القضية",
   "Evidence {n} of {total}": "الدليل {n} من {total}",
   "Suspect": "مشتبه به",
-  "Topic": "الموضوع"
+  "Topic": "الموضوع",
+  "How hard": "ما مدى الصعوبة",
+  "How long": "ما المدة",
+  "On a big screen; students join at {url} with a code.": "على شاشة كبيرة؛ ينضم الطلاب عبر {url} برمز.",
+  "Pick a lead": "اختر خيطًا",
+  "Same rounds at the same time; faster right answers score more.": "الجولات نفسها في الوقت نفسه؛ الإجابات الصحيحة الأسرع تكسب أكثر.",
+  "Start the investigation": "ابدأ التحقيق"
 }

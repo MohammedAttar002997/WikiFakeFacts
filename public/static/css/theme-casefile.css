@@ -467,6 +467,18 @@
     --bs-btn-color: #fff; --bs-btn-hover-color: #fff; --bs-btn-active-color: #fff; --bs-btn-disabled-color: #fff;
 }
 
+/* ---------- New investigation (/setup): typed chips, a stamped pick, dashed "together" boxes ------------------- */
+
+[data-theme="casefile"] .investigation [data-tour="length"] .tile-input:checked + .tile,
+[data-theme="casefile"] .investigation .difficulty-row .tile-input:checked + .tile {
+    background: var(--wf-text); color: var(--wf-bg); box-shadow: none; transform: rotate(-1.5deg);
+}
+[data-theme="casefile"] .investigation [data-tour="length"] .tile-input:checked + .tile .tile-sub,
+[data-theme="casefile"] .investigation .difficulty-row .tile-input:checked + .tile .tile-sub { color: inherit; opacity: .8; }
+[data-theme="casefile"] .investigation .timed-switch { border-radius: var(--wf-radius); background: var(--wf-surface-2); }
+[data-theme="casefile"] .together-box { border-radius: var(--wf-radius); border-color: var(--wf-folder-edge); }
+[data-theme="casefile"] .together-title { font-family: var(--wf-font-head); }
+
 /* ---------- Everything else (stage 3): square paper corners and flat case-file colours instead of gradients ---- */
 
 [data-theme="casefile"] :is(.badge-tile, .class-board .class-option, .class-place, .insight-box, .league-step, .live-player,

@@ -76,3 +76,12 @@ def test_phones_find_language_and_dark_mode_in_the_menu(app):
     tools = html.split('nav-tools')[1].split('</li>')[0]
     assert 'data-theme-toggle' in tools and tools.count('/language/') == 7
     assert 'class="dropdown d-none d-sm-block"' in html and 'theme-toggle d-none d-sm-grid' in html
+
+
+def test_setup_has_the_compact_investigation_form(login):
+    html = login('Ann').get('/setup').get_data(as_text=True)
+    form = html.split('class="wf-card wf-card-pad investigation"')[1].split('</form>')[0]
+    for step in ('Pick a lead', 'How long', 'How hard', '>Language<'):
+        assert step in form
+    assert 'Start the investigation' in form and form.count('class="together-box"') == 2
+    assert 'formaction="/live/new"' in form and 'formaction="/class/new"' in form
