@@ -1188,9 +1188,12 @@ def tour_done():
 
 
 def render_setup():
+    from views import desk as desk_views  # Imported late: views import app
     # A topic page's "Play a full quiz" link fills in the "Any topic" box (?topic=…)
     prefill = any_topic.clean_query(request.args.get('topic'))
-    return render_template('setup.html', show_tour=wants_tour(current_user()), prefill_topic=prefill, categories=CATEGORIES,
+    user = current_user()
+    return render_template('setup.html', show_tour=wants_tour(user), prefill_topic=prefill, categories=CATEGORIES,
+                           desk=desk_views.desk(user) if user else None,
                            lengths=GAME_LENGTH_OPTIONS,
                            difficulties=DIFFICULTY_OPTIONS, languages=LANGUAGE_OPTIONS,
                            daily_topic=daily_topic(today_utc()), event_theme=event_theme(),
