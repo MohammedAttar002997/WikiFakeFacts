@@ -38,7 +38,7 @@
         <div class="wf-card embed-card">
             <h1 class="h5 fw-black mb-1">{{ _('Spot the Fake Fact!') }}</h1>
             <p class="text-muted small mb-3">
-                <span class="fw-bold">{{ daily.topic }}</span> &middot; {{ _('Three of these are true. Which one is the fake?') }}
+                <span class="fw-bold">{{ daily.topic }}</span> &middot; {{ word('quiz_prompt') }}
             </p>
             <form method="get" target="_self" id="embedForm">
                 <input type="hidden" name="d" value="{{ daily.id }}">
@@ -57,7 +57,7 @@
                     </div>
                     {% endfor %}
                 </div>
-                <button type="submit" class="btn btn-primary w-100" id="submitAnswer" disabled>{{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i></button>
+                <button type="submit" class="btn btn-primary w-100" id="submitAnswer" disabled>{{ word('submit_answer') }} <i class="bi bi-arrow-right ms-1"></i></button>
             </form>
         </div>
         {% else %}

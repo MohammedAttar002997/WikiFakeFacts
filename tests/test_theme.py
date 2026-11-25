@@ -35,3 +35,24 @@ def test_the_widget_and_offline_copy_use_the_theme_too(app, app_ctx):
 def test_the_theme_fonts_are_loaded(app):
     html = app.test_client().get('/').get_data(as_text=True)
     assert all(font in html for font in ('Courier+Prime', 'Fraunces', 'Special+Elite'))
+
+
+# ---------- The theme's own words (themes.py) -------------------------------------------------------------------------
+
+def test_theme_words_fall_back_to_the_plain_ones():
+    import themes
+    assert themes.word('submit_answer', 'casefile') == 'Accuse this one'
+    assert themes.word('submit_answer', 'plain') == 'Submit Answer'
+    assert themes.word('submit_answer', 'some-new-theme') == 'Submit Answer'
+    assert {'Accuse this one', 'Submit Answer'} <= themes.all_words()
+
+
+def test_the_quiz_uses_the_case_file_words_in_every_language(login, ai):
+    from translations import translate
+    client = login('Ann')
+    client.post('/start_quiz', data={'category': '1', 'length': '1', 'difficulty': '2', 'language': 'en'})
+    html = client.get('/quiz').get_data(as_text=True)
+    assert 'Accuse this one' in html and 'lying?' in html and 'Submit Answer' not in html
+    german = login('Ben', language='de')
+    german.post('/start_quiz', data={'category': '1', 'length': '1', 'difficulty': '2', 'language': 'de'})
+    assert translate('Accuse this one', 'de') in german.get('/quiz').get_data(as_text=True)

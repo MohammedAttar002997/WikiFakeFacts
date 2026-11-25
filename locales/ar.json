@@ -788,5 +788,7 @@
   "{league} league": "دوري {league}",
   "{n} cracked it": "{n} حلّوها",
   "{n} detective on it today": "{n} محقق في القضية اليوم",
-  "{n} detectives on it today": "{n} محققين في القضية اليوم"
+  "{n} detectives on it today": "{n} محققين في القضية اليوم",
+  "Accuse this one": "اتّهم هذا",
+  "Three of these are true. Who's lying?": "ثلاثة من هذه صحيحة. من الكاذب؟"
 }

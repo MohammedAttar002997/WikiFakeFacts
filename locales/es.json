@@ -788,5 +788,7 @@
   "{league} league": "Liga {league}",
   "{n} cracked it": "{n} lo resolvieron",
   "{n} detective on it today": "{n} detective en el caso hoy",
-  "{n} detectives on it today": "{n} detectives en el caso hoy"
+  "{n} detectives on it today": "{n} detectives en el caso hoy",
+  "Accuse this one": "Acusar a este",
+  "Three of these are true. Who's lying?": "Tres de estos son ciertos. ¿Quién miente?"
 }
