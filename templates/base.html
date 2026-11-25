@@ -55,12 +55,12 @@
 <body>
     {% set nav_items = [
         ('/', 'bi-house-door-fill', _('Home')),
-        ('/daily', 'bi-flag-fill', _('Challenges')),
-        ('/leaderboard', 'bi-trophy-fill', _('Leaderboard')),
-        ('/players', 'bi-people-fill', _('Players')),
-        ('/analysis', 'bi-graph-up-arrow', _('My Progress')),
-        ('/custom_quiz', 'bi-file-earmark-plus-fill', _('Custom Quiz')),
-        ('/chatbot', 'bi-robot', _('Help')),
+        ('/daily', 'bi-flag-fill', word('nav_challenges')),
+        ('/leaderboard', 'bi-trophy-fill', word('nav_leaderboard')),
+        ('/players', 'bi-people-fill', word('nav_players')),
+        ('/analysis', 'bi-graph-up-arrow', word('nav_progress')),
+        ('/custom_quiz', 'bi-file-earmark-plus-fill', word('nav_custom')),
+        ('/chatbot', 'bi-robot', word('nav_help')),
     ] %}
     {% set language_names = {'en': 'English', 'es': 'Español', 'fr': 'Français', 'de': 'Deutsch', 'it': 'Italiano', 'pt': 'Português', 'ar': 'العربية'} %}
     <nav class="navbar navbar-expand-xl wf-navbar sticky-top mb-4">

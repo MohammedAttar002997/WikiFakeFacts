@@ -1778,3 +1778,14 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .board-rules summary { cursor: pointer; font-weight: 700; padding: .5rem; display: inline-block; }
 .board-rules ul { text-align: start; max-width: 40rem; margin-inline: auto; }
 
+/* ---------- Quick leads on the desk (setup.html): they pick a choice in the form below --------------------------- */
+.desk-leads { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
+.desk-leads-label { grid-column: 1 / -1; font-size: .8rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
+                    border-bottom: 1.5px dashed var(--wf-border); padding-bottom: .3rem; }
+.desk-lead { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-height: 64px; padding: .6rem .3rem;
+             background: var(--wf-surface); color: var(--wf-text); border: 1px solid var(--wf-border); border-radius: .75rem;
+             font-size: .85rem; line-height: 1.2; }
+.desk-lead i { font-size: 1.3rem; }
+.desk-lead:hover { border-color: var(--wf-text); }
+.together-box.is-hinted { border-style: solid; border-color: var(--wf-text); }
+

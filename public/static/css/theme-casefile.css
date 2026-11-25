@@ -505,6 +505,14 @@
 [data-theme="casefile"] .roster .league-line.is-down { color: var(--wf-marker); }
 [data-theme="casefile"] .board-rules summary, [data-theme="casefile"] .board-points { font-family: var(--wf-font-label); font-weight: 400; }
 
+/* ---------- Quick leads on the desk: small index cards ----------------------------------------------------------- */
+
+[data-theme="casefile"] .desk-leads-label { font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .desk-lead { border-radius: 2px; background: var(--wf-surface-2); font-family: var(--wf-font-label); }
+[data-theme="casefile"] .desk-lead i { color: var(--wf-marker); }
+[data-theme="casefile"] .desk-lead:hover { transform: rotate(-1deg); }
+[data-theme="casefile"] .together-box.is-hinted { border-color: var(--wf-marker); }
+
 /* ---------- Everything else (stage 3): square paper corners and flat case-file colours instead of gradients ---- */
 
 [data-theme="casefile"] :is(.badge-tile, .class-board .class-option, .class-place, .insight-box, .league-step, .live-player,
