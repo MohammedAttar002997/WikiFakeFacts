@@ -1,11 +1,47 @@
 {% extends "base.html" %}
 
 {% block title %}{{ _('Game Setup') }} · WikiFakeFact{% endblock %}
-{% from "_macros.html" import CATEGORY_EMOJI, length_tiles, difficulty_tiles, language_select %}
+{% from "_macros.html" import CATEGORY_EMOJI, length_tiles, difficulty_tiles, language_select, finn %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
+        {% if desk %}
+        {# The detective's desk (views/desk.py): today's case and a few notes, then a new investigation below #}
+        <div class="desk">
+            <div class="desk-hello">
+                <div class="min-w-0">
+                    <h1 class="desk-title">{{ _('Welcome back, detective.') }}</h1>
+                    <p class="text-muted mb-0">{{ _("Today's case is closed. Pick a new investigation below.") if desk.attempt else _('One new case on your desk.') }}</p>
+                </div>
+                {{ finn('think' if not desk.attempt else 'happy', class='desk-finn') }}
+            </div>
+            <div class="desk-grid">
+                <a href="{{ url_for('daily') }}" class="case-folder" data-tour="daily">
+                    <span class="case-folder-tab">{{ _('Daily case') }}</span>
+                    <span class="case-folder-clip" aria-hidden="true"></span>
+                    <span class="case-folder-stamp{% if desk.attempt %} is-solved{% endif %}" aria-hidden="true">{{ _('Closed') if desk.attempt else _('Open') }}</span>
+                    <span class="case-folder-no">{{ _('Case No. {n}').format(n=desk.case_no) }}</span>
+                    <span class="case-folder-title">{{ daily_topic }}</span>
+                    <span class="case-folder-meta">
+                        {{ _n('{n} detective on it today', '{n} detectives on it today', desk.played) if desk.played else _('Be the first detective on it today') }}{% if desk.solved %} · {{ _n('{n} cracked it', '{n} cracked it', desk.solved) }}{% endif %}
+                    </span>
+                    {% if desk.my_score %}
+                    <span class="case-folder-result">{{ _('Your result: {score} of {total}').format(score=desk.my_score.score, total=desk.my_score.total_questions) }}</span>
+                    {% endif %}
+                    <span class="btn btn-primary case-folder-btn">{{ _('See your report') if desk.attempt else _('Open the case') }} <i class="bi bi-arrow-right"></i></span>
+                </a>
+                <div class="desk-notes">
+                    <div class="desk-note"><span class="desk-note-pin" aria-hidden="true"></span>
+                        <b>{{ desk.streak }}</b>{{ _n('day in a row', 'days in a row', desk.streak) }}</div>
+                    <a class="desk-note" href="{{ url_for('league') }}"><span class="desk-note-pin" aria-hidden="true"></span>
+                        {% if desk.league %}<b>#{{ desk.league.rank }}</b>{{ _('{league} league').format(league=_(desk.league.tier)) }}{% else %}<b>—</b>{{ _("Finish a quiz to join this week's league") }}{% endif %}</a>
+                    <a class="desk-note desk-note-wide" href="{{ url_for('event') }}"><span class="desk-note-pin" aria-hidden="true"></span>
+                        <span class="small text-muted d-block">{{ _('Weekly event') }}</span><b class="desk-note-event">{{ _(desk.event_theme) }}</b></a>
+                </div>
+            </div>
+        </div>
+        {% else %}
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-controller"></i> {{ _('New game') }}</span>
             <h1>{{ _('Game Setup') }}</h1>
@@ -15,7 +51,7 @@
             {% endif %}
         </div>
 
-        <a href="{{ url_for('daily') }}" class="wf-card daily-banner mb-4" data-tour="daily">
+        <a href="{{ url_for('daily') }}" class="wf-card daily-banner mb-4">
             <span class="daily-banner-icon"><i class="bi bi-calendar-check-fill"></i></span>
             <span class="flex-grow-1 min-w-0">
                 <span class="d-block fw-black">{{ _('Daily challenge') }}</span>
@@ -33,6 +69,9 @@
             <i class="bi bi-chevron-right text-brand"></i>
         </a>
 
+        {% endif %}
+
+        {% if desk %}<h2 class="desk-subhead">{{ _('New investigation') }}</h2>{% endif %}
         <form action="/start_quiz" method="POST" class="wf-card wf-card-pad" data-loading="{{ _('Generating your quiz…') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
             <section class="mb-5" data-tour="category">

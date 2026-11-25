@@ -343,6 +343,103 @@
 [data-theme="casefile"] .quiz-reveal.is-good { border-color: var(--wf-good); }
 [data-theme="casefile"] .quiz-reveal.is-bad { border-color: var(--wf-marker); }
 
+/* ---------- The desk (/setup): a manila folder for today's case, notes pinned beside it --------------------------- */
+
+[data-theme="casefile"] .desk-title { font-weight: 800; }
+[data-theme="casefile"] .case-folder {
+    background: var(--wf-folder);
+    border: 0;
+    border-radius: 4px 12px 8px 8px;
+    box-shadow: 0 3px 0 var(--wf-folder-edge), var(--wf-shadow-lg);
+}
+[data-theme="casefile"][data-bs-theme="dark"] .case-folder,
+[data-theme="casefile"][data-bs-theme="dark"] .case-folder:hover { color: #f6ead2; }
+[data-theme="casefile"] .case-folder-tab { font-family: var(--wf-font-label); font-weight: 400; border-radius: 6px 6px 0 0; }
+[data-theme="casefile"] .case-folder-clip {
+    display: block; position: absolute; top: -.7rem; inset-inline-end: 1.4rem; width: .9rem; height: 2.6rem;
+    border: 3px solid #8d8a83; border-radius: 8px;
+}
+[data-theme="casefile"] .case-folder-stamp {
+    display: block; position: absolute; top: 2.2rem; inset-inline-end: 1rem; padding: .05rem .7rem;
+    font-family: var(--wf-font-label); font-size: 1rem; letter-spacing: .1em; text-transform: uppercase;
+    color: var(--wf-marker); border: 3px solid var(--wf-marker); border-radius: 4px; transform: rotate(10deg); opacity: .9;
+}
+[data-theme="casefile"] .case-folder-stamp.is-solved { color: var(--wf-good); border-color: var(--wf-good); }
+[data-theme="casefile"] .case-folder-no { font-family: var(--wf-font-label); color: inherit; opacity: .8; }
+[data-theme="casefile"] .case-folder-title { font-family: var(--wf-font-head); padding-inline-end: 6.5rem; }
+[data-theme="casefile"] .case-folder:hover .case-folder-btn { background: var(--wf-brand-hover); }
+[data-theme="casefile"] .desk-note {
+    border-radius: 2px;
+    border: 0;
+    background: var(--wf-surface);
+    box-shadow: var(--wf-shadow);
+    transform: rotate(-1.2deg);
+}
+[data-theme="casefile"] .desk-note:nth-child(2) { transform: rotate(1deg); }
+[data-theme="casefile"] .desk-note-wide { transform: rotate(-.4deg); }
+[data-theme="casefile"] .desk-note b { font-family: var(--wf-font-head); }
+[data-theme="casefile"] .desk-note-pin {
+    display: block; position: absolute; top: -6px; left: 50%; width: 12px; height: 12px; margin-left: -6px;
+    border-radius: 50%; background: var(--wf-marker); box-shadow: 0 2px 2px rgba(0, 0, 0, .3);
+}
+[data-theme="casefile"] a.desk-note:hover { transform: rotate(0) translateY(-2px); }
+[data-theme="casefile"] .desk-subhead {
+    font-family: var(--wf-font-label); font-weight: 400; font-size: 1rem; letter-spacing: .12em; text-transform: uppercase;
+    border-bottom: 1.5px dashed var(--wf-border); padding-bottom: .4rem;
+}
+
+/* ---------- Quiz header, results and the answer review: a case report with evidence slips -------------------------- */
+
+[data-theme="casefile"] .quiz-counter { font-family: var(--wf-font-label); font-weight: 400; letter-spacing: .04em; }
+[data-theme="casefile"] .score-ring { --ring: var(--wf-marker); }
+[data-theme="casefile"] .score-ring .pct { font-family: var(--wf-font-head); font-weight: 800; }
+[data-theme="casefile"] .stat-tile { border-radius: 2px; background: var(--wf-surface); box-shadow: var(--wf-shadow); border: 0; }
+[data-theme="casefile"] .stat-tile .value { font-family: var(--wf-font-head); font-weight: 800; }
+[data-theme="casefile"] .stat-tile .label { font-family: var(--wf-font-label); font-weight: 400; }
+
+/* Each round of the review is an evidence slip; the fake is marked in red, the Wikipedia sentence is a clipping */
+[data-theme="casefile"] .review-round {
+    background: var(--wf-surface-2);
+    padding: 1rem 1rem 1.1rem;
+    border-radius: 2px;
+    box-shadow: var(--wf-shadow);
+}
+[data-theme="casefile"] .review-round + .review-round { border-top: 0; padding-top: 1rem; }
+[data-theme="casefile"] .review-round > .d-flex .fw-black { font-family: var(--wf-font-label); font-weight: 400; letter-spacing: .08em; text-transform: uppercase; }
+[data-theme="casefile"] .review-chip-good { background: transparent; color: var(--wf-good); border: 1.5px solid var(--wf-good); }
+[data-theme="casefile"] .review-chip-bad { background: transparent; color: var(--wf-marker); border: 1.5px solid var(--wf-marker); }
+[data-theme="casefile"] .review-fact {
+    border-radius: 0;
+    background: transparent;
+    border: 0;
+    border-top: 1px dashed var(--wf-border);
+}
+[data-theme="casefile"] .review-fact > .bi { color: var(--wf-good); }
+[data-theme="casefile"] .review-fact.is-fake { background: color-mix(in srgb, var(--wf-marker) 10%, transparent); border-top-color: var(--wf-marker); }
+[data-theme="casefile"] .review-fact.is-fake > .bi { color: var(--wf-marker); }
+[data-theme="casefile"] .review-fact.is-wrong-pick { border-top-style: dashed; outline: 1.5px dashed var(--wf-muted); outline-offset: -1px; }
+[data-theme="casefile"] .review-tag { border-radius: 2px; font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .tag-fake { background: var(--wf-marker); color: #fff; }
+[data-theme="casefile"] .tag-pick { background: var(--wf-text); color: var(--wf-bg); }
+[data-theme="casefile"] .tip {
+    border-radius: 2px;
+    background: var(--wf-surface);
+    border: 0;
+    border-inline-start: 3px solid var(--wf-card-edge);
+    background-image: repeating-linear-gradient(transparent 0 25px, var(--wf-card-line) 25px 26px);
+}
+[data-theme="casefile"] .source-quote blockquote {
+    font-family: var(--wf-font-head);
+    font-style: normal;
+    font-weight: 600;
+    border-radius: 0;
+    border-inline-start: 3px solid var(--wf-muted);
+    background: color-mix(in srgb, var(--wf-folder) 35%, var(--wf-surface));
+    transform: rotate(-.4deg);
+}
+[data-theme="casefile"] mark.diff-source { background: color-mix(in srgb, var(--wf-good) 22%, transparent); text-decoration-color: var(--wf-good); }
+[data-theme="casefile"] mark.diff-fake { background: color-mix(in srgb, var(--wf-marker) 20%, transparent); text-decoration-color: var(--wf-marker); }
+
 /* ---------- Footer and floating help button --------------------------------------------------------------------- */
 
 [data-theme="casefile"] .wf-footer { font-family: var(--wf-font-label); }

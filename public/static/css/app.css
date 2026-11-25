@@ -1630,3 +1630,36 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .embed-card { padding: 1rem; }
 .embed-card .answer { min-height: 44px; }
 .embed-cta { text-align: center; }
+
+/* ---------- The desk at the top of /setup (views/desk.py) ---------------------------------------------------------
+   Layout only, in neutral colours; a theme gives it its look (the case file: a manila folder, a clip, a stamp and
+   pinned notes) */
+.desk { margin-bottom: 1.5rem; }
+.desk-hello { display: flex; align-items: flex-end; gap: .75rem; margin-bottom: 1.25rem; }
+.desk-hello .min-w-0 { min-width: 0; flex: 1; }
+.desk-title { font-size: clamp(1.8rem, 4.5vw, 2.6rem); margin: 0 0 .2rem; }
+.desk-finn { width: 5.5rem; flex-shrink: 0; }
+.desk-grid { display: grid; gap: 1.25rem; }
+@media (min-width: 900px) { .desk-grid { grid-template-columns: 1.4fr 1fr; align-items: start; } }
+.case-folder { position: relative; display: flex; flex-direction: column; gap: .2rem; padding: 2rem 1.25rem 1.25rem; margin-top: .9rem;
+               text-decoration: none; color: var(--wf-text); background: var(--wf-surface); border: 1px solid var(--wf-border);
+               border-radius: 1rem; box-shadow: var(--wf-shadow); }
+.case-folder:hover { color: var(--wf-text); }
+.case-folder-tab { position: absolute; top: -.95rem; inset-inline-start: 0; padding: .2rem .9rem; font-size: .8rem; font-weight: 800;
+                   letter-spacing: .08em; text-transform: uppercase; background: inherit; border-radius: .6rem .6rem 0 0; }
+.case-folder-clip, .case-folder-stamp { display: none; }
+.case-folder-no { font-size: .8rem; color: var(--wf-muted); letter-spacing: .06em; text-transform: uppercase; }
+.case-folder-title { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.1; overflow-wrap: anywhere; }
+.case-folder-meta, .case-folder-result { font-size: .95rem; }
+.case-folder-btn { align-self: stretch; margin-top: .9rem; }
+@media (min-width: 640px) { .case-folder-btn { align-self: flex-start; } }
+.desk-notes { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
+.desk-note { position: relative; display: block; padding: .9rem 1rem; text-decoration: none; color: var(--wf-text); font-size: .95rem;
+             background: var(--wf-surface); border: 1px solid var(--wf-border); border-radius: .9rem; box-shadow: var(--wf-shadow); min-height: 44px; }
+.desk-note:hover { color: var(--wf-text); }
+.desk-note b { display: block; font-size: 1.6rem; line-height: 1.1; }
+.desk-note .desk-note-event { font-size: 1.15rem; }
+.desk-note-wide { grid-column: 1 / -1; }
+.desk-note-pin { display: none; }
+.desk-subhead { font-size: 1.4rem; margin: 0 0 .9rem; }
+

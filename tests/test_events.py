@@ -90,7 +90,9 @@ def test_results_and_setup_link_to_the_event(login, app_ctx):
     client = login('Player')
     play_event(client, 2)
     assert 'Weekly event standings' in client.get('/results').get_data(as_text=True)
-    assert "This week's theme: " + event_theme() in client.get('/setup').get_data(as_text=True)
+    # Setup links the event and names this week's theme (on the desk's "Weekly event" note since the case file)
+    note = client.get('/setup').get_data(as_text=True).split('href="/event"')[1].split('</a>')[0]
+    assert 'Weekly event' in note and event_theme() in note
 
 
 def test_three_event_quizzes_in_a_week_earn_a_badge(login, app_ctx):
