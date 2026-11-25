@@ -1,0 +1,352 @@
+/* ==========================================================================
+   Theme: case file (Finn's office). Loaded after app.css and active when <html data-theme="casefile">.
+
+   A theme only changes how things look: colors, fonts, textures and shapes. Page structure stays in the templates
+   and app.css, so another theme is another file like this one (see CLAUDE.md, "Themes"). Light is the office by day:
+   paper, a manila folder, typed index cards and a red marker. Dark (data-bs-theme="dark") is the same office at
+   night: dark wood under a warm lamp, softer paper, brighter red so it still stands out.
+   ========================================================================== */
+
+/* ---------- Tokens ---------------------------------------------------------------------------------------------- */
+
+[data-theme="casefile"],
+[data-theme="casefile"][data-bs-theme="light"] {
+    --wf-font-head: 'Fraunces', 'Cairo', Georgia, serif;
+    --wf-font-body: 'Courier Prime', 'Cairo', 'Courier New', monospace;
+    --wf-font-label: 'Special Elite', 'Cairo', 'Courier New', monospace;
+    --wf-radius: 4px;
+    --wf-tilt: -.6deg;
+
+    --wf-brand: #2b2118;          /* Ink: buttons, active tabs, headings */
+    --wf-brand-rgb: 43, 33, 24;
+    --wf-brand-hover: #463729;
+    --wf-brand-soft: #e8dbbd;
+    --wf-on-brand: #f6ecd6;
+    --wf-marker: #b3261e;         /* Red marker: highlights, the fake, "Fake" in the logo */
+    --wf-marker-rgb: 179, 38, 30;
+    --wf-accent: #b3261e;
+    --wf-good: #2e7d4f;
+
+    --wf-bg: #efe4cb;
+    --wf-bg-pattern: rgba(43, 33, 24, 0.07);
+    --wf-surface: #fffdf7;        /* Paper */
+    --wf-surface-2: #fffaf0;
+    --wf-folder: #e4c58a;         /* Manila */
+    --wf-folder-edge: #c9a564;
+    --wf-border: #d9c7a2;
+    --wf-text: #2b2118;
+    --wf-muted: #6d5b45;
+    --wf-card-line: #e7eefb;      /* Ruled index cards */
+    --wf-card-edge: #e8a6a1;
+    --wf-shadow: 0 2px 8px rgba(60, 40, 10, .14);
+    --wf-shadow-lg: 0 8px 22px rgba(60, 40, 10, .22);
+
+    --wf-hero-from: #e4c58a;
+    --wf-hero-to: #d9b574;
+
+    --wf-opt-1: #b3261e;
+    --wf-opt-2: #2e5f8a;
+    --wf-opt-3: #a0711b;
+    --wf-opt-4: #2e7d4f;
+    --wf-chart-line: #b3261e;
+
+    --bs-primary: var(--wf-brand);
+    --bs-primary-rgb: var(--wf-brand-rgb);
+    --bs-link-color-rgb: var(--wf-marker-rgb);
+    --bs-link-hover-color-rgb: 140, 28, 22;
+    --bs-body-font-family: var(--wf-font-body);
+    --bs-body-bg: var(--wf-bg);
+    --bs-body-color: var(--wf-text);
+    --bs-secondary-color: var(--wf-muted);
+    --bs-border-color: var(--wf-border);
+    --bs-border-radius: var(--wf-radius);
+    --bs-border-radius-lg: 6px;
+}
+
+[data-theme="casefile"][data-bs-theme="dark"] {
+    --wf-brand: #f1e4c8;          /* In the dark, "ink" is the light paper colour */
+    --wf-brand-rgb: 241, 228, 200;
+    --wf-brand-hover: #ffffff;
+    --wf-brand-soft: rgba(232, 184, 106, .16);
+    --wf-on-brand: #221a12;
+    --wf-marker: #ff6b5e;
+    --wf-marker-rgb: 255, 107, 94;
+    --wf-accent: #ff6b5e;
+    --wf-good: #6fd69a;
+
+    --wf-bg: #1d1813;
+    --wf-bg-pattern: rgba(255, 255, 255, 0.03);
+    --wf-surface: #2b241c;
+    --wf-surface-2: #2a231b;
+    --wf-folder: #8a6a3a;
+    --wf-folder-edge: #5e4523;
+    --wf-border: #4a3d2d;
+    --wf-text: #ece2cf;
+    --wf-muted: #b9a98e;
+    --wf-card-line: #3a3229;
+    --wf-card-edge: #a0584f;
+    --wf-shadow: 0 2px 10px rgba(0, 0, 0, .45);
+    --wf-shadow-lg: 0 10px 26px rgba(0, 0, 0, .55);
+
+    --wf-hero-from: #8a6a3a;
+    --wf-hero-to: #6f5530;
+
+    --wf-opt-1: #ff6b5e;
+    --wf-opt-2: #8fb4dd;
+    --wf-opt-3: #e8b86a;
+    --wf-opt-4: #6fd69a;
+    --wf-chart-line: #ff8a7a;
+
+    --bs-link-color-rgb: var(--wf-marker-rgb);
+    --bs-link-hover-color-rgb: 255, 150, 140;
+    --bs-body-bg: var(--wf-bg);
+    --bs-body-color: var(--wf-text);
+    --bs-secondary-color: var(--wf-muted);
+    --bs-border-color: var(--wf-border);
+    --bs-tertiary-bg: var(--wf-surface-2);
+}
+
+/* ---------- Base: paper by day, a lamp-lit desk at night ---------------------------------------------------------- */
+
+[data-theme="casefile"] body {
+    background-image: radial-gradient(var(--wf-bg-pattern) 1px, transparent 1.2px);
+    background-size: 7px 7px;
+}
+[data-theme="casefile"][data-bs-theme="dark"] body {
+    background-image: radial-gradient(ellipse 900px 520px at 75% -120px, rgba(255, 190, 100, .16), transparent 70%),
+                      repeating-linear-gradient(90deg, rgba(255, 255, 255, .018) 0 2px, transparent 2px 9px);
+    background-size: auto;
+    background-attachment: fixed;
+}
+[data-theme="casefile"] h1, [data-theme="casefile"] h2, [data-theme="casefile"] h3, [data-theme="casefile"] h4,
+[data-theme="casefile"] .h1, [data-theme="casefile"] .h2, [data-theme="casefile"] .h3, [data-theme="casefile"] .h4 {
+    font-family: var(--wf-font-head);
+    font-weight: 800;
+    letter-spacing: -.01em;
+}
+[data-theme="casefile"] .fw-black { font-weight: 700; }
+[data-theme="casefile"] .text-brand { color: var(--wf-marker) !important; }
+[data-theme="casefile"] .lead { font-size: 1.1rem; }
+
+/* ---------- Buttons: typed labels on ink ---------------------------------------------------------------------- */
+
+[data-theme="casefile"] .btn {
+    font-family: var(--wf-font-label);
+    font-weight: 400;
+    letter-spacing: .03em;
+    border-radius: 6px;
+}
+[data-theme="casefile"] .btn-primary,
+[data-theme="casefile"][data-bs-theme="dark"] .btn-primary {
+    --bs-btn-color: var(--wf-on-brand);
+    --bs-btn-hover-color: var(--wf-on-brand);
+    --bs-btn-active-color: var(--wf-on-brand);
+    --bs-btn-disabled-color: var(--wf-on-brand);
+    box-shadow: 0 3px 0 0 rgba(0, 0, 0, .25);
+}
+[data-theme="casefile"] .btn-outline-primary,
+[data-theme="casefile"][data-bs-theme="dark"] .btn-outline-primary {
+    --bs-btn-hover-color: var(--wf-on-brand);
+    --bs-btn-active-color: var(--wf-on-brand);
+    border-width: 2px;
+}
+[data-theme="casefile"] .btn-danger { --bs-btn-bg: var(--wf-marker); --bs-btn-border-color: var(--wf-marker); }
+[data-theme="casefile"] .badge.bg-primary,
+[data-theme="casefile"][data-bs-theme="dark"] .badge.bg-primary { color: var(--wf-on-brand); }
+
+/* ---------- Forms ---------------------------------------------------------------------------------------------- */
+
+[data-theme="casefile"] .form-control,
+[data-theme="casefile"] .form-select {
+    border-radius: var(--wf-radius);
+    border-width: 1.5px;
+    border-color: var(--wf-muted);
+    background-color: var(--wf-surface);
+}
+[data-theme="casefile"] .form-control:focus,
+[data-theme="casefile"] .form-select:focus {
+    border-color: var(--wf-text);
+    box-shadow: 0 0 0 .2rem rgba(var(--wf-marker-rgb), .25);
+}
+[data-theme="casefile"] .form-label { font-family: var(--wf-font-label); font-weight: 400; }
+
+/* ---------- Menu: folder tabs on wide screens, a plain list on phones ------------------------------------------- */
+
+[data-theme="casefile"] .wf-navbar {
+    background: color-mix(in srgb, var(--wf-bg) 92%, transparent);
+    border-bottom: 2px solid var(--wf-text);
+}
+[data-theme="casefile"] .wf-brand { font-family: var(--wf-font-label); font-weight: 400; font-size: 1.3rem; letter-spacing: .01em; }
+[data-theme="casefile"] .wf-brand .accent { color: var(--wf-marker); }
+[data-theme="casefile"] .wf-brand-mark {
+    background: transparent;
+    color: var(--wf-marker);
+    border: 2.5px solid var(--wf-marker);
+    border-radius: 6px;
+    transform: rotate(-8deg);
+}
+[data-theme="casefile"] .wf-navbar .nav-link {
+    font-family: var(--wf-font-label);
+    font-weight: 400;
+    color: var(--wf-text);
+    border-radius: 6px;
+}
+[data-theme="casefile"] .wf-navbar .nav-link:hover { background: var(--wf-brand-soft); color: var(--wf-text); }
+[data-theme="casefile"] .wf-navbar .nav-link.active { background: var(--wf-text); color: var(--wf-bg); }
+@media (min-width: 1200px) {
+    /* Folder tabs standing on the menu's bottom line */
+    [data-theme="casefile"] .wf-navbar { padding-bottom: 0; }
+    [data-theme="casefile"] .wf-navbar .navbar-nav { align-self: flex-end; gap: .25rem; }
+    [data-theme="casefile"] .wf-navbar .nav-link {
+        border: 1.5px solid var(--wf-text);
+        border-bottom: 0;
+        border-radius: 7px 7px 0 0;
+        margin-bottom: -2px;
+        background: var(--wf-surface-2);
+    }
+    [data-theme="casefile"] .wf-navbar .nav-link.active { background: var(--wf-text); color: var(--wf-bg); }
+}
+@media (min-width: 1200px) {
+    /* The typewriter labels run wider than the old font, and the page stops growing at 1320px: tighter tabs so the
+       menu fits on one line in every language */
+    [data-theme="casefile"] .wf-navbar .navbar-nav { gap: .15rem; }
+    [data-theme="casefile"] .wf-navbar .nav-link { font-size: .85rem; padding: .4rem .45rem !important; gap: .3rem; }
+    [data-theme="casefile"] .wf-navbar .nav-link > .bi { display: none; }  /* Labels only, so German and French fit */
+}
+[data-theme="casefile"] .theme-toggle {
+    border-radius: 6px;
+    border: 1.5px solid var(--wf-text);
+    background: var(--wf-surface);
+}
+[data-theme="casefile"] .theme-toggle:hover { border-color: var(--wf-marker); transform: none; }
+[data-theme="casefile"] .theme-toggle.lang-toggle { border-radius: 6px; font-family: var(--wf-font-label); font-weight: 400; }
+
+/* ---------- Surfaces: paper, labels and section heads ---------------------------------------------------------- */
+
+[data-theme="casefile"] .card { border-radius: var(--wf-radius); }
+[data-theme="casefile"] .wf-card,
+[data-theme="casefile"] .feature-tile {
+    border-radius: var(--wf-radius);
+    border-color: var(--wf-border);
+    box-shadow: var(--wf-shadow);
+}
+[data-theme="casefile"] .page-head .eyebrow {
+    font-family: var(--wf-font-label);
+    font-weight: 400;
+    letter-spacing: .1em;
+    color: var(--wf-text);
+    background: var(--wf-folder);
+    border-radius: 6px 6px 0 0;
+    padding: .3rem .9rem .2rem;
+    transform: rotate(-1deg);
+}
+[data-theme="casefile"] .page-head h1 { font-weight: 800; }
+[data-theme="casefile"] .section-label {
+    font-family: var(--wf-font-label);
+    font-weight: 400;
+    letter-spacing: .06em;
+    border-bottom: 1.5px dashed var(--wf-border);
+    padding-bottom: .4rem;
+}
+[data-theme="casefile"] .section-label .step,
+[data-theme="casefile"][data-bs-theme="dark"] .section-label .step {
+    background: var(--wf-text);
+    color: var(--wf-bg);
+    font-family: var(--wf-font-label);
+}
+[data-theme="casefile"] .chip { border-radius: 4px; font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .chip-brand { background: var(--wf-folder); color: var(--wf-text); }
+[data-theme="casefile"] .feature-icon { border-radius: 6px; }
+
+/* ---------- Home hero: a manila folder instead of a purple gradient -------------------------------------------- */
+
+[data-theme="casefile"] .wf-hero {
+    color: var(--wf-text);
+    background: var(--wf-folder);
+    border-radius: 6px 14px 10px 10px;
+    box-shadow: 0 4px 0 var(--wf-folder-edge), var(--wf-shadow-lg);
+}
+[data-theme="casefile"] .wf-hero::before,
+[data-theme="casefile"] .wf-hero::after { display: none; }
+[data-theme="casefile"][data-bs-theme="dark"] .wf-hero { color: #f6ead2; }
+[data-theme="casefile"] .wf-hero h1 { font-weight: 800; }
+[data-theme="casefile"] .hero-form { background: rgba(255, 255, 255, .35); border-color: var(--wf-folder-edge); border-radius: 6px; }
+[data-theme="casefile"] .hero-form .form-control,
+[data-theme="casefile"][data-bs-theme="dark"] .hero-form .form-control { border-radius: 4px; color: #2b2118; background: #fffdf7; }
+[data-theme="casefile"] .hero-form .form-control::placeholder { color: #8a7556; }
+[data-theme="casefile"] .hero-form .btn { background: #2b2118; color: #f6ecd6; box-shadow: 0 3px 0 rgba(0, 0, 0, .25); }
+[data-theme="casefile"] .hero-form .btn:hover { background: #463729; color: #fff; }
+
+/* ---------- Choice tiles: index cards on the desk -------------------------------------------------------------- */
+
+[data-theme="casefile"] .tile {
+    border-radius: var(--wf-radius);
+    border: 1px solid var(--wf-border);
+    background: var(--wf-surface-2);
+    box-shadow: var(--wf-shadow);
+}
+[data-theme="casefile"] .tile:hover { transform: translateY(-2px) rotate(-.5deg); border-color: var(--wf-muted); }
+[data-theme="casefile"] .tile .tile-title { font-family: var(--wf-font-label); font-weight: 400; }
+[data-theme="casefile"] .tile .tile-icon,
+[data-theme="casefile"] .tile .tile-check { color: var(--wf-marker); }
+[data-theme="casefile"] .tile-input:checked + .tile {
+    border-color: var(--wf-marker);
+    background: var(--wf-surface);
+    box-shadow: 0 0 0 2px var(--wf-marker), var(--wf-shadow);
+    transform: rotate(-1deg);
+}
+
+/* ---------- Quiz: the statements as ruled index cards, the pick circled in red --------------------------------- */
+
+[data-theme="casefile"] .quiz-progress { border-radius: 3px; }
+[data-theme="casefile"] .quiz-progress .bar { border-radius: 3px; background: var(--wf-marker); }
+[data-theme="casefile"] .quiz-question .q-icon { background: var(--wf-folder); color: var(--wf-text); border-radius: 6px; }
+[data-theme="casefile"] .answer {
+    border-radius: 2px;
+    border: 0;
+    border-inline-start: 3px solid var(--wf-card-edge);
+    background-color: var(--wf-surface);
+    background-image: repeating-linear-gradient(transparent 0 25px, var(--wf-card-line) 25px 26px);
+    box-shadow: var(--wf-shadow);
+}
+[data-theme="casefile"] .col-md-6:nth-child(odd) .answer { transform: rotate(-.5deg); }
+[data-theme="casefile"] .col-md-6:nth-child(even) .answer { transform: rotate(.4deg); }
+[data-theme="casefile"] .answer:hover { transform: translateY(-2px); }
+[data-theme="casefile"] .answer .letter {
+    background: transparent;
+    color: var(--opt);
+    border: 2px solid var(--opt);
+    border-radius: 50%;
+    font-family: var(--wf-font-label);
+    font-weight: 400;
+}
+[data-theme="casefile"] .answer .text { font-weight: 400; font-size: 1.05rem; }
+[data-theme="casefile"] .answer-input:checked + .answer {
+    background-color: var(--wf-surface);
+    box-shadow: 0 0 0 3px var(--wf-marker), var(--wf-shadow);
+    border-radius: 40% 46% 42% 48% / 50% 44% 52% 46%;   /* Circled in red marker */
+}
+[data-theme="casefile"] .answer-input:checked + .answer .pick { color: var(--wf-marker); }
+[data-theme="casefile"] .answer .stamp { font-family: var(--wf-font-label); font-weight: 400; border-radius: 4px; color: var(--wf-marker); }
+[data-theme="casefile"] .answer .stamp.is-true { color: var(--wf-good); }
+[data-theme="casefile"] .answer.is-fake,
+[data-theme="casefile"] .answer-input:checked + .answer.is-fake {
+    box-shadow: 0 0 0 3px var(--wf-marker), var(--wf-shadow);
+    background-color: color-mix(in srgb, var(--wf-marker) 8%, var(--wf-surface));
+}
+[data-theme="casefile"] .answer.is-true,
+[data-theme="casefile"] .answer-input:checked + .answer.is-true {
+    box-shadow: 0 0 0 3px var(--wf-good), var(--wf-shadow);
+    background-color: color-mix(in srgb, var(--wf-good) 8%, var(--wf-surface));
+}
+[data-theme="casefile"] .quiz-reveal { border-radius: var(--wf-radius); }
+[data-theme="casefile"] .quiz-reveal.is-good { border-color: var(--wf-good); }
+[data-theme="casefile"] .quiz-reveal.is-bad { border-color: var(--wf-marker); }
+
+/* ---------- Footer and floating help button --------------------------------------------------------------------- */
+
+[data-theme="casefile"] .wf-footer { font-family: var(--wf-font-label); }
+
+@media (prefers-reduced-motion: reduce) {
+    [data-theme="casefile"] .answer, [data-theme="casefile"] .tile { transform: none !important; }
+}
