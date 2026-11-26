@@ -66,14 +66,11 @@ def format_date(value, with_time=False, lang=None):
 
 
 def template_globals():
-    """_() and _n() for Jinja, and word() for the theme's own words (themes.py). They're globals (not context
-    variables) so imported macros can use them too. Catalog text is trusted, so it's returned as Markup; .format() on
-    Markup escapes its arguments."""
-    import themes
+    """_() and _n() for Jinja. They're globals (not context variables) so imported macros can use them too.
+    Catalog text is trusted, so it's returned as Markup; .format() on Markup escapes its arguments."""
     return {
         '_': lambda text: Markup(translate(text)),
         '_n': lambda singular, plural, n: Markup(translate(singular if n == 1 else plural)).format(n=n),
-        'word': lambda key: Markup(translate(themes.word(key))),
     }
 
 
@@ -100,8 +97,6 @@ def dynamic_strings():
     strings |= set(outfits.SLOT_NAMES.values()) | {item[1] for items in outfits.SLOTS.values() for item in items}
     from chatbot import QUICK_HELP
     strings |= {suggestion['question'] for suggestion in QUICK_HELP}
-    import themes
-    strings |= themes.all_words()
     return strings
 
 
