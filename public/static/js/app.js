@@ -231,3 +231,21 @@
         return Uint8Array.from(atob(padded.replace(/-/g, '+').replace(/_/g, '/')), c => c.charCodeAt(0));
     }
 })();
+
+// Reveal: blocks marked data-reveal rise in, and headings marked reveal-words come into focus word by word, once, as
+// they scroll into view (app.css, "Reveal"). Without IntersectionObserver everything simply shows.
+(function () {
+    const items = document.querySelectorAll('[data-reveal], .reveal-words');
+    if (!items.length) return;
+    if (!('IntersectionObserver' in window)) {
+        items.forEach(el => el.classList.add('in'));
+        return;
+    }
+    const observer = new IntersectionObserver(entries => entries.forEach(entry => {
+        if (entry.isIntersecting) {
+            entry.target.classList.add('in');
+            observer.unobserve(entry.target);
+        }
+    }), { rootMargin: '0px 0px -8% 0px' });
+    items.forEach(el => observer.observe(el));
+})();

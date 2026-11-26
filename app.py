@@ -803,9 +803,21 @@ def clear_failed_pins(key):
     db.session.commit()
 
 
+HOME_TOP_PLAYERS = 5
+
+
+def daily_players_today():
+    """How many quizzes of today's daily challenge were played, in any language."""
+    return (QuizSession.query.join(DailyChallenge, QuizSession.daily_challenge_id == DailyChallenge.id)
+            .filter(DailyChallenge.date == today_utc()).count())
+
+
 @app.route('/')
 def index():
-    return render_template('index.html')
+    # The home page shows today's topic (no AI call: the topic is fixed by the date) and the top of the leaderboard
+    return render_template('index.html', daily_topic=daily_topic(today_utc()), daily_rounds=DAILY_ROUNDS,
+                           daily_difficulty=DAILY_DIFFICULTY, daily_played=daily_players_today(),
+                           top_players=ranked_players([])[:HOME_TOP_PLAYERS])
 
 
 GUEST_ROUND_DAYS = 30  # Past daily challenges a guest round can come from
@@ -1952,6 +1964,24 @@ def rematch(attempt_id):
 LEADERBOARD_SIZE = 10
 
 
+def ranked_players(conditions):
+    """Every player with scores matching `conditions`, best first. Ranked by rating (rating.py): accuracy weighted by
+    difficulty, cautious for players with few answers. One row per player and difficulty from the database; the
+    rating itself is worked out here."""
+    rows = (db.session.query(User, Score.difficulty, func.sum(Score.score), func.sum(Score.total_questions),
+                             func.count(Score.id))
+            .join(Score, Score.user_id == User.id)
+            .filter(*conditions)
+            .group_by(User.id, Score.difficulty)
+            .all())
+    players = {}
+    for user, difficulty_label, correct, questions, quizzes in rows:
+        player = players.setdefault(user.id, {'user': user, 'groups': [], 'quizzes': 0})
+        player['groups'].append((difficulty_label, correct or 0, questions or 0))
+        player['quizzes'] += quizzes
+    return rank_players(list(players.values()))
+
+
 @app.route('/leaderboard')
 def leaderboard():
     # Filters: unknown values fall back to "all"
@@ -1975,20 +2005,7 @@ def leaderboard():
     if difficulty != 'all':
         conditions.append(Score.difficulty == DIFFICULTY_OPTIONS[difficulty])
 
-    # Ranked by rating (rating.py): accuracy weighted by difficulty, cautious for players with few answers.
-    # One row per player and difficulty from the database; the rating itself is worked out here.
-    rows = (db.session.query(User, Score.difficulty, func.sum(Score.score), func.sum(Score.total_questions),
-                             func.count(Score.id))
-            .join(Score, Score.user_id == User.id)
-            .filter(*conditions)
-            .group_by(User.id, Score.difficulty)
-            .all())
-    players = {}
-    for user, difficulty_label, correct, questions, quizzes in rows:
-        player = players.setdefault(user.id, {'user': user, 'groups': [], 'quizzes': 0})
-        player['groups'].append((difficulty_label, correct or 0, questions or 0))
-        player['quizzes'] += quizzes
-    standings = rank_players(list(players.values()))[:LEADERBOARD_SIZE]
+    standings = ranked_players(conditions)[:LEADERBOARD_SIZE]
     filters = {'period': period, 'category': category, 'difficulty': difficulty}
     return render_template('leaderboard.html', standings=standings, filters=filters,
                            filtered=any(v != 'all' for v in filters.values()),

@@ -416,7 +416,6 @@
   "Week warrior": "بطل الأسبوع",
   "Weekly event": "الفعالية الأسبوعية",
   "Weekly event standings": "ترتيب الفعالية الأسبوعية",
-  "Welcome to WikiFakeFact!": "مرحبًا بك في WikiFakeFact!",
   "What is your name?": "ما اسمك؟",
   "Who took the challenge": "من خاض التحدي",
   "Who took your challenges": "من خاض تحدياتك",
@@ -769,5 +768,7 @@
   "How do leagues work?": "كيف تعمل الدوريات؟",
   "How does the daily challenge work?": "كيف يعمل التحدي اليومي؟",
   "What should I play next?": "ماذا ألعب بعد ذلك؟",
-  "Please try a smaller picture.": "جرّب صورة أصغر."
+  "Please try a smaller picture.": "جرّب صورة أصغر.",
+  "{n} player today": "اللاعبون اليوم: {n}",
+  "{n} players today": "اللاعبون اليوم: {n}"
 }

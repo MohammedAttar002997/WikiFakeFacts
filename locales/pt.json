@@ -416,7 +416,6 @@
   "Week warrior": "Guerreiro da semana",
   "Weekly event": "Evento semanal",
   "Weekly event standings": "Classificação do evento semanal",
-  "Welcome to WikiFakeFact!": "Bem-vindo ao WikiFakeFact!",
   "What is your name?": "Qual é o seu nome?",
   "Who took the challenge": "Quem aceitou o desafio",
   "Who took your challenges": "Quem aceitou seus desafios",
@@ -769,5 +768,7 @@
   "How do leagues work?": "Como funcionam as ligas?",
   "How does the daily challenge work?": "Como funciona o desafio diário?",
   "What should I play next?": "O que devo jogar agora?",
-  "Please try a smaller picture.": "Tente uma imagem menor."
+  "Please try a smaller picture.": "Tente uma imagem menor.",
+  "{n} player today": "{n} jogador hoje",
+  "{n} players today": "{n} jogadores hoje"
 }

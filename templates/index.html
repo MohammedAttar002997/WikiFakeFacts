@@ -1,70 +1,131 @@
 {% extends "base.html" %}
+{% from "_macros.html" import avatar %}
+
+{# The home page: a hero with the sign-in, how to play, today's challenge, the top players and help. Blocks marked
+   data-reveal rise in as they scroll into view, and headings marked reveal-words come into focus word by word
+   (app.js and app.css, "Reveal"); without JavaScript, or with reduced motion, everything simply shows. #}
+{% macro words(text) -%}
+    {%- for word in text.split(' ') %}<span class="w" style="--i:{{ loop.index0 }}">{{ word }}</span> {% endfor -%}
+{%- endmacro %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <section class="wf-hero text-center mb-5">
-            <span class="floating-chip d-none d-md-block" style="top: 12%; left: 7%;">🧐</span>
-            <span class="floating-chip d-none d-md-block" style="top: 18%; right: 9%; animation-delay: -2s;">💡</span>
-            <span class="floating-chip d-none d-md-block" style="bottom: 14%; right: 15%; animation-delay: -4s;">❓</span>
+<section class="home-hero">
+    <svg class="doodle doodle-1" viewBox="0 0 64 64" aria-hidden="true"><circle cx="26" cy="26" r="14"/><path d="M36 36l16 16" stroke-width="4" stroke-linecap="round"/></svg>
+    <svg class="doodle doodle-2" viewBox="0 0 64 64" aria-hidden="true"><circle cx="32" cy="32" r="22"/><path d="M12 26c12 6 28 6 40 0M14 42c12-6 24-6 36 0M32 10c-8 12-8 32 0 44"/></svg>
+    <svg class="doodle doodle-3" viewBox="0 0 64 64" aria-hidden="true"><path d="M20 24a12 12 0 1 1 18 10c-4 2-6 5-6 9M32 52v1" stroke-width="3" stroke-linecap="round"/></svg>
 
-            <span class="badge rounded-pill bg-white text-dark px-3 py-2 mb-3 fw-bold">
-                <i class="bi bi-stars text-warning"></i> {{ _('AI-powered trivia') }}
-            </span>
-            <h1 class="mb-3">{{ _('Welcome to WikiFakeFact!') }}</h1>
-            <p class="lead mb-0">{{ _('The ultimate AI-powered trivia game where you spot the lie among Wikipedia facts.') }}</p>
+    <div class="home-hero-text">
+        <span class="kicker"><i class="bi bi-stars"></i> {{ _('AI-powered trivia') }}</span>
+        <h1 class="reveal-words">{{ words(_('Spot the Fake Fact!')) }}</h1>
+        <p class="lead" data-reveal style="--i:3">{{ _('The ultimate AI-powered trivia game where you spot the lie among Wikipedia facts.') }}</p>
 
-            <form action="/setup" method="POST" class="hero-form">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <label for="username" class="visually-hidden">{{ _('What is your name?') }}</label>
-                <input type="text" class="form-control form-control-lg" id="username" name="username"
-                       placeholder="{{ _('Enter your name') }}" required minlength="3" autocomplete="nickname"
-                       value="{{ me.username if me else '' }}">
-                <label for="pin" class="visually-hidden">{{ _('4-digit PIN') }}</label>
-                <input type="password" class="form-control form-control-lg hero-pin" id="pin" name="pin"
-                       placeholder="{{ _('PIN') }}" required minlength="4" maxlength="4" pattern="[0-9]{4}"
-                       inputmode="numeric" autocomplete="current-password" title="{{ _('4 digits') }}">
-                <button type="submit" class="btn btn-lg">
-                    {{ _('Start Playing') }} <i class="bi bi-arrow-right-circle-fill ms-1"></i>
-                </button>
-            </form>
-            <p class="small mt-3 mb-0 opacity-75">
-                {{ _('New name? Pick any 4-digit PIN. Returning? Enter your PIN to get back to your results.') }}
-                {% if not me %}
-                    <br><a href="{{ url_for('try_round') }}" class="text-reset fw-bold try-link"><i class="bi bi-lightning-charge-fill me-1"></i>{{ _('Try a round without signing up') }}</a>
-                    <br><a href="{{ url_for('class_join_form') }}" class="text-reset fw-bold try-link"><i class="bi bi-easel2-fill me-1"></i>{{ _('Joining a class game? Enter the code') }}</a>
-                {% endif %}
-                {% if me %}
-                    <br>{{ _('Not {name}?').format(name=me.username) }} <a href="{{ url_for('logout') }}" class="text-reset fw-bold">{{ _('Switch player') }}</a>
-                    &middot; <a href="{{ url_for('account') }}" class="text-reset fw-bold">{{ _('Profile and account') }}</a>
-                {% endif %}
-            </p>
-        </section>
+        <form action="/setup" method="POST" class="hero-form" data-reveal style="--i:4">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <label for="username" class="visually-hidden">{{ _('What is your name?') }}</label>
+            <input type="text" class="form-control form-control-lg" id="username" name="username"
+                   placeholder="{{ _('Enter your name') }}" required minlength="3" autocomplete="nickname"
+                   value="{{ me.username if me else '' }}">
+            <label for="pin" class="visually-hidden">{{ _('4-digit PIN') }}</label>
+            <input type="password" class="form-control form-control-lg hero-pin" id="pin" name="pin"
+                   placeholder="{{ _('PIN') }}" required minlength="4" maxlength="4" pattern="[0-9]{4}"
+                   inputmode="numeric" autocomplete="current-password" title="{{ _('4 digits') }}">
+            <button type="submit" class="btn btn-lg">
+                {{ _('Start Playing') }} <span class="btn-arrow"><i class="bi bi-chevron-right"></i></span>
+            </button>
+        </form>
+        <p class="hero-note" data-reveal style="--i:5">
+            {{ _('New name? Pick any 4-digit PIN. Returning? Enter your PIN to get back to your results.') }}
+            {% if not me %}
+                <br><a href="{{ url_for('try_round') }}" class="try-link"><i class="bi bi-lightning-charge-fill me-1"></i>{{ _('Try a round without signing up') }}</a>
+                <br><a href="{{ url_for('class_join_form') }}" class="try-link"><i class="bi bi-easel2-fill me-1"></i>{{ _('Joining a class game? Enter the code') }}</a>
+            {% endif %}
+            {% if me %}
+                <br>{{ _('Not {name}?').format(name=me.username) }} <a href="{{ url_for('logout') }}" class="try-link">{{ _('Switch player') }}</a>
+                &middot; <a href="{{ url_for('account') }}" class="try-link">{{ _('Profile and account') }}</a>
+            {% endif %}
+        </p>
+    </div>
 
-        <h2 class="h4 text-center fw-black mb-4">{{ _('How to play') }}</h2>
-        <div class="row g-4">
-            <div class="col-md-4">
-                <div class="feature-tile">
-                    <div class="feature-icon" style="background: rgba(59,130,246,.15); color: #3b82f6;"><i class="bi bi-grid-3x3-gap-fill"></i></div>
-                    <h3 class="h5 fw-black">{{ _('1. Pick a topic') }}</h3>
-                    <p class="text-muted mb-0">{{ _('Choose from 7 categories, or upload your own document or URL.') }}</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="feature-tile">
-                    <div class="feature-icon" style="background: rgba(229,72,77,.15); color: #e5484d;"><i class="bi bi-search"></i></div>
-                    <h3 class="h5 fw-black">{{ _('2. Spot the fake') }}</h3>
-                    <p class="text-muted mb-0">{{ _('Each round shows four facts. Three are real, one is a convincing lie.') }}</p>
-                </div>
-            </div>
-            <div class="col-md-4">
-                <div class="feature-tile">
-                    <div class="feature-icon" style="background: rgba(16,185,129,.15); color: #10b981;"><i class="bi bi-bar-chart-fill"></i></div>
-                    <h3 class="h5 fw-black">{{ _('3. Level up') }}</h3>
-                    <p class="text-muted mb-0">{{ _('Climb the leaderboard and get AI coaching on your weak spots.') }}</p>
-                </div>
-            </div>
+    <div class="home-hero-art">
+        <div class="hero-finn">{% include "_finn.html" %}</div>
+        {% if daily_played %}
+        <span class="hero-players">
+            <span class="faces">{% for row in top_players[:3] %}{{ avatar(row.user, 'sm') }}{% endfor %}</span>
+            {{ _n('{n} player today', '{n} players today', daily_played) }}
+        </span>
+        {% endif %}
+    </div>
+</section>
+
+<section class="home-section">
+    <h2 class="home-title text-center reveal-words">{{ words(_('How to play')) }}</h2>
+    <div class="home-steps">
+        {% for icon, title, text in [
+            ('bi-grid-3x3-gap-fill', _('1. Pick a topic'), _('Choose from 7 categories, or upload your own document or URL.')),
+            ('bi-search', _('2. Spot the fake'), _('Each round shows four facts. Three are real, one is a convincing lie.')),
+            ('bi-bar-chart-fill', _('3. Level up'), _('Climb the leaderboard and get AI coaching on your weak spots.')),
+        ] %}
+        <div class="home-step" data-reveal style="--i:{{ loop.index0 }}">
+            <span class="round-icon round-icon-{{ loop.index }}"><i class="bi {{ icon }}"></i></span>
+            <h3>{{ title }}</h3>
+            <p>{{ text }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    <div class="home-strip">
+        {% for href, icon, label in [
+            (url_for('daily'), 'bi-calendar-check', _('Daily challenge')),
+            (url_for('event'), 'bi-trophy', _('Weekly event')),
+            (url_for('custom_quiz'), 'bi-file-earmark-plus', _('Custom Quiz')),
+            (url_for('topics_index'), 'bi-collection', _('Topics')),
+        ] %}
+        <a href="{{ href }}" data-reveal style="--i:{{ loop.index0 }}"><span class="round-icon round-icon-{{ loop.index }}"><i class="bi {{ icon }}"></i></span>{{ label }}</a>
+        {% endfor %}
+    </div>
+</section>
+
+<section class="home-section home-daily">
+    <div class="home-daily-finn" data-reveal>{% with finn_mood='search' %}{% include "_finn.html" %}{% endwith %}</div>
+    <div data-reveal style="--i:1">
+        <span class="kicker">{{ _("Today's topic") }}</span>
+        <h2 class="home-title reveal-words">{{ words(daily_topic) }}</h2>
+        <p class="home-sub">{{ _('Same questions, one try.') }}</p>
+        <a class="btn btn-primary btn-lg btn-arrowed" href="{{ url_for('daily') }}">{{ _("Play today's challenge") }} <span class="btn-arrow"><i class="bi bi-chevron-right"></i></span></a>
+        <div class="home-facts">
+            <div><small>{{ _('Daily challenge') }}</small><b>{{ _n('{n} round', '{n} rounds', daily_rounds) }}</b><em>{{ _(daily_difficulty.split(' (')[0]) }}</em></div>
+            <div><small>{{ _('Played') }}</small><b>{{ daily_played }}</b><em>{{ _('Today (UTC)') }}</em></div>
         </div>
     </div>
-</div>
+</section>
+
+<section class="home-section text-center">
+    <h2 class="home-title reveal-words">{{ words(_('Leaderboard')) }}</h2>
+    <p class="home-sub mx-auto" data-reveal>{{ _('The sharpest fake-fact detectors so far, ranked by rating.') }}</p>
+    {% if top_players %}
+    <ol class="home-ranks">
+        {% for row in top_players %}
+        <li data-reveal style="--i:{{ loop.index0 }}">
+            <span class="rank">{{ loop.index }}</span>
+            {{ avatar(row.user, 'sm') }}
+            <span class="who">
+                <a href="{{ url_for('player_profile', user_id=row.user.id) }}">{{ row.user.username }}</a>
+                <small>{{ _n('{n} quiz played', '{n} quizzes played', row.quizzes) }}<span class="d-none d-sm-inline"> &middot; {{ _('{pct}% accuracy').format(pct=row.percentage|round|int) }}</span></small>
+            </span>
+            <span class="rating">{{ row.rating|round|int }}</span>
+        </li>
+        {% endfor %}
+    </ol>
+    {% else %}
+    <p class="home-sub mx-auto">{{ _('Be the first to play and claim the top spot!') }}</p>
+    {% endif %}
+    <a class="btn btn-outline-primary btn-lg mt-3" href="{{ url_for('leaderboard') }}">{{ _('View Leaderboard') }}</a>
+</section>
+
+<section class="home-section home-help" data-reveal>
+    <div>
+        <h2 class="home-title reveal-words">{{ words(_('How can we help?')) }}</h2>
+        <p class="home-sub mb-0">{{ _('Ask anything about playing WikiFakeFact.') }}</p>
+    </div>
+    <a class="btn btn-primary btn-lg btn-arrowed" href="/chatbot">{{ _('Help') }} <span class="btn-arrow"><i class="bi bi-chat-dots"></i></span></a>
+</section>
 {% endblock %}
