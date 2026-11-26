@@ -33,7 +33,7 @@ def test_every_icon_exists_in_its_stated_size():
 def test_every_page_links_the_manifest_and_icons(app):
     html = app.test_client().get('/').get_data(as_text=True)
     assert '<link rel="manifest" href="/static/manifest.webmanifest">' in html
-    assert '<meta name="theme-color" content="#efe4cb"' in html and '<meta name="theme-color" content="#1d1813"' in html
+    assert '<meta name="theme-color" content="#7c3aed">' in html
     assert 'apple-touch-icon.png' in html
 
 

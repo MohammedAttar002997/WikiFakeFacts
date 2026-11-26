@@ -13,53 +13,78 @@
     {% set verdict = ('sad', _("Keep practicing — you'll get them next time!"), '#ef4444', _('They got away'), 'bad') %}
 {% endif %}
 <div class="row justify-content-center">
-    <div class="col-lg-8 col-xl-7">
-        {# The results as a case report (case file drafts): the case and its number, a typed report with a stamp and the
-           score, Finn's verdict, the two main actions, then smaller links; the rounds follow as evidence slips #}
-        {% set topic_name = _('Your mistakes') if is_practice else topic %}
-        {% set topic_link = None if is_practice else topic_url(topic) %}
-        <div class="quiz-head">
-            <span class="quiz-case">{{ word('quiz_case') }}: {{ topic_name }}</span>
-            <span class="report-no">{{ _('Case file No. {n}').format(n=case_no) }}</span>
-        </div>
-        <div class="report case-file">
+    <div class="col-lg-7">
+        {# The results as a detective's case file: a folder tab with the case number, Finn's verdict and a stamp #}
+        <div class="case-tab"><i class="bi bi-folder2-open me-1" aria-hidden="true"></i>{{ _('Case file No. {n}').format(n=case_no) }}</div>
+        <div class="wf-card wf-card-pad text-center case-file">
             <div class="case-stamp is-{{ verdict[4] }}">{{ verdict[3] }}</div>
-            {% set level = (difficulty or '').split(' (')[0] %}
-            <div class="report-kind">{{ word('report_label') }}{% if level %} &middot; {{ _(level) }}{% endif %} &middot; {{ _n('{n} round', '{n} rounds', total) }}</div>
-            <h1 class="report-title">{% if is_practice %}{{ _('Practice your mistakes') }}{% elif topic_link %}<a href="{{ topic_link }}">{{ topic }}</a>{% else %}{{ topic }}{% endif %}</h1>
-            {% set big %}<b class="report-big" dir="ltr">{{ score }}</b>{% endset %}
-            <div class="report-score" role="img" aria-label="{{ _('Final Score:') }} {{ score }} / {{ total }}">
-                {{ _('{score} of {total} fakes found').format(score=big, total=total) }}
-            </div>
-            {% if league_points is not none %}
-            <dl class="report-facts">
-                <dt>{{ _('League') }}</dt><dd><a href="{{ url_for('league') }}">{{ _('+{n} league points').format(n=league_points) }}</a></dd>
-            </dl>
-            {% endif %}
-        </div>
-
-        <div class="report-verdict">
             {{ finn(verdict[0], 'case-finn') }}
-            {% set who %}<strong>{{ me.username }}</strong>{% endset %}
-            <p class="report-say">{{ verdict[1] }}
-                {% if is_practice %}{{ _("Rounds you got right won't come back. Practice doesn't count toward your score.") }}{% else %}{{ _('Thank you for playing, {name}!').format(name=who) }}{% endif %}</p>
-        </div>
+            <h1 class="fw-black mb-1">{% if is_practice %}{{ _('Practice your mistakes') }}{% else %}{{ _('Game Results') }}{% endif %}</h1>
+            <p class="lead text-muted mb-4">
+                {% set who %}<strong class="text-body">{{ me.username }}</strong>{% endset %}
+                {{ verdict[1] }}<br>
+                {% if is_practice %}{{ _("Rounds you got right won't come back. Practice doesn't count toward your score.") }}{% else %}{{ _('Thank you for playing, {name}!').format(name=who) }}{% endif %}
+            </p>
 
-        <div class="report-actions">
-            <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-arrow-repeat me-1"></i>{{ _('Play Again') }}</a>
-            {% if share %}
-            <a href="#share" class="btn btn-outline-primary btn-lg"><i class="bi bi-share me-1"></i>{{ _('Challenge a friend') }}</a>
-            {% else %}
-            <a href="/leaderboard" class="btn btn-outline-primary btn-lg"><i class="bi bi-trophy me-1"></i>{{ _('View Leaderboard') }}</a>
+            <div class="score-ring mb-4" style="--p: {{ percentage }}; --ring: {{ verdict[2] }};"
+                 role="img" aria-label="{{ _('Final Score:') }} {{ score }} / {{ total }}">
+                <div class="inner">
+                    <div class="pct">{{ percentage|round|int }}%</div>
+                    <div class="frac"><span dir="ltr">{{ score }} / {{ total }}</span></div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-4">
+                    <div class="stat-tile">
+                        <div class="value text-success">{{ score }}</div>
+                        <div class="label">{{ _('Correct') }}</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-tile">
+                        <div class="value text-danger">{{ total - score }}</div>
+                        <div class="label">{{ _('Missed') }}</div>
+                    </div>
+                </div>
+                <div class="col-4">
+                    <div class="stat-tile">
+                        {% set topic = _('Your mistakes') if is_practice else topic %}
+                        {% set topic_link = None if is_practice else topic_url(topic) %}
+                        <div class="value text-truncate fs-6 pt-2" title="{{ topic }}">{% if topic_link %}<a href="{{ topic_link }}" class="text-reset">{{ topic }}</a>{% else %}{{ topic }}{% endif %}</div>
+                        <div class="label">{{ _('Topic:')|replace(':', '') }}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="d-flex flex-column flex-sm-row justify-content-center gap-3">
+                <a href="/setup" class="btn btn-primary btn-lg"><i class="bi bi-arrow-repeat me-1"></i>{{ _('Play Again') }}</a>
+                <a href="/leaderboard" class="btn btn-outline-primary btn-lg"><i class="bi bi-trophy me-1"></i>{{ _('View Leaderboard') }}</a>
+            </div>
+            <a href="/analysis" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis" class="d-inline-block mt-3 fw-bold text-decoration-none">
+                <i class="bi bi-graph-up-arrow me-1"></i>{{ _('See my progress') }}
+            </a>
+            <a href="{{ url_for('topics_index') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
+                <i class="bi bi-collection me-1"></i>{{ _('Browse topics') }}
+            </a>
+            {% if league_points is not none %}
+            <a href="{{ url_for('league') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
+                <i class="bi bi-trophy-fill me-1"></i>{{ _('+{n} league points').format(n=league_points) }}
+            </a>
             {% endif %}
-        </div>
-        <div class="report-links">
-            <a href="/analysis" data-loading="{{ _('Analyzing your progress…') }}" data-loading-tips="analysis"><i class="bi bi-graph-up-arrow me-1"></i>{{ _('See my progress') }}</a>
-            <a href="{{ url_for('topics_index') }}"><i class="bi bi-collection me-1"></i>{{ _('Browse topics') }}</a>
-            <a href="{{ url_for('history') }}"><i class="bi bi-clock-history me-1"></i>{{ _('Quiz history') }}</a>
-            {% if share %}<a href="/leaderboard"><i class="bi bi-trophy me-1"></i>{{ _('View Leaderboard') }}</a>{% endif %}
-            {% if is_daily %}<a href="{{ url_for('daily') }}"><i class="bi bi-calendar-check me-1"></i>{{ _("Today's daily leaderboard") }}</a>{% endif %}
-            {% if is_event %}<a href="{{ url_for('event') }}"><i class="bi bi-stars me-1"></i>{{ _('Weekly event standings') }}</a>{% endif %}
+            <a href="{{ url_for('history') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
+                <i class="bi bi-clock-history me-1"></i>{{ _('Quiz history') }}
+            </a>
+            {% if is_daily %}
+            <a href="{{ url_for('daily') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
+                <i class="bi bi-calendar-check me-1"></i>{{ _("Today's daily leaderboard") }}
+            </a>
+            {% endif %}
+            {% if is_event %}
+            <a href="{{ url_for('event') }}" class="d-inline-block mt-3 ms-3 fw-bold text-decoration-none">
+                <i class="bi bi-stars me-1"></i>{{ _('Weekly event standings') }}
+            </a>
+            {% endif %}
         </div>
 
         <div class="mt-4">{% include "_practice_card.html" %}</div>
@@ -93,7 +118,7 @@
         {% endif %}
 
         {% if share %}
-        <div class="mt-4" id="share">{% include "_share.html" %}</div>
+        <div class="mt-4">{% include "_share.html" %}</div>
         {% endif %}
 
         {% if review %}

@@ -106,8 +106,7 @@ def test_the_page_shows_your_group_and_points(login, clock, app_ctx):
     assert 'Weekly league' in html and 'Bronze' in html
     ben, ann = html.index('>Ben<'), html.index('>Ann<')
     assert ben < ann  # 60 points beat 30
-    # Points shown and the promotion line drawn (the case file calls it "Promotion", themes.py)
-    assert '>60<' in html and '>30<' in html and 'league-line is-up' in html and 'Promotion' in html
+    assert '>60<' in html and '>30<' in html and 'Moving up' in html
 
 
 def test_results_show_the_games_league_points(login, clock):

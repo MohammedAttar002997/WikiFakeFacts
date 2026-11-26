@@ -117,9 +117,7 @@ def test_leaderboard_has_no_empty_filter_slot(app):
 def test_quiz_page_has_a_main_heading(login, app_ctx):
     client = login('Player')
     client.post('/start_quiz', data={'category': '1', 'length': '1', 'difficulty': '2', 'language': 'en'})
-    # One main heading: the question itself (since the case file layout)
-    html = client.get('/quiz').get_data(as_text=True)
-    assert html.count('<h1') == 1 and '<h1 class="quiz-prompt">' in html
+    assert '<h1 class="h2 mb-1">' in client.get('/quiz').get_data(as_text=True)
 
 
 def test_players_page_totals(login, app_ctx):

@@ -505,7 +505,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 800; letter-spacing: -0.01em; }
 .answer-input:checked + .answer .pick { opacity: 1; transform: scale(1); }
 .answer-input:focus-visible + .answer { outline: 3px solid var(--opt); outline-offset: 2px; }
 /* Finn above the statements, and the result shown on the round: rubber stamps and a result bar */
-.quiz-finn { width: 4.75rem; flex-shrink: 0; }
+.quiz-finn { width: 6.5rem; margin: 0 auto .25rem; }
 .answer .stamp { position: absolute; inset-inline-end: .7rem; top: 50%; padding: .05rem .6rem; border: 3px solid currentColor;
     border-radius: .45rem; font-weight: 900; font-size: 1.15rem; letter-spacing: .14em; text-transform: uppercase;
     color: #e11d48; background: color-mix(in srgb, var(--wf-surface) 88%, transparent); pointer-events: none;
@@ -1200,9 +1200,7 @@ mark.diff-fake { background: rgba(239, 68, 68, .16); text-decoration-color: #ef4
 /* ---------- Timed mode -------------------------------------------------------- */
 .timed-switch { display: flex; align-items: flex-start; gap: .75rem; padding-inline-start: 0; }
 .timed-switch .form-check-input { float: none; margin: .2rem 0 0; width: 2.75rem; height: 1.4rem; flex-shrink: 0; }
-.quiz-timer { display: inline-flex; align-items: center; gap: .45rem; padding: .2rem .7rem; font-weight: 800;
-    color: var(--wf-text); border: 1.5px solid currentColor; border-radius: 999px; font-variant-numeric: tabular-nums; }
-.quiz-timer .timer-track { width: 2.75rem; height: .35rem; flex: none; }
+.quiz-timer { display: flex; align-items: center; gap: .75rem; margin: 1rem 0 0; font-weight: 900; color: var(--wf-brand); }
 .timer-track { flex: 1; height: .5rem; border-radius: 999px; background: var(--wf-surface-2); border: 1px solid var(--wf-border); overflow: hidden; }
 .timer-bar { height: 100%; background: var(--wf-brand); border-radius: 999px; transition: width .2s linear; }
 .timer-count { min-width: 2ch; text-align: end; font-variant-numeric: tabular-nums; }
@@ -1632,160 +1630,3 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
 .embed-card { padding: 1rem; }
 .embed-card .answer { min-height: 44px; }
 .embed-cta { text-align: center; }
-
-/* ---------- The desk at the top of /setup (views/desk.py) ---------------------------------------------------------
-   Layout only, in neutral colours; a theme gives it its look (the case file: a manila folder, a clip, a stamp and
-   pinned notes) */
-.desk { margin-bottom: 1.5rem; }
-.desk-hello { display: flex; align-items: flex-end; gap: .75rem; margin-bottom: 1.25rem; }
-.desk-hello .min-w-0 { min-width: 0; flex: 1; }
-.desk-title { font-size: clamp(1.8rem, 4.5vw, 2.6rem); margin: 0 0 .2rem; }
-.desk-finn { width: 5.5rem; flex-shrink: 0; }
-.desk-grid { display: grid; gap: 1.25rem; }
-@media (min-width: 900px) { .desk-grid { grid-template-columns: 1.4fr 1fr; align-items: start; } }
-.case-folder { position: relative; display: flex; flex-direction: column; gap: .2rem; padding: 2rem 1.25rem 1.25rem; margin-top: .9rem;
-               text-decoration: none; color: var(--wf-text); background: var(--wf-surface); border: 1px solid var(--wf-border);
-               border-radius: 1rem; box-shadow: var(--wf-shadow); }
-.case-folder:hover { color: var(--wf-text); }
-.case-folder-tab { position: absolute; top: -.95rem; inset-inline-start: 0; padding: .2rem .9rem; font-size: .8rem; font-weight: 800;
-                   letter-spacing: .08em; text-transform: uppercase; background: inherit; border-radius: .6rem .6rem 0 0; }
-.case-folder-clip, .case-folder-stamp { display: none; }
-.case-folder-no { font-size: .8rem; color: var(--wf-muted); letter-spacing: .06em; text-transform: uppercase; }
-.case-folder-title { font-size: clamp(1.8rem, 5vw, 2.4rem); font-weight: 800; line-height: 1.1; overflow-wrap: anywhere; }
-.case-folder-meta, .case-folder-result { font-size: .95rem; }
-.case-folder-btn { align-self: stretch; margin-top: .9rem; }
-@media (min-width: 640px) { .case-folder-btn { align-self: flex-start; } }
-.desk-notes { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
-.desk-note { position: relative; display: block; padding: .9rem 1rem; text-decoration: none; color: var(--wf-text); font-size: .95rem;
-             background: var(--wf-surface); border: 1px solid var(--wf-border); border-radius: .9rem; box-shadow: var(--wf-shadow); min-height: 44px; }
-.desk-note:hover { color: var(--wf-text); }
-.desk-note b { display: block; font-size: 1.6rem; line-height: 1.1; }
-.desk-note .desk-note-event { font-size: 1.15rem; }
-.desk-note-wide { grid-column: 1 / -1; }
-.desk-note-pin { display: none; }
-.desk-subhead { font-size: 1.4rem; margin: 0 0 .9rem; }
-
-/* ---------- The quiz page's layout (quiz.html) -------------------------------------------------------------------
-   A slim header with the case and the timer, one mark per round, the question with Finn, the statements as numbered
-   cards (stacked on phones, 2x2 from 900px) and one wide button. Neutral colours; the theme adds its look. */
-.quiz-sheet { max-width: 980px; margin: 0 auto; }
-.quiz-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; min-height: 2.25rem; }
-.quiz-case { font-size: .85rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; min-width: 0;
-             overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.quiz-steps { display: flex; gap: .4rem; margin: .6rem 0 1.1rem; }
-.quiz-steps span { flex: 1; height: .4rem; border-radius: 3px; background: var(--wf-border); }
-.quiz-steps .is-done { background: var(--wf-text); }
-.quiz-steps .is-now { background: var(--wf-brand); }
-.quiz-ask { display: flex; align-items: flex-end; gap: .75rem; margin-bottom: 1rem; }
-.quiz-ask .min-w-0 { min-width: 0; flex: 1; }
-.quiz-prompt { font-size: clamp(1.4rem, 4.2vw, 2rem); line-height: 1.2; margin: 0 0 .25rem; }
-.quiz-step { color: var(--wf-muted); margin: 0; font-size: .95rem; }
-.quiz-cards { display: grid; gap: .9rem; }
-@media (min-width: 900px) { .quiz-cards { grid-template-columns: 1fr 1fr; gap: 1.1rem 1.25rem; } }
-.quiz-card-slot { min-width: 0; }
-.quiz-submit { display: block; width: 100%; margin-top: 1.4rem; }
-@media (min-width: 900px) { .quiz-submit { width: auto; min-width: 20rem; margin-inline: auto; } }
-
-/* ---------- Phone header: one row (logo, bell, menu); language and light/dark are in the menu (nav-tools) ------- */
-.nav-tools { border-top: 1px dashed var(--wf-border); margin-top: .4rem; padding-top: .4rem; }
-.nav-tools .nav-link { background: none; border: 0; width: 100%; text-align: start; }
-.nav-tools .bi-sun-fill { display: none; }
-[data-bs-theme="dark"] .nav-tools .bi-sun-fill { display: inline; }
-[data-bs-theme="dark"] .nav-tools .bi-moon-stars-fill { display: none; }
-.nav-langs { display: flex; flex-wrap: wrap; gap: .35rem; padding: .35rem 0 .5rem; }
-.nav-langs a { min-width: 44px; min-height: 40px; display: grid; place-items: center; border: 1.5px solid var(--wf-border);
-               border-radius: .5rem; text-decoration: none; color: var(--wf-text); font-weight: 700; font-size: .85rem; }
-.nav-langs a.active { background: var(--wf-text); color: var(--wf-bg); border-color: var(--wf-text); }
-@media (max-width: 575.98px) {
-    .wf-brand { font-size: 1.1rem !important; gap: .4rem; }
-    .wf-brand-mark { width: 1.9rem; height: 1.9rem; font-size: .95rem; }
-}
-
-/* ---------- The "New investigation" form on /setup (.investigation): compact, as in the case file drafts --------
-   Leads three to a row on phones, length and difficulty as chips, one wide start button, then two boxes to play
-   together. Neutral colours; the theme adds its look. */
-.investigation section { margin-bottom: 2rem !important; }
-.investigation .tile { min-height: 72px; padding: .7rem .4rem; gap: .2rem; }
-.investigation .tile .tile-emoji { font-size: 1.45rem; }
-.investigation .tile .tile-title { font-size: .9rem; line-height: 1.2; }
-.investigation [data-tour="category"] .tile .tile-sub { display: none; }
-@media (max-width: 767.98px) {
-    .investigation [data-tour="category"] .row > [class*="col-"]:not(#topicSearch) { width: 33.333%; }
-    .investigation [data-tour="category"] .row { --bs-gutter-x: .6rem; --bs-gutter-y: .6rem; }
-}
-/* Length and difficulty: chips with the detail beside the name */
-.investigation [data-tour="length"] .row, .investigation .difficulty-row .row { --bs-gutter-x: .5rem; --bs-gutter-y: .5rem; }
-.investigation [data-tour="length"] .tile, .investigation .difficulty-row .tile {
-    min-height: 48px; flex-direction: row; flex-wrap: wrap; justify-content: center; gap: .1rem .4rem; padding: .5rem .5rem;
-}
-.investigation [data-tour="length"] .tile-icon, .investigation .difficulty-row .tile-emoji,
-.investigation [data-tour="length"] .tile-check, .investigation .difficulty-row .tile-check { display: none; }
-.investigation [data-tour="length"] .tile-sub, .investigation .difficulty-row .tile-sub { font-size: .8rem; }
-.investigation .difficulty-row .tile-badge { position: static; order: 3; width: 100%; }
-.investigation .timed-switch { border: 1px solid var(--wf-border); border-radius: .75rem; padding: .75rem .9rem; }
-.together { display: grid; grid-template-columns: 1fr 1fr; gap: .75rem; margin-top: 1rem; }
-.together-box { display: flex; flex-direction: column; gap: .2rem; text-align: start; padding: .75rem .85rem; min-height: 44px;
-                background: transparent; color: var(--wf-text); border: 1.5px dashed var(--wf-border); border-radius: .75rem; }
-.together-box:hover { border-color: var(--wf-text); }
-.together-title { font-weight: 800; font-size: .95rem; }
-.together-text { font-size: .8rem; color: var(--wf-muted); line-height: 1.35; }
-@media (max-width: 380px) { .together { grid-template-columns: 1fr; } }
-
-/* ---------- The results as a case report (results.html) --------------------------------------------------------- */
-.report-no { font-size: .85rem; color: var(--wf-muted); white-space: nowrap; }
-.report { position: relative; margin-top: .75rem; padding: 1.25rem 1.25rem 1.1rem; background: var(--wf-surface);
-          border: 1px solid var(--wf-border); border-radius: 1rem; box-shadow: var(--wf-shadow); text-align: start; }
-.report .case-stamp { position: absolute; inset-inline-end: .8rem; top: .9rem; display: block; margin: 0; }
-.report-kind { font-size: .8rem; color: var(--wf-muted); text-transform: uppercase; letter-spacing: .06em; padding-inline-end: 7rem; }
-.report-title { font-size: clamp(1.6rem, 5vw, 2.2rem); margin: .2rem 0 .6rem; padding-inline-end: 7rem; overflow-wrap: anywhere; }
-.report-title a { color: inherit; text-decoration: none; }
-.report-title a:hover { text-decoration: underline; }
-.report-score { font-size: 1.25rem; font-weight: 700; color: var(--wf-muted); line-height: 1.1; }
-.report-big { font-size: 3.6rem; color: var(--wf-text); line-height: 1; margin-inline-end: .2rem; }
-.report-facts { display: grid; grid-template-columns: auto 1fr; gap: .15rem .9rem; margin: .9rem 0 0; font-size: .95rem; }
-.report-facts dt { color: var(--wf-muted); font-weight: 400; }
-.report-facts dd { margin: 0; }
-.report-verdict { display: flex; align-items: flex-end; gap: .6rem; margin: 1rem 0 .25rem; }
-.report-verdict .case-finn { width: 4.5rem; flex-shrink: 0; }
-.report-say { margin: 0 0 .4rem; padding: .6rem .85rem; border: 1.5px solid var(--wf-text); border-radius: 12px 12px 12px 2px;
-              background: var(--wf-surface); font-size: .95rem; }
-.report-actions { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; margin-top: .75rem; }
-.report-actions .btn { padding-inline: .5rem; }
-.report-links { display: flex; flex-wrap: wrap; justify-content: center; gap: .25rem 1.1rem; margin-top: .9rem; }
-.report-links a { font-weight: 700; text-decoration: none; padding: .4rem 0; }
-@media (max-width: 400px) { .report-actions { grid-template-columns: 1fr; } }
-
-/* ---------- The league as the precinct board (league.html) -------------------------------------------------------- */
-.board-head { margin-bottom: 1rem; }
-.board-kicker { font-size: .8rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--wf-muted); }
-.board-title { font-size: clamp(1.7rem, 5vw, 2.4rem); margin: .1rem 0 .2rem; }
-.board-meta { color: var(--wf-muted); margin: 0; font-size: .95rem; }
-.league-ladder { margin-bottom: 1.25rem !important; }
-.roster { position: relative; margin-top: 1.4rem; padding: 1.1rem 0 .4rem; background: var(--wf-surface); border: 1px solid var(--wf-border);
-          border-radius: .9rem; box-shadow: var(--wf-shadow); }
-.roster-head { display: flex; align-items: center; gap: .5rem; padding: 0 1rem .6rem; font-weight: 800; border-bottom: 1px solid var(--wf-border); }
-.roster-rows { display: flex; flex-direction: column; }
-.roster .rank-row { border: 0; border-radius: 0; border-bottom: 1px dashed var(--wf-border); background: transparent; padding: .55rem 1rem; gap: .75rem; }
-.roster .rank-row:hover { transform: none; }
-.roster .rank-row .meta { display: none; }
-.roster .rank-row .score .meta { display: none; }
-.roster .league-line { margin: 0; padding: .35rem 1rem; justify-content: center; }
-.roster .league-line::after { display: none; }
-.roster .league-line.is-up { border-top: 2px solid currentColor; }
-.roster .league-line.is-down { border-bottom: 2px solid currentColor; }
-.board-points { margin: 1rem 0 .4rem; color: var(--wf-muted); font-size: .95rem; text-align: center; }
-.board-rules { text-align: center; margin-bottom: 1rem; }
-.board-rules summary { cursor: pointer; font-weight: 700; padding: .5rem; display: inline-block; }
-.board-rules ul { text-align: start; max-width: 40rem; margin-inline: auto; }
-
-/* ---------- Quick leads on the desk (setup.html): they pick a choice in the form below --------------------------- */
-.desk-leads { display: grid; grid-template-columns: repeat(3, 1fr); gap: .5rem; }
-.desk-leads-label { grid-column: 1 / -1; font-size: .8rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase;
-                    border-bottom: 1.5px dashed var(--wf-border); padding-bottom: .3rem; }
-.desk-lead { display: flex; flex-direction: column; align-items: center; gap: .25rem; min-height: 64px; padding: .6rem .3rem;
-             background: var(--wf-surface); color: var(--wf-text); border: 1px solid var(--wf-border); border-radius: .75rem;
-             font-size: .85rem; line-height: 1.2; }
-.desk-lead i { font-size: 1.3rem; }
-.desk-lead:hover { border-color: var(--wf-text); }
-.together-box.is-hinted { border-style: solid; border-color: var(--wf-text); }
-

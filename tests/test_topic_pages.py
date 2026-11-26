@@ -169,6 +169,6 @@ def test_setup_offers_browsing_topics(login):
 
 def test_results_link_the_topic_page_and_browsing(login):
     html = play_quiz(login("Ann"), answers(1, 3))
-    title = html.split('class="report-title"')[1].split('</h1>')[0]  # The case report's heading
-    assert 'href="/topic/' in title  # A built-in topic's name links to its page
+    tile = html.split('stat-tile')[-1]
+    assert 'href="/topic/' in tile  # A built-in topic's name links to its page
     assert 'Browse topics' in html and 'href="/topics"' in html.split('See my progress')[1]

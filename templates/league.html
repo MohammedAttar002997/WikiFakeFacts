@@ -8,11 +8,10 @@
 <div class="row justify-content-center">
     <div class="col-lg-9">
         {% include "_challenge_switch.html" %}
-        {# The precinct board (case file drafts): the league's name, the days left and who moves, then the group on a clipboard #}
-        <div class="board-head">
-            <span class="board-kicker">{{ _('Weekly league') }}</span>
-            <h1 class="board-title">{{ word('league_title').format(league=_(tiers[tier])) }}</h1>
-            <p class="board-meta">{{ _n('{n} day left this week', '{n} days left this week', days_left) }}{% if entry and table|length > 1 and (up or down) %} &middot; {{ _('Top {up} move up, bottom {down} move down').format(up=up, down=down) }}{% endif %}</p>
+        <div class="page-head">
+            <span class="eyebrow"><i class="bi bi-trophy-fill"></i> {{ _n('{n} day left this week', '{n} days left this week', days_left) }}</span>
+            <h1>{{ _('Weekly league') }}</h1>
+            <p>{{ _('Every finished game this week earns league points. On Sunday night the top players of each group move up a league and the last ones move down.') }}</p>
         </div>
 
         {# The ladder of leagues, with the player's one marked #}
@@ -46,20 +45,21 @@
             <a href="{{ url_for('setup') }}" class="btn btn-primary btn-lg"><i class="bi bi-play-fill me-1"></i>{{ _('Play now') }}</a>
         </div>
         {% else %}
-        <div class="roster">
-            <div class="roster-head"><span aria-hidden="true">{{ icons[tier] }}</span>{{ _('{league} league · your group').format(league=_(tiers[tier])) }}</div>
-            <div class="roster-rows">
+        <div class="wf-card p-3 p-md-4">
+            <div class="section-label px-1"><span class="fs-4" aria-hidden="true">{{ icons[tier] }}</span>{{ _('{league} league · your group').format(league=_(tiers[tier])) }}</div>
+            <div class="d-flex flex-column gap-2">
                 {% for row in table %}
                 {% set is_me = row.user.id == me.id %}
                 {# A line where the promotion zone ends and where the demotion zone starts #}
                 {% if down and loop.index == table|length - down + 1 %}
-                <div class="league-line is-down"><i class="bi bi-arrow-down" aria-hidden="true"></i>{{ word('drop_line') }}</div>
+                <div class="league-line is-down"><i class="bi bi-arrow-down" aria-hidden="true"></i>{{ _('Moving down') }}</div>
                 {% endif %}
                 <div class="rank-row{% if is_me %} rank-row-me{% endif %}{% if row.result == 'up' %} league-up{% elif row.result == 'down' %} league-down{% endif %}">
                     <div class="rank">{{ row.rank }}</div>
                     {{ avatar(row.user, 'sm') }}
                     <div class="who">
                         <a class="fw-bold text-reset text-decoration-none" href="{{ url_for('player_profile', user_id=row.user.id) }}">{{ row.user.username }}</a>{% if is_me %} <span class="text-brand small fw-bold">{{ _('(you)') }}</span>{% endif %}
+                        {% if row.result == 'up' %}<div class="meta text-success"><i class="bi bi-arrow-up" aria-hidden="true"></i> {{ _('Moving up') }}</div>{% elif row.result == 'down' %}<div class="meta text-danger"><i class="bi bi-arrow-down" aria-hidden="true"></i> {{ _('Moving down') }}</div>{% endif %}
                     </div>
                     <div class="score">
                         <div class="pct"><span dir="ltr">{{ row.points }}</span></div>
@@ -67,7 +67,7 @@
                     </div>
                 </div>
                 {% if up and loop.index == up and not loop.last %}
-                <div class="league-line is-up"><i class="bi bi-arrow-up" aria-hidden="true"></i>{{ word('promotion_line') }}</div>
+                <div class="league-line is-up"><i class="bi bi-arrow-up" aria-hidden="true"></i>{{ _('Moving up') }}</div>
                 {% endif %}
                 {% endfor %}
             </div>
@@ -77,17 +77,15 @@
         </div>
         {% endif %}
 
-        {# The rules: the points in one line, the rest folded away #}
-        <p class="board-points">{{ _('Each correct answer earns {easy} points on Easy, {medium} on Medium and {hard} on Hard.').format(easy=points['Easy (Ages 7-12)'], medium=points['Medium (Ages 13-17)'], hard=points['Hard (Ages 18-99)']) }}</p>
-        <details class="board-rules">
-            <summary>{{ _('How the league works') }}</summary>
-            <ul class="mb-0 mt-2">
+        <div class="wf-card wf-card-pad mt-4">
+            <div class="section-label"><i class="bi bi-info-circle-fill text-brand fs-4"></i>{{ _('How the league works') }}</div>
+            <ul class="mb-0">
+                <li>{{ _('Each correct answer earns {easy} points on Easy, {medium} on Medium and {hard} on Hard.').format(easy=points['Easy (Ages 7-12)'], medium=points['Medium (Ages 13-17)'], hard=points['Hard (Ages 18-99)']) }}</li>
                 <li>{{ _('Groups have up to {n} players of the same league. You join one with your first finished game of the week.').format(n=group_size) }}</li>
                 <li>{{ _('At the end of the week the top quarter of each group moves up and the bottom quarter moves down.') }}</li>
                 <li>{{ _('Practice quizzes and class games earn no league points.') }}</li>
-                <li>{{ _('Every finished game this week earns league points. On Sunday night the top players of each group move up a league and the last ones move down.') }}</li>
             </ul>
-        </details>
+        </div>
     </div>
 </div>
 {% endblock %}
