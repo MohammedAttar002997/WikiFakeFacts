@@ -3,73 +3,74 @@
 {% block title %}{{ _('Spot the Fake Fact!') }} · WikiFakeFact{% endblock %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
-        <div class="wf-card wf-card-pad">
-            <div class="quiz-top">
-                <div class="quiz-counter">
-                    {{ _('Question') }} {{ question_num }} <span class="total">{{ _('of') }} {{ total_questions }}</span>
-                </div>
-                <div class="d-flex flex-wrap gap-2">
-                    <span class="chip chip-brand"><i class="bi bi-tag-fill"></i>{{ topic }}</span>
-                    <span class="chip"><i class="bi bi-book-half"></i>{{ source }}</span>
-                </div>
-            </div>
-            <div class="quiz-progress" role="progressbar" aria-label="{{ _('Quiz progress') }}"
-                 aria-valuenow="{{ question_num - 1 }}" aria-valuemin="0" aria-valuemax="{{ total_questions }}">
-                <div class="bar" style="width: {{ ((question_num - 1) / total_questions * 100)|round(1) }}%;"></div>
-            </div>
-
-            {% if time_limit %}
-            <div class="quiz-timer" id="quizTimer" data-seconds-left="{{ seconds_left }}" data-time-limit="{{ time_limit }}">
-                <i class="bi bi-stopwatch-fill"></i>
-                <div class="timer-track" aria-hidden="true"><div class="timer-bar" style="width: {{ (seconds_left / time_limit * 100)|round(1) }}%;"></div></div>
-                <span class="timer-count" role="timer" aria-live="off" aria-label="{{ _('Seconds left') }}">{{ seconds_left }}</span>
-                {# The count changes every second, so screen readers only hear a few warnings #}
-                <span class="visually-hidden" aria-live="assertive" id="timerAnnounce" data-label="{{ _('Seconds left') }}"></span>
-            </div>
-            {% endif %}
-
-            <div class="quiz-question">
-                {# Finn watches the round: thinking, worried when time runs low, happy or sad at the answer #}
-                <div class="quiz-finn" id="quizFinn">{% include "_finn.html" %}</div>
-                <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
-                <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
-            </div>
-
-            <form action="/quiz" method="POST" id="quizForm" data-fake-label="{{ _('Fake') }}" data-true-label="{{ _('True') }}">
-                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                {% if time_limit %}<input type="hidden" name="timeout" id="timeoutField" value="0">{% endif %}
-                <div class="row g-3 mb-4">
-                    {% for option in options %}
-                    <div class="col-md-6">
-                        <input class="answer-input visually-hidden" type="radio" name="option" id="opt{{ loop.index }}" value="{{ option }}" required>
-                        <label class="answer answer-{{ loop.index }}" for="opt{{ loop.index }}">
-                            <span class="letter">{{ 'ABCD'[loop.index0] if loop.index0 < 4 else loop.index }}</span>
-                            <span class="text">{{ option }}</span>
-                            <i class="bi bi-check-circle-fill pick"></i>
-                        </label>
-                    </div>
-                    {% endfor %}
-                </div>
-
-                <div class="d-flex flex-column flex-sm-row align-items-center justify-content-between gap-3">
-                    {% set keys %}<kbd>1</kbd>–<kbd>{{ options|length }}</kbd>{% endset %}
-                    {% set enter_key %}<kbd>Enter</kbd>{% endset %}
-                    <span class="kbd-hint d-none d-md-inline">
-                        {{ _('Tip: press {keys} to pick, {enter} to submit').format(keys=keys, enter=enter_key) }}
-                    </span>
-                    <button type="submit" class="btn btn-primary btn-lg px-5 ms-sm-auto" id="submitAnswer" disabled>
-                        {{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i>
-                    </button>
-                </div>
-            </form>
-            {# After answering: the result, on the round itself (the statements get their FAKE / TRUE stamps) #}
-            <div class="quiz-reveal" id="quizReveal" hidden>
-                <div class="flex-grow-1 min-w-0 fw-bold" role="status" aria-live="assertive" data-reveal-text></div>
-                <a class="btn btn-primary btn-lg px-4 flex-shrink-0" data-reveal-next href="{{ url_for('quiz') }}">{{ _('Continue') }} <i class="bi bi-arrow-right ms-1"></i></a>
-            </div>
+{# One round: progress on top, Finn with the question, the statements as answer cards, one button. New design: no card
+   around it, the statements sit on the page (app.css, "Quiz"). #}
+<div class="quiz-screen">
+    <div class="quiz-top">
+        <div class="quiz-progress" role="progressbar" aria-label="{{ _('Quiz progress') }}"
+             aria-valuenow="{{ question_num - 1 }}" aria-valuemin="0" aria-valuemax="{{ total_questions }}">
+            <div class="bar" style="width: {{ ((question_num - 1) / total_questions * 100)|round(1) }}%;"></div>
         </div>
+        <div class="quiz-counter">
+            <span class="visually-hidden">{{ _('Question') }} {{ question_num }} {{ _('of') }} {{ total_questions }}</span>
+            <span aria-hidden="true" dir="ltr">{{ question_num }}<span class="total">/{{ total_questions }}</span></span>
+        </div>
+    </div>
+
+    {% if time_limit %}
+    <div class="quiz-timer" id="quizTimer" data-seconds-left="{{ seconds_left }}" data-time-limit="{{ time_limit }}">
+        <i class="bi bi-stopwatch-fill"></i>
+        <div class="timer-track" aria-hidden="true"><div class="timer-bar" style="width: {{ (seconds_left / time_limit * 100)|round(1) }}%;"></div></div>
+        <span class="timer-count" role="timer" aria-live="off" aria-label="{{ _('Seconds left') }}">{{ seconds_left }}</span>
+        {# The count changes every second, so screen readers only hear a few warnings #}
+        <span class="visually-hidden" aria-live="assertive" id="timerAnnounce" data-label="{{ _('Seconds left') }}"></span>
+    </div>
+    {% endif %}
+
+    <div class="quiz-question">
+        {# Finn watches the round: thinking, worried when time runs low, happy or sad at the answer #}
+        <div class="quiz-finn" id="quizFinn">{% include "_finn.html" %}</div>
+        <div class="min-w-0">
+            <div class="quiz-tags">
+                <span class="kicker"><i class="bi bi-tag-fill"></i>{{ topic }}</span>
+                <span class="quiz-source"><i class="bi bi-book-half"></i>{{ source }}</span>
+            </div>
+            <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
+            <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
+        </div>
+    </div>
+
+    <form action="/quiz" method="POST" id="quizForm" data-fake-label="{{ _('Fake') }}" data-true-label="{{ _('True') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        {% if time_limit %}<input type="hidden" name="timeout" id="timeoutField" value="0">{% endif %}
+        <div class="quiz-options">
+            {% for option in options %}
+            <div>
+                <input class="answer-input visually-hidden" type="radio" name="option" id="opt{{ loop.index }}" value="{{ option }}" required>
+                <label class="answer answer-{{ loop.index }}" for="opt{{ loop.index }}">
+                    <span class="letter">{{ 'ABCD'[loop.index0] if loop.index0 < 4 else loop.index }}</span>
+                    <span class="text">{{ option }}</span>
+                    <i class="bi bi-check-circle-fill pick"></i>
+                </label>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="quiz-actions">
+            {% set keys %}<kbd>1</kbd>–<kbd>{{ options|length }}</kbd>{% endset %}
+            {% set enter_key %}<kbd>Enter</kbd>{% endset %}
+            <span class="kbd-hint d-none d-md-inline">
+                {{ _('Tip: press {keys} to pick, {enter} to submit').format(keys=keys, enter=enter_key) }}
+            </span>
+            <button type="submit" class="btn btn-primary btn-lg btn-arrowed" id="submitAnswer" disabled>
+                {{ _('Submit Answer') }} <span class="btn-arrow"><i class="bi bi-chevron-right"></i></span>
+            </button>
+        </div>
+    </form>
+    {# After answering: the result, on the round itself (the statements get their FAKE / TRUE stamps) #}
+    <div class="quiz-reveal" id="quizReveal" hidden>
+        <div class="flex-grow-1 min-w-0 fw-bold" role="status" aria-live="assertive" data-reveal-text></div>
+        <a class="btn btn-primary btn-lg btn-arrowed flex-shrink-0" data-reveal-next href="{{ url_for('quiz') }}">{{ _('Continue') }} <span class="btn-arrow"><i class="bi bi-chevron-right"></i></span></a>
     </div>
 </div>
 {% endblock %}

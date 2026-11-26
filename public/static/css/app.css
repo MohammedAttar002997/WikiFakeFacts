@@ -618,6 +618,13 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
 }
 .quiz-counter { font-weight: 900; font-size: 1.05rem; }
 .quiz-counter .total { color: var(--wf-muted); }
+
+/* The new design's round (quiz.html; the try, live, class and topic screens follow in later steps): on the page itself,
+   progress and "2/5" on top, Finn beside the question, the statements as cards */
+.quiz-screen { max-width: 52rem; margin: 0 auto; }
+.quiz-screen .quiz-top { flex-wrap: nowrap; gap: 1rem; }
+.quiz-screen .quiz-top .quiz-progress { flex: 1; }
+.quiz-screen .quiz-counter { font-weight: 800; white-space: nowrap; }
 .chip {
     display: inline-flex;
     align-items: center;
@@ -633,7 +640,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
 .chip-brand { background: var(--wf-brand-soft); border-color: transparent; color: var(--wf-brand); }
 
 .quiz-progress {
-    height: .9rem;
+    height: .65rem;
     border-radius: 999px;
     background: var(--wf-surface-2);
     border: 1px solid var(--wf-border);
@@ -650,6 +657,22 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
     text-align: center;
     padding: 2rem 1rem 1.5rem;
 }
+.quiz-screen .quiz-question {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    text-align: start;
+    padding: 1.5rem 0 1.25rem;
+}
+.quiz-screen .quiz-question h1 { font-size: clamp(1.5rem, 4vw, 2.1rem); font-weight: 800; }
+.quiz-question .min-w-0 { flex: 1; min-width: 0; }
+.quiz-tags { display: flex; flex-wrap: wrap; align-items: center; gap: .25rem .9rem; margin-bottom: .3rem; }
+.quiz-source { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; color: var(--wf-muted); }
+.quiz-options { display: grid; gap: .85rem; margin-bottom: 1.5rem; }
+@media (min-width: 768px) { .quiz-options { grid-template-columns: 1fr 1fr; } }
+.quiz-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
+.quiz-actions .btn { margin-inline-start: auto; }
+@media (max-width: 576px) { .quiz-actions .btn { width: 100%; justify-content: center; } }
 .quiz-question .q-icon {
     width: 4rem;
     height: 4rem;
@@ -671,13 +694,13 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
     align-items: center;
     gap: 1rem;
     height: 100%;
-    padding: 1.1rem 1.2rem;
+    padding: 1rem 1.1rem;
     cursor: pointer;
     user-select: none;
     border-radius: 1.1rem;
-    border: 2px solid var(--wf-border);
+    border: 1.5px solid var(--wf-border);
     background: var(--wf-surface);
-    box-shadow: 0 5px 0 0 var(--wf-border);
+    box-shadow: var(--wf-shadow);
     transition: transform .15s ease, box-shadow .15s ease, border-color .15s ease, background-color .15s ease;
     animation: pop-in .4s cubic-bezier(.22, 1, .36, 1) both;
 }
@@ -689,15 +712,16 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
     flex-shrink: 0;
     display: grid;
     place-items: center;
-    width: 2.6rem;
-    height: 2.6rem;
-    border-radius: .8rem;
-    font-weight: 900;
-    font-size: 1.15rem;
+    width: 2.2rem;
+    height: 2.2rem;
+    border-radius: 50%;
+    font-weight: 700;
+    font-size: 1rem;
     color: #fff;
     background: var(--opt);
 }
-.answer .text { font-weight: 700; font-size: 1.05rem; line-height: 1.35; }
+[data-bs-theme="dark"] .answer .letter { color: #1a1029; }
+.answer .text { font-weight: 500; font-size: 1.02rem; line-height: 1.4; }
 .answer .pick {
     margin-inline-start: auto;
     flex-shrink: 0;
@@ -709,13 +733,15 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
 }
 .answer-input:checked + .answer {
     border-color: var(--opt);
-    background: color-mix(in srgb, var(--opt) 12%, var(--wf-surface));
-    box-shadow: 0 5px 0 0 var(--opt);
+    background: color-mix(in srgb, var(--opt) 10%, var(--wf-surface));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--opt) 25%, transparent);
 }
 .answer-input:checked + .answer .pick { opacity: 1; transform: scale(1); }
 .answer-input:focus-visible + .answer { outline: 3px solid var(--opt); outline-offset: 2px; }
 /* Finn above the statements, and the result shown on the round: rubber stamps and a result bar */
 .quiz-finn { width: 6.5rem; margin: 0 auto .25rem; }
+.quiz-screen .quiz-finn { flex-shrink: 0; width: 4.5rem; margin: 0; }
+@media (min-width: 768px) { .quiz-screen .quiz-finn { width: 5.5rem; } }
 .answer .stamp { position: absolute; inset-inline-end: .7rem; top: 50%; padding: .05rem .6rem; border: 3px solid currentColor;
     border-radius: .45rem; font-weight: 900; font-size: 1.15rem; letter-spacing: .14em; text-transform: uppercase;
     color: #e11d48; background: color-mix(in srgb, var(--wf-surface) 88%, transparent); pointer-events: none;
@@ -726,16 +752,16 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
 .answer.is-stamped .pick { display: none; }
 /* The second selector outranks the picked tile's own colours (.answer-input:checked + .answer) */
 .answer.is-fake, .answer-input:checked + .answer.is-fake { border-color: #e11d48;
-    background: color-mix(in srgb, #e11d48 9%, var(--wf-surface)); box-shadow: 0 5px 0 0 #e11d48; }
+    background: color-mix(in srgb, #e11d48 9%, var(--wf-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #e11d48 25%, transparent); }
 .answer.is-true, .answer-input:checked + .answer.is-true { border-color: #059669;
-    background: color-mix(in srgb, #059669 9%, var(--wf-surface)); box-shadow: 0 5px 0 0 #059669; }
+    background: color-mix(in srgb, #059669 9%, var(--wf-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #059669 25%, transparent); }
 .answer.is-stamped .text { padding-inline-end: 4.5rem; }
 @keyframes stamp-in { 0% { opacity: 0; transform: translateY(-50%) rotate(-12deg) scale(2.8); }
     60% { opacity: 1; transform: translateY(-50%) rotate(-12deg) scale(.9); }
     100% { opacity: 1; transform: translateY(-50%) rotate(-12deg) scale(1); } }
 @keyframes tile-thunk { 0% { transform: translateY(0); } 35% { transform: translateY(4px) rotate(-.6deg); } 100% { transform: translateY(0); } }
 .quiz-reveal { display: flex; flex-wrap: wrap; align-items: center; gap: .75rem 1rem; margin-top: 1rem; padding: .9rem 1.1rem;
-    border-radius: 1rem; border: 2px solid var(--wf-border); animation: pop-in .3s ease both; }
+    border-radius: 1.1rem; border: 1.5px solid var(--wf-border); background: var(--wf-surface); animation: pop-in .3s ease both; }
 .quiz-reveal[hidden] { display: none; }
 .quiz-reveal.is-good { border-color: #059669; background: color-mix(in srgb, #059669 10%, var(--wf-surface)); }
 .quiz-reveal.is-bad { border-color: #e11d48; background: color-mix(in srgb, #e11d48 8%, var(--wf-surface)); }
@@ -1486,9 +1512,9 @@ mark.diff-fake { background: rgba(239, 68, 68, .16); text-decoration-color: #ef4
 button.answer { width: 100%; text-align: start; font: inherit; color: inherit; }
 button.answer:disabled { cursor: default; }
 button.answer:disabled:hover { transform: none; border-color: var(--wf-border); }
-button.answer.is-picked { border-color: var(--opt); background: color-mix(in srgb, var(--opt) 12%, var(--wf-surface)); box-shadow: 0 5px 0 0 var(--opt); }
+button.answer.is-picked { border-color: var(--opt); background: color-mix(in srgb, var(--opt) 10%, var(--wf-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, var(--opt) 25%, transparent); }
 button.answer.is-picked .pick { opacity: 1; transform: scale(1); }
-button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #ef4444 12%, var(--wf-surface)); box-shadow: 0 5px 0 0 #ef4444; }
+button.answer.is-fake { border-color: #ef4444; background: color-mix(in srgb, #ef4444 12%, var(--wf-surface)); box-shadow: 0 0 0 3px color-mix(in srgb, #ef4444 25%, transparent); }
 .live-tags { display: flex; flex-wrap: wrap; gap: .25rem; margin-inline-start: auto; }
 .live-tags:empty { display: none; }
 .live-summary-row { padding: .75rem 0; border-bottom: 1px solid var(--wf-border); }
@@ -1716,23 +1742,38 @@ details.wf-card > summary { cursor: pointer; list-style-position: inside; }
     width: 1.5rem; height: 1.5rem; border-radius: 50%; font-size: .8rem; color: #fff;
     background: linear-gradient(135deg, var(--wf-hero-from), var(--wf-hero-to)); box-shadow: 0 0 0 2px var(--wf-surface); }
 
-/* Results as a case file: a folder tab above the card, a stamp in its corner */
-.case-tab { display: inline-block; margin-inline-start: 1.25rem; padding: .35rem 1rem .3rem; border-radius: .8rem .8rem 0 0;
-    font-weight: 800; font-size: .85rem; letter-spacing: .06em; text-transform: uppercase; color: var(--wf-muted);
-    background: var(--wf-surface); border: 2px solid var(--wf-border); border-bottom: 0; position: relative; top: 2px; z-index: 1; }
-.case-file { position: relative; border-start-start-radius: 0;
-    background-image: repeating-linear-gradient(transparent 0 2.05rem, color-mix(in srgb, var(--wf-border) 55%, transparent) 2.05rem 2.1rem); }
-.case-finn { width: 7.5rem; }
-.case-stamp { position: absolute; inset-inline-end: 1rem; top: 1.1rem; padding: .1rem .7rem; border: 3px solid currentColor;
-    border-radius: .45rem; font-weight: 900; font-size: 1rem; letter-spacing: .12em; text-transform: uppercase;
-    transform: rotate(9deg); animation: case-stamp .45s cubic-bezier(.2, 1.5, .4, 1) .5s both; }
+/* ---------- Results ---------------------------------------------------------- */
+/* The verdict on the page: the case number as a label, Finn, a big score, a stamp; then three stats, the two main
+   buttons and the other links as pills */
+.results-screen { max-width: 40rem; margin: 0 auto; }
+.case-tab { color: var(--wf-muted); }
+.case-finn { width: 7rem; margin: .75rem auto .25rem; }
+.results-title { font-size: clamp(1.4rem, 3.5vw, 1.8rem); font-weight: 700; margin: 0; }
+.results-score { font-weight: 800; line-height: 1; letter-spacing: -.03em; margin: .5rem 0 .75rem; }
+.results-score .n { font-size: clamp(4.5rem, 16vw, 6rem); color: var(--ring); }
+.results-score .of { font-size: clamp(1.8rem, 6vw, 2.4rem); color: var(--wf-muted); }
+.results-stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .75rem; margin: 1.75rem 0; }
+.results-stats .stat-tile { padding: .9rem .5rem; }
+.results-stats .stat-tile .value { font-size: 1.4rem; }
+.results-actions { display: flex; flex-direction: column; gap: .75rem; }
+.results-actions .btn { justify-content: center; }
+@media (min-width: 577px) { .results-actions { flex-direction: row; justify-content: center; } }
+.results-links { display: flex; flex-wrap: wrap; justify-content: center; gap: .5rem; margin-top: 1.25rem; }
+.results-links a { display: inline-flex; align-items: center; gap: .4rem; min-height: 44px; padding: .45rem .95rem; border-radius: 999px;
+    font-size: .9rem; font-weight: 600; text-decoration: none; color: var(--wf-text); background: var(--wf-surface);
+    border: 1px solid var(--wf-border); }
+.results-links a:hover { color: var(--wf-brand); border-color: var(--wf-brand); }
+.results-links .bi { color: var(--wf-brand); }
+.case-stamp { display: inline-block; margin-bottom: 1rem; padding: .1rem .7rem; border: 3px solid currentColor;
+    border-radius: .45rem; font-weight: 800; font-size: .95rem; letter-spacing: .12em; text-transform: uppercase;
+    transform: rotate(-4deg); animation: case-stamp .45s cubic-bezier(.2, 1.5, .4, 1) .5s both; }
 .case-stamp.is-good { color: #059669; }
 .case-stamp.is-ok { color: #d97706; }
 .case-stamp.is-bad { color: #e11d48; }
-@keyframes case-stamp { 0% { opacity: 0; transform: rotate(9deg) scale(2.6); } 60% { opacity: 1; transform: rotate(9deg) scale(.92); }
-    100% { opacity: 1; transform: rotate(9deg) scale(1); } }
-@media (max-width: 576px) { .case-stamp { position: static; display: inline-block; margin-bottom: .5rem; font-size: .9rem; }
-    .case-file { overflow-x: clip; } /* The stamp lands from 2.6x its size: no sideways scroll on a phone meanwhile */ }
+@keyframes case-stamp { 0% { opacity: 0; transform: rotate(-4deg) scale(2.6); } 60% { opacity: 1; transform: rotate(-4deg) scale(.92); }
+    100% { opacity: 1; transform: rotate(-4deg) scale(1); } }
+/* The stamp lands from 2.6x its size: no sideways scroll on a phone meanwhile */
+.results-head { overflow-x: clip; }
 @media (prefers-reduced-motion: reduce) { .case-stamp { animation: none; } }
 
 /* ---------- The first-visit tour (_tour.html, tour.js) ------------------------- */
