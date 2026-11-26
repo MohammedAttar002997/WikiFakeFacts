@@ -1,12 +1,9 @@
 {% extends "base.html" %}
-{% from "_macros.html" import avatar %}
+{% from "_macros.html" import avatar, reveal_words as words %}
 
 {# The home page: a hero with the sign-in, how to play, today's challenge, the top players and help. Blocks marked
    data-reveal rise in as they scroll into view, and headings marked reveal-words come into focus word by word
    (app.js and app.css, "Reveal"); without JavaScript, or with reduced motion, everything simply shows. #}
-{% macro words(text) -%}
-    {%- for word in text.split(' ') %}<span class="w" style="--i:{{ loop.index0 }}">{{ word }}</span> {% endfor -%}
-{%- endmacro %}
 
 {% block content %}
 <section class="home-hero">

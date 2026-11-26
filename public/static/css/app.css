@@ -248,17 +248,14 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
     display: inline-flex;
     align-items: center;
     gap: .4rem;
-    font-size: .8rem;
-    font-weight: 800;
+    font-size: .78rem;
+    font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: .12em;
-    color: var(--wf-brand);
-    background: var(--wf-brand-soft);
-    padding: .35rem .8rem;
-    border-radius: 999px;
-    margin-bottom: .8rem;
+    letter-spacing: .16em;
+    color: var(--wf-pink);
+    margin-bottom: .5rem;
 }
-.page-head h1 { font-size: clamp(2rem, 4vw, 2.75rem); margin-bottom: .4rem; }
+.page-head h1 { font-size: clamp(2.2rem, 5vw, 3.2rem); font-weight: 800; letter-spacing: -.02em; margin-bottom: .5rem; }
 .page-head p { color: var(--wf-muted); font-size: 1.1rem; margin: 0; }
 
 .section-label {
@@ -872,6 +869,58 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
 .podium-1 .block { height: 140px; background: linear-gradient(180deg, #fbbf24, #d97706); }
 .podium-2 .block { height: 105px; background: linear-gradient(180deg, #cbd5e1, #64748b); }
 .podium-3 .block { height: 80px; background: linear-gradient(180deg, #fdba74, #c2410c); }
+
+/* The new design's leaderboard: time range as pill tabs, two small menus, and the ranking as one card */
+.lb-screen { max-width: 46rem; margin: 0 auto; }
+.lb-screen .podium-spot .block { border-radius: 1.25rem 1.25rem .5rem .5rem; }
+.lb-screen .podium-spot .name { font-weight: 700; }
+.period-tabs {
+    display: flex;
+    gap: .25rem;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0 auto 1rem;
+    padding: .3rem;
+    overflow-x: auto;
+    border-radius: 999px;
+    background: var(--wf-surface);
+    border: 1px solid var(--wf-border);
+}
+.period-tabs a {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: .4rem 1rem;
+    border-radius: 999px;
+    font-size: .9rem;
+    font-weight: 600;
+    white-space: nowrap;
+    text-decoration: none;
+    color: var(--wf-muted);
+}
+.period-tabs a:hover { color: var(--wf-text); }
+.period-tabs a.is-on { background: var(--wf-brand); color: #fff; }
+[data-bs-theme="dark"] .period-tabs a.is-on { color: #1a1029; }
+.lb-screen .leaderboard-filters { justify-content: center; padding: 0; margin-bottom: 2rem; }
+.lb-screen .filter-field { flex: 1 1 9rem; max-width: 13rem; }
+.rank-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border-radius: 1.5rem;
+    background: var(--wf-surface);
+    border: 1px solid var(--wf-border);
+    box-shadow: var(--wf-shadow);
+}
+.rank-list .rank-row { border: 0; border-radius: 0; background: none; padding: .9rem 1.25rem; }
+.rank-list .rank-row + .rank-row { border-top: 1px solid var(--wf-border); }
+.rank-list .rank-row:hover { transform: none; background: var(--wf-surface-2); }
+.rank-list .rank-row:has(.is-you) { background: var(--wf-brand-soft); }
+.rank-list .rank-row .who a { font-weight: 700; }
+.rank-list .score .pct { display: inline-block; padding: .2rem .7rem; border-radius: .7rem; font-weight: 800; background: var(--wf-brand-soft); }
+.rank-list .rank-row:has(.is-you) .score .pct { background: var(--wf-surface); }
+[dir="rtl"] .rank-list .rank-row:hover { transform: none; }
 
 .rank-row {
     display: flex;

@@ -13,6 +13,12 @@
 {% macro finn(mood='', class='') %}<div class="finn-holder {{ class }}">{% with finn_mood=mood, finn_face=false %}{% include "_finn.html" %}{% endwith %}</div>{% endmacro %}
 {% macro finn_face(mood='', class='') %}<span class="finn-face {{ class }}">{% with finn_mood=mood, finn_face=true %}{% include "_finn.html" %}{% endwith %}</span>{% endmacro %}
 
+{# A heading's words, each in its own span, for the word-by-word reveal (class="reveal-words" on the heading; app.js and
+   app.css, "Reveal") #}
+{% macro reveal_words(text) -%}
+    {%- for word in text.split(' ') %}<span class="w" style="--i:{{ loop.index0 }}">{{ word }}</span> {% endfor -%}
+{%- endmacro %}
+
 {% macro avatar(user, size='', class='') %}
 {% set classes = ['avatar', 'avatar-' ~ size if size, class]|select|join(' ') %}
 {% if user.avatar_updated_at %}
