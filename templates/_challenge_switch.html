@@ -1,6 +1,6 @@
 {# Daily | Weekly | Player fakes | League switch at the top of the pages behind the navbar's Challenges tab #}
 <nav aria-label="{{ _('Challenges') }}">
-    <ul class="nav seg mb-4">
+    <ul class="nav seg seg-pills mb-4">
         {% for href, icon, label in [('/daily', 'bi-calendar-check-fill', _('Daily challenge')), ('/event', 'bi-stars', _('Weekly event')), ('/fakes', 'bi-incognito', _('Player fakes')), ('/league', 'bi-trophy-fill', _('League'))] %}
         {% set active = request.path == href %}
         <li class="nav-item">

@@ -1046,6 +1046,15 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
     padding: .55rem 1.2rem;
 }
 .seg .nav-link.active { background: var(--wf-surface); color: var(--wf-brand); box-shadow: var(--wf-shadow); }
+/* The page switches at the top (Daily | Weekly | Fakes | League, All players | Friends): centred pill tabs; on a
+   phone they wrap onto a second row, so every tab stays in sight */
+.seg-pills { display: flex; flex-wrap: wrap; justify-content: center; width: fit-content; max-width: 100%; margin-inline: auto;
+    border-radius: 1.5rem; background: var(--wf-surface); }
+@media (min-width: 577px) { .seg-pills { flex-wrap: nowrap; border-radius: 999px; } }
+.seg-pills .nav-link { display: inline-flex; align-items: center; min-height: 44px; border-radius: 999px; font-weight: 600;
+    white-space: nowrap; padding: .45rem 1rem; }
+.seg-pills .nav-link.active { background: var(--wf-brand); color: #fff; box-shadow: none; }
+[data-bs-theme="dark"] .seg-pills .nav-link.active { color: #1a1029; }
 
 .dropzone {
     position: relative;
@@ -1263,7 +1272,7 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
 
 /* ---------- Practice card / answer review --------------------------------- */
 .practice-card { display: flex; align-items: center; gap: 1.25rem; border-inline-start: 5px solid #f59e0b; }
-.practice-card .min-w-0, .daily-card .min-w-0 { min-width: 0; }
+.practice-card .min-w-0 { min-width: 0; }
 .practice-icon {
     flex-shrink: 0;
     display: grid;
@@ -1276,8 +1285,8 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
     background: rgba(245, 158, 11, .15);
 }
 @media (max-width: 576px) {
-    .practice-card, .daily-card { flex-wrap: wrap; }
-    .practice-card .btn, .daily-action, .daily-action .btn:not(.btn-sm) { width: 100%; }
+    .practice-card { flex-wrap: wrap; }
+    .practice-card .btn { width: 100%; }
 }
 
 .review-round + .review-round { border-top: 1px solid var(--wf-border); padding-top: 1.5rem; }
@@ -1385,18 +1394,42 @@ mark.diff-fake { background: rgba(239, 68, 68, .16); text-decoration-color: #ef4
 @media (min-width: 768px) { .history-action { width: 6rem; } }
 
 /* ---------- Daily challenge --------------------------------------------------- */
-.daily-card { display: flex; align-items: center; gap: 1.25rem; border-inline-start: 5px solid var(--wf-brand); }
-.daily-icon {
-    flex-shrink: 0;
+/* Today's challenge or this week's theme as a purple card: Finn (or the theme's emoji), the topic, and the play button
+   or your score; then the standings as one card (.rank-list) */
+.challenge-screen { max-width: 46rem; margin: 0 auto; }
+.challenge-hero {
     display: grid;
-    place-items: center;
-    width: 3.75rem;
-    height: 3.75rem;
-    border-radius: 1rem;
-    font-size: 1.8rem;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    gap: 1rem 1.25rem;
+    margin-bottom: 2.5rem;
+    padding: 1.5rem;
+    border-radius: 1.75rem;
     color: #fff;
     background: linear-gradient(135deg, var(--wf-hero-from), var(--wf-hero-to));
+    box-shadow: var(--wf-shadow-lg);
 }
+@media (min-width: 768px) { .challenge-hero { grid-template-columns: auto 1fr auto; padding: 1.75rem 2rem; } }
+.challenge-finn { width: 4.5rem; }
+@media (min-width: 768px) { .challenge-finn { width: 6rem; } }
+.challenge-finn svg { width: 100%; height: auto; display: block; filter: drop-shadow(0 10px 12px rgba(0, 0, 0, .25)); }
+.challenge-emoji { display: grid; place-items: center; width: 4rem; height: 4rem; border-radius: 50%; font-size: 2rem;
+    background: rgba(255, 255, 255, .18); }
+.challenge-text { min-width: 0; }
+.challenge-hero .kicker { color: #fde68a; }
+.challenge-topic { font-size: clamp(1.6rem, 5vw, 2.2rem); font-weight: 800; line-height: 1.1; margin: .2rem 0 .35rem;
+    overflow-wrap: anywhere; }
+.challenge-meta { font-size: .9rem; opacity: .9; }
+.challenge-action { grid-column: 1 / -1; }
+@media (min-width: 768px) { .challenge-action { grid-column: auto; } }
+.challenge-action .btn-primary { width: 100%; font-size: 1.05rem; background: #fff; border-color: #fff; color: #5b21b6;
+    box-shadow: 0 10px 24px -12px rgba(0, 0, 0, .45); }
+.challenge-action .btn-primary:hover { background: #fef3c7; border-color: #fef3c7; color: #5b21b6; }
+.challenge-score { text-align: center; }
+.challenge-score .n { font-size: 2.2rem; font-weight: 800; line-height: 1; }
+.challenge-score .label { font-size: .85rem; opacity: .9; margin: .25rem 0 .5rem; }
+.challenge-board-title { justify-content: center; }
+.challenge-board .rank-row-me { background: var(--wf-brand-soft); }
 .rank-row-me { border-color: rgba(var(--wf-brand-rgb), .55); }
 .daily-banner {
     display: flex;
