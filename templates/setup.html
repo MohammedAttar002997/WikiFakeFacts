@@ -1,21 +1,23 @@
 {% extends "base.html" %}
 
 {% block title %}{{ _('Game Setup') }} · WikiFakeFact{% endblock %}
-{% from "_macros.html" import CATEGORY_EMOJI, length_tiles, difficulty_tiles, language_select %}
+{% from "_macros.html" import CATEGORY_EMOJI, length_tiles, difficulty_tiles, language_select, reveal_words %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-10">
+{# New design: the daily challenge and weekly event side by side, then each step of the setup as its own card
+   (app.css, "Setup"). The data-tour marks are the tour's stops; keep them. #}
+<div class="setup-screen">
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-controller"></i> {{ _('New game') }}</span>
-            <h1>{{ _('Game Setup') }}</h1>
+            <h1 class="reveal-words">{{ reveal_words(_('Game Setup')) }}</h1>
             {% if me %}
             {% set who %}<strong>{{ me.username }}</strong>{% endset %}
             <p>{{ _('Ready, {name}? Set up your round below.').format(name=who) }}</p>
             {% endif %}
         </div>
 
-        <a href="{{ url_for('daily') }}" class="wf-card daily-banner mb-4" data-tour="daily">
+        <div class="setup-banners">
+        <a href="{{ url_for('daily') }}" class="wf-card daily-banner" data-tour="daily">
             <span class="daily-banner-icon"><i class="bi bi-calendar-check-fill"></i></span>
             <span class="flex-grow-1 min-w-0">
                 <span class="d-block fw-black">{{ _('Daily challenge') }}</span>
@@ -24,7 +26,7 @@
             <i class="bi bi-chevron-right text-brand"></i>
         </a>
 
-        <a href="{{ url_for('event') }}" class="wf-card daily-banner mb-4">
+        <a href="{{ url_for('event') }}" class="wf-card daily-banner">
             <span class="daily-banner-icon"><i class="bi bi-stars"></i></span>
             <span class="flex-grow-1 min-w-0">
                 <span class="d-block fw-black">{{ _('Weekly event') }}</span>
@@ -32,10 +34,11 @@
             </span>
             <i class="bi bi-chevron-right text-brand"></i>
         </a>
+        </div>
 
-        <form action="/start_quiz" method="POST" class="wf-card wf-card-pad" data-loading="{{ _('Generating your quiz…') }}">
+        <form action="/start_quiz" method="POST" class="setup-form" data-loading="{{ _('Generating your quiz…') }}">
             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-            <section class="mb-5" data-tour="category">
+            <section class="setup-step" data-tour="category">
                 <div class="section-label"><span class="step">1</span>{{ _('Select Category:') }}</div>
                 <div class="row g-3">
                     {% for id, name in categories.items() %}
@@ -90,22 +93,22 @@
                 </p>
             </section>
 
-            <section class="mb-5" data-tour="length">
+            <section class="setup-step" data-tour="length">
                 <div class="section-label"><span class="step">2</span>{{ _('Game Length:') }}</div>
                 {{ length_tiles(lengths) }}
             </section>
 
-            <section class="mb-5">
+            <section class="setup-step">
                 <div class="section-label"><span class="step">3</span>{{ _('Difficulty / Age Group:') }}</div>
                 {{ difficulty_tiles(difficulties, recommended) }}
             </section>
 
-            <section class="mb-5">
+            <section class="setup-step">
                 <div class="section-label"><span class="step">4</span>{{ _('Quiz Language:') }}</div>
                 {{ language_select(languages, ui_language) }}
             </section>
 
-            <section class="mb-5">
+            <section class="setup-step">
                 <div class="form-check form-switch timed-switch">
                     <input class="form-check-input" type="checkbox" role="switch" id="timed" name="timed" value="1">
                     <label class="form-check-label" for="timed">
@@ -115,9 +118,9 @@
                 </div>
             </section>
 
-            <div class="d-flex flex-column flex-sm-row flex-sm-wrap justify-content-center gap-3" data-tour="start">
-                <button type="submit" class="btn btn-primary btn-lg px-5">
-                    <i class="bi bi-play-fill me-1"></i>{{ _('Start Game') }}
+            <div class="setup-actions" data-tour="start">
+                <button type="submit" class="btn btn-primary btn-lg btn-arrowed">
+                    {{ _('Start Game') }} <span class="btn-arrow"><i class="bi bi-play-fill"></i></span>
                 </button>
                 <button type="submit" formaction="{{ url_for('live_new') }}" class="btn btn-outline-primary btn-lg px-4">
                     <i class="bi bi-people-fill me-1"></i>{{ _('Play live with a friend') }}
@@ -129,7 +132,6 @@
             <p class="small text-muted text-center mt-3 mb-0">{{ _('Live: you and a friend answer the same rounds at the same time. Right answers score, faster ones score more.') }}</p>
             <p class="small text-muted text-center mt-1 mb-0">{{ _('Class: show the game on a big screen; students join at {url} with a code and a nickname, no account needed.').format(url=request.host + '/join') }}</p>
         </form>
-    </div>
 </div>
 {% endblock %}
 
