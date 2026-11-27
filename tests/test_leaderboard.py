@@ -78,3 +78,13 @@ def test_only_own_entry_links_to_analysis(login, scores):
     html = login('Space', create=False).get('/leaderboard').get_data(as_text=True)
     assert '/analysis/' not in html
     assert '(you)' in html
+
+
+def test_time_tabs_are_links_that_keep_the_other_filters(app, scores):
+    _, html = standings(app.test_client(), '?category=2&period=week')
+    tabs = html[html.index('class="period-tabs"'):html.index('</nav>', html.index('class="period-tabs"'))]
+    assert 'href="/leaderboard?category=2"' in tabs  # All time: no period in the link
+    assert 'href="/leaderboard?period=today&amp;category=2"' in tabs
+    assert tabs.count('aria-current="page"') == 1 and 'class="is-on" aria-current="page">Last 7 days<' in tabs
+    # The menus keep the chosen time range
+    assert '<input type="hidden" name="period" value="week">' in html
