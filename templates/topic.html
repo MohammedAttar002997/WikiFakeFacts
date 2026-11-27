@@ -27,17 +27,19 @@
         {% if review %}
         {% include "_answer_review.html" %}
         {% elif options %}
-        <div class="wf-card wf-card-pad">
+        <div class="quiz-screen">
             <div class="quiz-question">
                 <div class="quiz-finn">{% include "_finn.html" %}</div>
-                <h2 class="h3 mb-1">{{ _('Spot the Fake Fact!') }}</h2>
-                <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
+                <div class="min-w-0">
+                    <h2 class="h3 mb-1">{{ _('Spot the Fake Fact!') }}</h2>
+                    <p class="text-muted mb-0">{{ _('Three of these are true. Which one is the fake?') }}</p>
+                </div>
             </div>
             <form method="POST" id="quizForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="row g-3 mb-4">
+                <div class="quiz-options">
                     {% for option in options %}
-                    <div class="col-md-6">
+                    <div>
                         <input class="answer-input visually-hidden" type="radio" name="option" id="opt{{ loop.index }}" value="{{ option }}" required>
                         <label class="answer answer-{{ loop.index }}" for="opt{{ loop.index }}">
                             <span class="letter">{{ 'ABCD'[loop.index0] }}</span>
@@ -47,8 +49,10 @@
                     </div>
                     {% endfor %}
                 </div>
-                <div class="d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary btn-lg px-5" id="submitAnswer" disabled>{{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i></button>
+                <div class="quiz-actions">
+                    <button type="submit" class="btn btn-primary btn-lg btn-arrowed" id="submitAnswer" disabled>
+                        {{ _('Submit Answer') }} <span class="btn-arrow"><i class="bi bi-chevron-right"></i></span>
+                    </button>
                 </div>
             </form>
         </div>
