@@ -616,11 +616,11 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
 .quiz-counter { font-weight: 900; font-size: 1.05rem; }
 .quiz-counter .total { color: var(--wf-muted); }
 
-/* The new design's round (quiz.html; the try, live, class and topic screens follow in later steps): on the page itself,
+/* The new design's round (quiz, try, player fake, topic, live and class player screens): on the page itself,
    progress and "2/5" on top, Finn beside the question, the statements as cards */
 .quiz-screen { max-width: 52rem; margin: 0 auto; }
-.quiz-screen .quiz-top { flex-wrap: nowrap; gap: 1rem; }
-.quiz-screen .quiz-top .quiz-progress { flex: 1; }
+.quiz-screen .quiz-top { gap: .75rem 1rem; }
+.quiz-screen .quiz-top .quiz-progress { flex: 1 1 8rem; }
 .quiz-screen .quiz-counter { font-weight: 800; white-space: nowrap; }
 .chip {
     display: inline-flex;
@@ -670,18 +670,6 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
 .quiz-actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 1rem; }
 .quiz-actions .btn { margin-inline-start: auto; }
 @media (max-width: 576px) { .quiz-actions .btn { width: 100%; justify-content: center; } }
-.quiz-question .q-icon {
-    width: 4rem;
-    height: 4rem;
-    margin: 0 auto 1rem;
-    display: grid;
-    place-items: center;
-    border-radius: 1.2rem;
-    font-size: 2rem;
-    background: linear-gradient(135deg, var(--wf-hero-from), var(--wf-hero-to));
-    color: #fff;
-    transform: rotate(-6deg);
-}
 .quiz-question h2 { font-size: clamp(1.6rem, 3.5vw, 2.2rem); font-weight: 900; }
 
 .answer {
@@ -718,7 +706,8 @@ h1, h2, h3, h4, .fw-black { font-weight: 700; letter-spacing: -0.01em; }
     background: var(--opt);
 }
 [data-bs-theme="dark"] .answer .letter { color: #1a1029; }
-.answer .text { font-weight: 500; font-size: 1.02rem; line-height: 1.4; }
+/* The text takes the row beside the letter, so on phones only extra tags (live rounds) wrap below it */
+.answer .text { flex: 1 1 0; min-width: 0; font-weight: 500; font-size: 1.02rem; line-height: 1.4; }
 .answer .pick {
     margin-inline-start: auto;
     flex-shrink: 0;

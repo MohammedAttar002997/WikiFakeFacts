@@ -7,7 +7,7 @@
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
-        <div class="wf-card wf-card-pad">
+        <div class="quiz-screen">
             <div class="quiz-top">
                 <div class="quiz-counter"><i class="bi bi-incognito me-1"></i>{{ _('A fake by {name}').format(name=author.username if author else '?') }}</div>
                 <div class="d-flex flex-wrap gap-2">
@@ -50,15 +50,17 @@
             {% endif %}
             {% else %}
             <div class="quiz-question">
-                <div class="q-icon">🕵️</div>
+                <div class="quiz-finn">{% include "_finn.html" %}</div>
+                <div class="min-w-0">
                 <h1 class="h2 mb-1">{{ _('Spot the Fake Fact!') }}</h1>
                 <p class="text-muted mb-0">{{ _('A player wrote one of these. Three are true. Which one is the fake?') }}</p>
+                </div>
             </div>
             <form method="POST" id="quizForm">
                 <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                <div class="row g-3 mb-4">
+                <div class="quiz-options">
                     {% for option in statements %}
-                    <div class="col-md-6">
+                    <div>
                         <input class="answer-input visually-hidden" type="radio" name="option" id="opt{{ loop.index }}" value="{{ option }}" required>
                         <label class="answer answer-{{ loop.index }}" for="opt{{ loop.index }}">
                             <span class="letter">{{ 'ABCD'[loop.index0] }}</span>
@@ -68,8 +70,10 @@
                     </div>
                     {% endfor %}
                 </div>
-                <div class="d-flex justify-content-end">
-                    <button type="submit" class="btn btn-primary btn-lg px-5" id="submitAnswer" disabled>{{ _('Submit Answer') }} <i class="bi bi-arrow-right ms-1"></i></button>
+                <div class="quiz-actions">
+                    <button type="submit" class="btn btn-primary btn-lg btn-arrowed" id="submitAnswer" disabled>
+                        {{ _('Submit Answer') }} <span class="btn-arrow"><i class="bi bi-chevron-right"></i></span>
+                    </button>
                 </div>
             </form>
             {% endif %}
