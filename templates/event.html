@@ -1,33 +1,33 @@
 {% extends "base.html" %}
 
 {% block title %}{{ _('Weekly event') }} · WikiFakeFact{% endblock %}
-{% from "_macros.html" import avatar, CATEGORY_EMOJI %}
+{% from "_macros.html" import avatar, CATEGORY_EMOJI, reveal_words %}
 
 {% block content %}
-<div class="row justify-content-center">
-    <div class="col-lg-9">
+{# New design: this week's theme as a purple card, then the event standings as one card (app.css, "Daily challenge") #}
+<div class="challenge-screen">
         {% include "_challenge_switch.html" %}
         <div class="page-head">
             <span class="eyebrow"><i class="bi bi-stars"></i> {{ _('Week of {date}').format(date=week_start.strftime('%Y-%m-%d')) }}</span>
-            <h1>{{ _('Weekly event') }}</h1>
+            <h1 class="reveal-words">{{ reveal_words(_('Weekly event')) }}</h1>
             <p>{{ _('A new theme every Monday. Your {n} best event quizzes of the week count, so keep playing to raise your score.').format(n=best_of) }}</p>
         </div>
 
-        <div class="wf-card wf-card-pad mb-4 daily-card">
-            <div class="daily-icon"><span aria-hidden="true">{{ CATEGORY_EMOJI.get(theme, '✨') }}</span></div>
-            <div class="flex-grow-1 min-w-0">
-                <div class="small fw-bold text-muted text-uppercase">{{ _("This week's theme") }}</div>
-                <div class="h3 fw-black mb-1 text-truncate">{{ _(theme) }}</div>
-                <div class="small text-muted">
+        <div class="challenge-hero">
+            <div class="challenge-emoji" aria-hidden="true">{{ CATEGORY_EMOJI.get(theme, '✨') }}</div>
+            <div class="challenge-text">
+                <span class="kicker">{{ _("This week's theme") }}</span>
+                <div class="challenge-topic">{{ _(theme) }}</div>
+                <div class="challenge-meta">
                     {{ _n('{n} round', '{n} rounds', rounds) }} &middot; {{ _(difficulty.split(' (')[0]) }} &middot;
                     {% if days_left %}{{ _n('{n} day left', '{n} days left', days_left) }}{% else %}{{ _('last day, ends at midnight UTC') }}{% endif %}
                 </div>
             </div>
-            <div class="flex-shrink-0 daily-action">
+            <div class="challenge-action">
                 {% if my_row %}
-                <div class="text-center mb-2">
-                    <div class="h2 fw-black text-brand mb-0"><span dir="ltr">{{ my_row.points }} / {{ max_points }}</span></div>
-                    <div class="small text-muted">{{ _n('Your points from {n} quiz', 'Your points from {n} quizzes', my_row.quizzes) }}</div>
+                <div class="challenge-score mb-2">
+                    <div class="n"><span dir="ltr">{{ my_row.points }} / {{ max_points }}</span></div>
+                    <div class="label">{{ _n('Your points from {n} quiz', 'Your points from {n} quizzes', my_row.quizzes) }}</div>
                 </div>
                 {% endif %}
                 <form action="{{ url_for('event_start') }}" method="POST" data-loading="{{ _('Generating your quiz…') }}">
@@ -39,13 +39,13 @@
             </div>
         </div>
 
-        <div class="wf-card p-3 p-md-4">
-            <div class="section-label px-1"><i class="bi bi-trophy-fill text-brand fs-4"></i>{{ _('Event leaderboard') }}</div>
+        <div class="section-label challenge-board-title"><i class="bi bi-trophy-fill text-brand fs-4"></i>{{ _('Event leaderboard') }}</div>
+        <div class="challenge-board">
             {% if standings %}
-            <div class="d-flex flex-column gap-2">
+            <div class="rank-list">
                 {% for row in standings %}
                 {% set is_me = me and row.user.id == me.id %}
-                <div class="rank-row{% if is_me %} rank-row-me{% endif %}">
+                <div data-reveal style="--i:{{ [loop.index0, 9]|min }}" class="rank-row{% if is_me %} rank-row-me{% endif %}">
                     <div class="rank">{{ ['🥇', '🥈', '🥉'][loop.index0] if loop.index <= 3 else loop.index }}</div>
                     {{ avatar(row.user, 'sm') }}
                     <div class="who">
@@ -75,6 +75,5 @@
             </div>
         </div>
         {% endif %}
-    </div>
 </div>
 {% endblock %}

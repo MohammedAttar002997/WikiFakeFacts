@@ -1,6 +1,6 @@
 {# All players | Friends switch at the top of the two pages behind the navbar's Players tab #}
 <nav aria-label="{{ _('Players') }}">
-    <ul class="nav seg mb-4">
+    <ul class="nav seg seg-pills mb-4">
         {% for href, icon, label in [('/players', 'bi-people-fill', _('All players')), ('/friends', 'bi-person-heart', _('Friends'))] %}
         {% set active = request.path == href %}
         <li class="nav-item">
